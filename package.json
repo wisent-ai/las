@@ -1,0 +1,14 @@
+{
+  "name": "las",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Ecosystem aggregator: federates every Wisent agent surface (weles, skarbiec, stado, lem, echo, most) into one MCP server and CLI.",
+  "bin": {
+    "las": "src/cli.mjs",
+    "las-mcp": "src/mcp.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
