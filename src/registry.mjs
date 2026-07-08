@@ -81,6 +81,13 @@ export const SURFACES = [
     cwd: path.join(ROOT, "swiatowid"),
     summary: "Founder strategy tool (Oko). Read-only org roster, auto-goals, velocity.",
   },
+  {
+    name: "brama",
+    command: path.join(ROOT, "brama", "target", "debug", "brama"),
+    args: ["mcp"],
+    cwd: path.join(ROOT, "brama"),
+    summary: "Multi-provider LLM gateway (formerly model-router). Read-only hardware detect + model list.",
+  },
 ];
 
 // Which surfaces are active this run. LAS_ONLY is a comma-separated allow-list;

@@ -1,6 +1,6 @@
 ---
 name: las
-description: Use las to see and reach the whole Wisent agent ecosystem from one place. las federates every sibling agent surface — weles, skarbiec, stado, lem, echo, most — into a single stdio MCP server and a single CLI by spawning each child's own MCP server and re-exposing its tools under a namespace prefix. Use it when a task spans more than one product, when you want one tool list for the whole ecosystem, or when you want a connectivity check across every surface. las only proxies; it never widens any child's own security boundary.
+description: Use las to see and reach the whole Wisent agent ecosystem from one place. las federates every sibling agent surface — weles, skarbiec, stado, lem, echo, most, probierz, byk, brama — into a single stdio MCP server and a single CLI by spawning each child's own MCP server and re-exposing its tools under a namespace prefix. Use it when a task spans more than one product, when you want one tool list for the whole ecosystem, or when you want a connectivity check across every surface. las only proxies; it never widens any child's own security boundary.
 ---
 
 # las
@@ -22,6 +22,9 @@ a `<surface>__<tool>` namespace so names never collide.
 | `lem` | Research-paper manager | Read-only registry and provenance |
 | `echo` | Growth and content dashboard | Read-only Supabase reads |
 | `most` | iMessage, RCS, and SMS bridge | Read-only health and diagnostics |
+| `probierz` | Cross-platform test toolkit | Read-only surface/spec discovery and run commands |
+| `byk` | Founder strategy tool (Oko) | Read-only org roster, auto-goals, velocity |
+| `brama` | Multi-provider LLM gateway (formerly model-router) | Read-only hardware detect and model list |
 
 The registry that maps each surface to its launch command is the single source
 of truth: `src/registry.mjs`. It derives the workspace root from its own
