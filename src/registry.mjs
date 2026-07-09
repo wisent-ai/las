@@ -72,7 +72,7 @@ export const SURFACES = [
     command: process.execPath,
     args: [path.join(ROOT, "probierz", "agent", "mcp.mjs")],
     cwd: path.join(ROOT, "probierz"),
-    summary: "Cross-platform test toolkit. Discovery (surfaces/specs/run commands) + execution: run a target under chosen conditions, record video/trace/screenshots, analyze the result.",
+    summary: "Cross-platform test toolkit. Discovery (surfaces/specs) + toolchain check/setup + change-driven ci: select targets a change affects, run the ready ones (recording video/trace/screenshots), analyze the verdict.",
   },
   {
     name: "byk",
