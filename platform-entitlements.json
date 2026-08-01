@@ -1,0 +1,11 @@
+{
+  "schema": "wisent.product-entitlements.current",
+  "product": "las",
+  "organization_id": "WISENT_ORGANIZATION_ID",
+  "principal_id": "authenticated local agent identity",
+  "community": ["las.local"],
+  "managed": ["platform.organization-catalogue"],
+  "managed_failure": "the organization catalogue fails closed without a platform grant",
+  "community_failure": "the local catalogue and tool federation remain available",
+  "billing_unit": "bundled with the parent product"
+}

@@ -1,9 +1,11 @@
 {
-  "name": "las",
+  "name": "@wisent-ai/las",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": "https://github.com/wisent-ai/las",
   "type": "module",
-  "description": "Ecosystem aggregator: federates every Wisent agent surface (weles, skarbiec, stado, lem, echo, most) into one MCP server and CLI.",
+  "description": "Local catalogue and federation layer for Wisent agent tools.",
   "bin": {
     "las": "src/cli.mjs",
     "las-mcp": "src/mcp.mjs"
