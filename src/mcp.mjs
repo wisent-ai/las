@@ -8,7 +8,8 @@
 // namespace so names never collide. A tools/call is routed to the owning
 // child unchanged: las proxies, it never widens a child's security boundary.
 import readline from "node:readline";
-import { activeSurfaces, connect, handshake } from "./registry.mjs";
+import { activeSurfaces, authorizeToolArguments, authorizeToolCall, authorizeToolResult, authorizeTools, connect, handshake, requiredSkarbiecAgentIdentity } from "./registry.mjs";
+import { LAS_ONBOARDING_TOOL, recordCatalogueQueryCompleted, runOnboardingAction } from "./onboarding.mjs";
 
 const JSONRPC_VERSION = "2.0";
 const PROTOCOL_VERSION = "2024-11-05";
@@ -17,6 +18,8 @@ const SEP = "__";
 // is needed, so no bare numeric literal appears in this file.
 const CODE_METHOD_NOT_FOUND = "-32601";
 const CODE_INTERNAL_ERROR = "-32000";
+const CODE_INVALID_REQUEST = "-32600";
+const CODE_NOT_INITIALIZED = "-32002";
 
 function code(raw) {
   return Number(raw);
@@ -30,6 +33,11 @@ const spawnedClients = new Set();
 // an in-flight build before closing children (the response still flushes).
 // federation resolves to { toolIndex, tools }.
 let federationPromise = null;
+let initialized = false;
+
+function skarbiecActive() {
+  return activeSurfaces().some((surface) => surface.name === "skarbiec");
+}
 
 function federate() {
   if (!federationPromise) federationPromise = buildFederation();
@@ -44,10 +52,10 @@ async function buildFederation() {
     try {
       client = connect(surface);
       spawnedClients.add(client);
-      const childTools = await handshake(client);
+      const childTools = authorizeTools(surface, await handshake(client));
       for (const tool of childTools) {
         const namespaced = `${surface.name}${SEP}${tool.name}`;
-        toolIndex.set(namespaced, { client, remoteName: tool.name });
+        toolIndex.set(namespaced, { client, remoteName: tool.name, surface });
         const prefixedDesc = `[${surface.name}] ${tool.description || ""}`.trim();
         tools.push({
           name: namespaced,
@@ -55,13 +63,13 @@ async function buildFederation() {
           inputSchema: tool.inputSchema || { type: "object", properties: {} },
         });
       }
-    } catch (err) {
-      // A child that cannot be reached on this host (not built, or restricted
-      // to another machine) is reported on stderr and omitted from the surface.
-      // Its absence is explicit, never silently substituted with a stand-in.
-      process.stderr.write(`las: surface '${surface.name}' unavailable: ${err.message}\n`);
+    } catch {
+      // Child-controlled diagnostics are never copied into either the MCP
+      // response or Las stderr. The static registry name is safe to report.
+      process.stderr.write(`las: surface '${surface.name}' unavailable\n`);
     }
   }
+  tools.push(LAS_ONBOARDING_TOOL);
   return { toolIndex, tools };
 }
 
@@ -85,11 +93,38 @@ async function handle(request) {
   const id = request.id;
 
   if (method === "initialize") {
+    if (initialized) {
+      send(fail(id, CODE_INVALID_REQUEST, "session is already initialized"));
+      return;
+    }
+    if (skarbiecActive()) {
+      const params = request.params;
+      let expected;
+      try {
+        expected = requiredSkarbiecAgentIdentity();
+      } catch {
+        send(fail(id, CODE_INVALID_REQUEST, "agent identity is not configured"));
+        return;
+      }
+      if (!params || typeof params !== "object" || Array.isArray(params) || params.agentId !== expected) {
+        send(fail(id, CODE_INVALID_REQUEST, "agent identity rejected"));
+        return;
+      }
+    }
+    initialized = true;
     send(ok(id, {
       protocolVersion: PROTOCOL_VERSION,
       capabilities: { tools: {} },
       serverInfo: { name: "las", version: "0.1.0" },
     }));
+    return;
+  }
+  if (!initialized) {
+    send(fail(id, CODE_NOT_INITIALIZED, "session is not initialized"));
+    return;
+  }
+  if (request.params && typeof request.params === "object" && Object.prototype.hasOwnProperty.call(request.params, "agentId")) {
+    send(fail(id, CODE_INVALID_REQUEST, "agent identity is fixed at initialization"));
     return;
   }
   if (method === "ping") {
@@ -99,33 +134,58 @@ async function handle(request) {
   if (method === "tools/list") {
     const fed = await federate();
     send(ok(id, { tools: fed.tools }));
+    await recordCatalogueQueryCompleted({ client: "mcp", surfaceCount: fed.tools.length - Number("1") });
     return;
   }
   if (method === "tools/call") {
-    const fed = await federate();
     const params = request.params || {};
     const name = params.name;
     if (typeof name !== "string") {
       send(fail(id, CODE_INTERNAL_ERROR, "params.name must be a string"));
       return;
     }
+    if (name === LAS_ONBOARDING_TOOL.name) {
+      const args = params.arguments ?? {};
+      if (!args || typeof args !== "object" || Array.isArray(args)
+        || Object.keys(args).some((key) => key !== "action")
+        || (args.action !== undefined && typeof args.action !== "string")) {
+        send(fail(id, CODE_INVALID_REQUEST, "invalid onboarding arguments"));
+        return;
+      }
+      try {
+        const result = await runOnboardingAction(args.action || "show", { client: "mcp" });
+        send(ok(id, { content: [{ type: "text", text: JSON.stringify(result) }] }));
+      } catch (error) {
+        send(fail(id, CODE_INTERNAL_ERROR, error.message));
+      }
+      return;
+    }
+    const fed = await federate();
     const route = fed.toolIndex.get(name);
     if (!route) {
-      send(fail(id, CODE_METHOD_NOT_FOUND, `unknown tool: ${name}`));
+      send(fail(id, CODE_METHOD_NOT_FOUND, "unknown tool"));
       return;
     }
     try {
+      authorizeToolCall(route.surface, route.remoteName);
+    } catch {
+      send(fail(id, CODE_METHOD_NOT_FOUND, "tool is not permitted"));
+      return;
+    }
+    try {
+      const args = authorizeToolArguments(route.surface, route.remoteName, params.arguments ?? {});
       const result = await route.client.request("tools/call", {
         name: route.remoteName,
-        arguments: params.arguments || {},
+        arguments: args,
       });
-      send(ok(id, result));
-    } catch (err) {
-      send(fail(id, CODE_INTERNAL_ERROR, `${route.client.surface.name}: ${err.message}`));
+      send(ok(id, authorizeToolResult(route.surface, route.remoteName, result)));
+    } catch {
+      process.stderr.write(`las: surface '${route.surface.name}' request failed\n`);
+      send(fail(id, CODE_INTERNAL_ERROR, "surface request failed"));
     }
     return;
   }
-  send(fail(id, CODE_METHOD_NOT_FOUND, `method not found: ${method}`));
+  send(fail(id, CODE_METHOD_NOT_FOUND, "method not found"));
 }
 
 function closeAll() {
@@ -151,8 +211,8 @@ function serve() {
       return;
     }
     const p = handle(request)
-      .catch((err) => {
-        process.stderr.write(`las: handler error: ${err.message}\n`);
+      .catch(() => {
+        process.stderr.write("las: request handler failed\n");
       })
       .finally(() => {
         inFlight.delete(p);
