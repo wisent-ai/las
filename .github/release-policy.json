@@ -1,0 +1,5 @@
+{
+  "schema_version": 1,
+  "releases": false,
+  "reason": "The README states that Las is public development source with no stable package publication, managed installation, or hosted catalogue currently promised."
+}
