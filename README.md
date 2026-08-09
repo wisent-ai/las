@@ -142,6 +142,64 @@ server enforcement determine the callable surface.
 - **Boundary:** failures return generic Las errors; child-controlled diagnostics
   are intentionally not forwarded into the parent protocol stream.
 
+## How it works
+
+Las is a single local process with no service of its own. The CLI and the MCP
+server share one static registry compiled into `src/registry.mjs`, resolve every
+child from the parent Wisent workspace, admit a surface only when its signed
+release entry verifies, then spawn that child's own MCP server over stdio and
+proxy JSON-RPC to it. Tool names are namespaced on the way out; arguments and
+results are policed on the way in and back. Las adds no capability of its own —
+the child remains the authority for what it will do.
+
+```mermaid
+flowchart LR
+    Client["MCP client or operator CLI"] --> Las["las / las-mcp"]
+    Las --> Verify["Signed manifest + trust store"]
+    Verify --> Watermark["Sequence watermark file"]
+    Las --> Child["Child MCP server: exact command, cwd, argv, env"]
+    Child --> Result["surface__tool result"]
+```
+
+- **Durable state:** the sequence watermark named by
+  `LAS_RELEASE_WATERMARK_FILE` is the only thing Las writes. It is advanced only
+  to a higher manifest sequence, through an owner-only temporary file, `fsync`,
+  and an atomic rename. The manifest, its detached signature, the trust store,
+  and child policy files are operator-owned inputs that Las only reads.
+  Everything else — the memoized federation result, spawned child handles, and
+  pending requests — lives in memory for one Las process. Child product data
+  stays with the child.
+- **Credential boundary:** Las never inherits the parent environment. Each child
+  receives a frozen environment built from a fixed system `PATH` plus only the
+  variable names in that surface's allowlist, which must equal the signed
+  `env_names` list. Names matching `TOKEN`, `SECRET`, `PASSWORD`, `UNLOCK`,
+  `PRIVATE_KEY`, or `SIGNING_KEY` are rejected for ordinary surfaces. The trust
+  store holds public verification keys only; no signing key belongs in this
+  workspace. Signed credential templates are fixed arguments that model-supplied
+  arguments cannot overwrite, and the Skarbiec boundary returns availability or
+  opaque capability IDs rather than redeemed credentials.
+- **Network boundary:** Las opens no sockets. Its only transports are the stdio
+  line protocol with the calling client — one JSON-RPC request per stdin line,
+  one response per stdout line — and one stdio pipe per child it spawns. Las
+  always initiates the child connection; nothing connects inward. Any network
+  traffic belongs to a child and to its own allowlisted configuration, such as
+  `COMPUTE_API_URL` for `stado` or `MOST_BASE_URL` for `most`.
+- **Failure boundary:** verification fails closed, per surface. A missing,
+  invalid, expired, or rolled-back release, a binary/code digest or advertised
+  schema mismatch, an argument or result policy rejection, or a child that will
+  not start removes that surface from the catalogue and writes only its static
+  registry name to Las stderr; child diagnostics are discarded and never enter
+  the protocol stream. The remaining surfaces still federate, so a partial
+  catalogue is a normal outcome and a missing tool must not be read as an empty
+  healthy resource. A child that exits with requests outstanding rejects them,
+  but Las imposes no timeout, so a child that never answers keeps that call in
+  flight. When stdin closes, Las lets in-flight work flush and then closes every
+  spawned child. Because federation is memoized for the process lifetime,
+  recovery is a restart after the signed release or child build is repaired.
+
+The [Architecture](#architecture) sketch below shows the same path in request
+order.
+
 ## Architecture
 
 ```text
