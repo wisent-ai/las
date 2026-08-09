@@ -1,0 +1,15 @@
+[automation]
+managed = true
+source_fingerprint = "99493c65eb36f2bb"
+category = "agent"
+
+[banner]
+title = "Federate every Wisent tool through one MCP."
+description = "Local catalogue that verifies and exposes approved sibling MCP servers through one CLI."
+product = "Wisent"
+url = "wisent.ai"
+theme = "dark"
+layout = "orbit-left"
+art_seed = "las"
+width = 1584
+height = 396
