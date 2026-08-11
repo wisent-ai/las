@@ -14,16 +14,16 @@ Access All Incredible Tools from Wisent and Explore Their Synergies.
 
 Includes:
 
-- Weles (Browser Use)
-- Skarbiec (Credential Management)
-- Tama (Automatic Blocks, Sandboxing and Hooks)
-- Stado (Fleet Management)
-- Lem (Research and Conference Management)
+- Weles (Undetectable Browser for Perfect AI Agent Internet Use)
+- Skarbiec (Secrets and Authentication Management for the AI Agent Era)
+- Tama (Never Get Frustrated by AI Again — Block the Behaviors You Don’t Want)
+- Stado (The Easiest Harness for Managing Compute and Storage Across Local, GCP, AWS, and Azure Infrastructure)
+- Lem (The AI Research and Conference Management Tool That Fully Automates Research)
+- Most (The Easiest Way to Add iMessage and SMS to Your AI Agent Stack)
+- Probierz (AI QA That Makes Sure You Never Ship Anything Broken)
+- Brama (Keep All Your Models Accessible Through One Endpoint)
 - Echo (Growth and Content)
-- Most (Connectors)
-- Probierz (Autonomous QA)
 - Byk (Founder Strategy)
-- Brama (Model Routing)
 - Warsztat (Repository Proposal Workflow)
 - Finance (Financial Reference and Proposals)
 
