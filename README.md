@@ -7,6 +7,23 @@
 [![Discord](https://img.shields.io/badge/Discord-Join%20Wisent-5865F2?logo=discord&logoColor=white)](https://discord.gg/qRjpkthq54)
 <!-- wisent-readme-signals:end -->
 
+Access All Incredible Tools from Wisent and Explore Their Synergies.
+
+Includes:
+
+- Weles (Browser Use)
+- Skarbiec (Credential Management)
+- Tama (Automatic Blocks, Sandboxing and Hooks)
+- Stado (Fleet Management)
+- Lem (Research and Conference Management)
+- Echo (Growth and Content)
+- Most (Connectors)
+- Probierz (Autonomous QA)
+- Byk (Founder Strategy)
+- Brama (Model Routing)
+- Warsztat (Repository Proposal Workflow)
+- Finance (Financial Reference and Proposals)
+
 **Las is the local catalogue and policy-preserving federation layer for Wisent
 agent tools: it discovers an operator-approved set of sibling MCP servers,
 verifies their signed release contracts, and exposes them through one stdio MCP
