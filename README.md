@@ -22,8 +22,8 @@ Includes:
 - Most (The Easiest Way to Add iMessage and SMS to Your AI Agent Stack)
 - Probierz (AI QA That Makes Sure You Never Ship Anything Broken)
 - Brama (Keep All Your Models Accessible Through One Endpoint)
-- Echo (Growth and Content)
-- Byk (Founder Strategy)
+- Echo (AI GTM — Manage B2B Outreach, UGC, Meta Ads, and Google Ads from One Harness)
+- Byk (Make Money with AI Trading)
 - Warsztat (Repository Proposal Workflow)
 - Finance (Financial Reference and Proposals)
 
