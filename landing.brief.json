@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "product": "Las",
+  "audience": "Local Wisent operators, coding-agent integrators, security and release operators, and incident responders who need one policy-preserving catalogue of approved agent-tool surfaces.",
+  "problem": "Registering many MCP servers independently creates naming collisions and inconsistent launch and security configuration, while blindly aggregating child tools can turn binary or schema drift into an authority escalation.",
+  "promise": "One local, policy-preserving MCP federation layer for an operator-approved catalogue of Wisent agent tools.",
+  "primaryAction": {
+    "label": "Read the quick start",
+    "kind": "url",
+    "target": "https://github.com/wisent-ai/las#quick-start"
+  },
+  "secondaryAction": {
+    "label": "Inspect the registry",
+    "purpose": "Review the static surfaces, signed release checks, and namespaced tools.",
+    "target": "https://github.com/wisent-ai/las#federated-surfaces"
+  },
+  "approvedClaims": [
+    {
+      "claim": "Las is a local catalogue and policy-preserving federation layer for Wisent agent tools.",
+      "evidence": "README.md#Las: Every Tool Your AI Agents Need Through One MCP"
+    },
+    {
+      "claim": "Las discovers an operator-approved set of sibling MCP servers, verifies signed release contracts, and exposes them through one stdio MCP server and one read-only CLI.",
+      "evidence": "README.md#Las: Every Tool Your AI Agents Need Through One MCP"
+    },
+    {
+      "claim": "Las provides deterministic surface__tool namespacing and launches children from a static repository-owned registry.",
+      "evidence": "README.md#Product boundaries"
+    },
+    {
+      "claim": "Signed release manifests bind child command, working directory, arguments, environment names, binary and code digests, tool names, and input-schema digests.",
+      "evidence": "README.md#Product boundaries; README.md#How it works"
+    },
+    {
+      "claim": "Las never inherits the complete parent environment and rejects ordinary surface environment names that look like raw secrets.",
+      "evidence": "README.md#How it works"
+    },
+    {
+      "claim": "Las does not broaden child permissions, implement child behavior, install or repair products, or act as a raw secret broker.",
+      "evidence": "README.md#Las: Every Tool Your AI Agents Need Through One MCP; README.md#Explicit non-goals and limitations"
+    },
+    {
+      "claim": "A missing, invalid, expired, rolled-back, or byte-and-schema-mismatched release fails closed for that surface while remaining surfaces can still federate.",
+      "evidence": "README.md#How it works"
+    },
+    {
+      "claim": "Las list reads registry and configuration state without spawning children, while las check initializes selected children and verifies their advertised tools without invoking a child tool.",
+      "evidence": "README.md#Core use cases; README.md#Primary interfaces"
+    },
+    {
+      "claim": "Las opens no sockets; it communicates with its client and spawned children only through stdio.",
+      "evidence": "README.md#How it works"
+    },
+    {
+      "claim": "The current public development source requires Node.js 18 or newer, a coordinated local Wisent workspace, and operator-provisioned signed release files.",
+      "evidence": "README.md#Las: Every Tool Your AI Agents Need Through One MCP; README.md#Quick start"
+    }
+  ],
+  "requiredProof": [
+    "The one-client-to-Las-to-verified-child stdio request path.",
+    "The exact signed manifest bindings and sequence watermark boundary.",
+    "The las list, las tools, las check, and las-mcp source interfaces.",
+    "The fail-closed per-surface behavior and explicit non-goals."
+  ],
+  "brand": {
+    "canonicalAssets": [
+      "assets/readme-banner.webp",
+      "assets/readme-banner.svg"
+    ],
+    "rules": [
+      "Use the canonical Wisent type, color, spacing, radius, and motion tokens.",
+      "Make the federation, signed-release, child-authority, and stdio boundaries concrete.",
+      "Use one primary action and source-backed CLI or contract evidence."
+    ],
+    "forbidden": [
+      "Calling Las hosted service discovery, a package installer, a sandbox, or a secret broker.",
+      "Claims that Las makes unavailable children healthy or proves child safety and correctness.",
+      "Stable package publication, hosted organization catalogue, managed installation, availability SLA, or complete MCP support claims.",
+      "Invented tool counts, uptime, performance, adoption, security guarantees, fake output, generic AI gradients, or glass cards."
+    ]
+  },
+  "analyticsOwner": "Wisent product and design maintainers",
+  "notes": [
+    "Preserve the current landing's connected-system positioning only as the source-backed policy-preserving local federation contract.",
+    "Child products remain responsible for their own authorization and behavior."
+  ]
+}

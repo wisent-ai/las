@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "hero": {
+    "eyebrow": "Wisent Las",
+    "headline": "Las: one local catalogue for approved agent tools",
+    "lede": "Las is a local, policy-preserving federation layer for Wisent agent tools. It discovers operator-approved sibling MCP servers, verifies signed release contracts, and exposes them through one stdio MCP server and one read-only CLI.",
+    "metaDescription": "Las federates operator-approved Wisent MCP tools through one local stdio server, with signed release checks and deterministic surface__tool names.",
+    "proofStrip": [
+      "One stdio MCP server",
+      "Signed release contracts",
+      "surface__tool namespacing",
+      "No sockets; stdio only",
+      "Fails closed per surface"
+    ]
+  },
+  "sections": [
+    {
+      "kind": "recognition",
+      "id": "tool-surface-boundary",
+      "heading": "Your tool surfaces need one boundary",
+      "lede": "Las keeps the catalogue local and policy-preserving instead of turning aggregation into new child authority.",
+      "claimRefs": [
+        0,
+        2,
+        5,
+        6
+      ],
+      "items": [
+        {
+          "title": "Registration stays static",
+          "text": "Las launches children from a static repository-owned registry and gives tools deterministic surface__tool names."
+        },
+        {
+          "title": "Authority stays with the child",
+          "text": "Las does not broaden child permissions, implement child behavior, install or repair products, or act as a raw secret broker."
+        },
+        {
+          "title": "One bad surface stays one surface",
+          "text": "A missing, invalid, expired, rolled-back, or byte-and-schema-mismatched release fails closed for that surface while remaining surfaces can still federate."
+        }
+      ]
+    },
+    {
+      "kind": "mechanism",
+      "id": "signed-local-federation",
+      "heading": "Signed releases become one stdio surface",
+      "lede": "The path is registry, manifest verification, namespaced exposure, and stdio-only communication.",
+      "claimRefs": [
+        1,
+        2,
+        3,
+        4,
+        6,
+        8
+      ],
+      "items": [
+        {
+          "step": "01",
+          "title": "Start from the registry",
+          "text": "Las discovers an operator-approved set of sibling MCP servers from a static repository-owned registry."
+        },
+        {
+          "step": "02",
+          "title": "Bind the release",
+          "text": "Signed release manifests bind child command, working directory, arguments, environment names, binary and code digests, tool names, and input-schema digests."
+        },
+        {
+          "step": "03",
+          "title": "Verify before exposure",
+          "text": "Las verifies signed release contracts, and an invalid or mismatched release fails closed for that surface while remaining surfaces can still federate."
+        },
+        {
+          "step": "04",
+          "title": "Keep the channel narrow",
+          "text": "Las opens no sockets, communicates only through stdio, never inherits the complete parent environment, and rejects ordinary surface environment names that look like raw secrets."
+        }
+      ]
+    },
+    {
+      "kind": "proof",
+      "id": "source-interfaces",
+      "heading": "The interfaces are read-only and explicit",
+      "lede": "The approved interfaces separate inspection from child initialization and keep tool invocation outside verification.",
+      "claimRefs": [
+        1,
+        2,
+        7,
+        8
+      ],
+      "artifact": {
+        "type": "terminal",
+        "caption": "Source interfaces: read-only CLI commands and the stdio MCP server entry point.",
+        "lines": [
+          "$ las list",
+          "$ las tools",
+          "$ las check <surface>",
+          "$ las-mcp"
+        ]
+      }
+    },
+    {
+      "kind": "objection",
+      "id": "operator-boundaries",
+      "heading": "The boundaries are part of the product",
+      "claimRefs": [
+        5,
+        6,
+        8,
+        9
+      ],
+      "items": [
+        {
+          "question": "Does Las grant children more authority?",
+          "answer": "No. Las does not broaden child permissions or implement child behavior."
+        },
+        {
+          "question": "Does Las need network access?",
+          "answer": "No. Las opens no sockets and communicates with its client and spawned children only through stdio."
+        },
+        {
+          "question": "What happens when a release cannot be trusted?",
+          "answer": "A missing, invalid, expired, rolled-back, or byte-and-schema-mismatched release fails closed for that surface while remaining surfaces can still federate."
+        },
+        {
+          "question": "What does the current source require?",
+          "answer": "The current public development source requires Node.js 18 or newer, a coordinated local Wisent workspace, and operator-provisioned signed release files."
+        }
+      ]
+    },
+    {
+      "kind": "decision",
+      "id": "read-the-quick-start",
+      "heading": "Federate the catalogue without widening authority",
+      "lede": "Use Las when you want one local, policy-preserving MCP federation layer for an operator-approved catalogue of Wisent agent tools. Read the quick start.",
+      "claimRefs": [
+        0,
+        1,
+        5
+      ]
+    }
+  ]
+}
