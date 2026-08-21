@@ -1,33 +1,35 @@
-# Las
+<!-- wisent-banner:start -->
+<p align="center">
+  <img src="assets/readme-banner.webp" alt="las by Wisent" width="100%">
+</p>
+<!-- wisent-banner:end -->
 
 <!-- wisent-readme-signals:start -->
-[![Release](https://img.shields.io/github/v/release/wisent-ai/las?display_name=tag&sort=semver)](https://github.com/wisent-ai/las/releases)
-[![Downloads](https://img.shields.io/github/downloads/wisent-ai/las/total)](https://github.com/wisent-ai/las/releases)
-[![License](https://img.shields.io/github/license/wisent-ai/las)](https://github.com/wisent-ai/las)
-[![Discord](https://img.shields.io/badge/Discord-Join%20Wisent-5865F2?logo=discord&logoColor=white)](https://discord.gg/qRjpkthq54)
+[![Source](https://img.shields.io/badge/GitHub-Source-181717?logo=github)](https://github.com/wisent-ai/las) [![Issues](https://img.shields.io/badge/GitHub-Issues-181717?logo=github)](https://github.com/wisent-ai/las/issues) [![Wisent](https://img.shields.io/badge/Wisent-Website-0B0B0B)](https://wisent.com) [![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/qRjpkthq54) [![LinkedIn](https://img.shields.io/badge/LinkedIn-Follow-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/company/wisent-ai/) [![X](https://img.shields.io/badge/X-Follow-000000?logo=x&logoColor=white)](https://x.com/wisentai) [![Enterprise](https://img.shields.io/badge/Enterprise-Book%20a%20call-0B0B0B?logo=calendly)](https://calendly.com/lbartoszcze)
 <!-- wisent-readme-signals:end -->
 
+# Las: Every Tool Your AI Agents Need Through One MCP
 Access All Incredible Tools from Wisent and Explore Their Synergies.
 
 Includes:
 
-- Weles (Browser Use)
-- Skarbiec (Credential Management)
-- Tama (Automatic Blocks, Sandboxing and Hooks)
-- Stado (Fleet Management)
-- Lem (Research and Conference Management)
-- Echo (Growth and Content)
-- Most (Connectors)
-- Probierz (Autonomous QA)
-- Byk (Founder Strategy)
-- Brama (Model Routing)
+- Weles (Undetectable Browser for Perfect AI Agent Internet Use)
+- Skarbiec (Secrets and Authentication Management for the AI Agent Era)
+- Tama (Never Get Frustrated by AI Again — Block the Behaviors You Don’t Want)
+- Stado (The Easiest Harness for Managing Compute and Storage Across Local, GCP, AWS, and Azure Infrastructure)
+- Lem (The AI Research and Conference Management Tool That Fully Automates Research)
+- Most (The Easiest Way to Add iMessage and SMS to Your AI Agent Stack)
+- Probierz (AI QA That Makes Sure You Never Ship Anything Broken)
+- Brama (Keep All Your Models Accessible Through One Endpoint)
+- Echo (AI GTM — Manage B2B Outreach, UGC, Meta Ads, and Google Ads from One Harness)
+- Byk (Make Money with AI Trading)
 - Warsztat (Repository Proposal Workflow)
 - Finance (Financial Reference and Proposals)
 
 **Las is the local catalogue and policy-preserving federation layer for Wisent
 agent tools: it discovers an operator-approved set of sibling MCP servers,
 verifies their signed release contracts, and exposes them through one stdio MCP
-server and one CLI whose catalogue and federation operations are read-only.**
+server and one read-only CLI.**
 
 Las does not implement the child tools, broaden their permissions, broker raw
 secrets, or make an unavailable child look healthy. A child remains responsible
@@ -65,9 +67,9 @@ Las serves:
 
 ### Included
 
-- `las` CLI for first-use guidance, registry listing, advertised-tool inventory,
-  and connectivity checks;
-- `las-mcp` stdio JSON-RPC/MCP server with a discoverable `las__onboarding` tool;
+- `las` CLI for registry listing, advertised-tool inventory, and connectivity
+  checks;
+- `las-mcp` stdio JSON-RPC/MCP server;
 - deterministic `<surface>__<tool>` namespacing;
 - child process launch from a static repository-owned registry;
 - Ed25519-verified, expiring, sequence-watermarked release manifests;
@@ -139,16 +141,6 @@ server enforcement determine the callable surface.
   `configured` and `active` booleans.
 - **Boundary:** `las list` does not spawn children or prove connectivity.
 
-### Complete first use with a real catalogue query
-
-- **Actor:** a new local operator or MCP client.
-- **Initial state:** `las onboarding` or `las__onboarding` presents Las's
-  catalogue/federation model and the real query to run.
-- **Outcome:** a successful `las list` or MCP `tools/list` records
-  `catalog_query_completed` and completes the persisted first-use attempt.
-- **Boundary:** viewing, advancing, or skipping guidance never fabricates query
-  success. Progress and telemetry remain local and queue offline when Stado is
-  unavailable.
 
 ### Check child connectivity
 
@@ -170,13 +162,70 @@ server enforcement determine the callable surface.
 - **Boundary:** failures return generic Las errors; child-controlled diagnostics
   are intentionally not forwarded into the parent protocol stream.
 
+## How it works
+
+Las is a single local process with no service of its own. The CLI and the MCP
+server share one static registry compiled into `src/registry.mjs`, resolve every
+child from the parent Wisent workspace, admit a surface only when its signed
+release entry verifies, then spawn that child's own MCP server over stdio and
+proxy JSON-RPC to it. Tool names are namespaced on the way out; arguments and
+results are policed on the way in and back. Las adds no capability of its own —
+the child remains the authority for what it will do.
+
+```mermaid
+flowchart LR
+    Client["MCP client or operator CLI"] --> Las["las / las-mcp"]
+    Las --> Verify["Signed manifest + trust store"]
+    Verify --> Watermark["Sequence watermark file"]
+    Las --> Child["Child MCP server: exact command, cwd, argv, env"]
+    Child --> Result["surface__tool result"]
+```
+
+- **Durable state:** the sequence watermark named by
+  `LAS_RELEASE_WATERMARK_FILE` is the only thing Las writes. It is advanced only
+  to a higher manifest sequence, through an owner-only temporary file, `fsync`,
+  and an atomic rename. The manifest, its detached signature, the trust store,
+  and child policy files are operator-owned inputs that Las only reads.
+  Everything else — the memoized federation result, spawned child handles, and
+  pending requests — lives in memory for one Las process. Child product data
+  stays with the child.
+- **Credential boundary:** Las never inherits the parent environment. Each child
+  receives a frozen environment built from a fixed system `PATH` plus only the
+  variable names in that surface's allowlist, which must equal the signed
+  `env_names` list. Names matching `TOKEN`, `SECRET`, `PASSWORD`, `UNLOCK`,
+  `PRIVATE_KEY`, or `SIGNING_KEY` are rejected for ordinary surfaces. The trust
+  store holds public verification keys only; no signing key belongs in this
+  workspace. Signed credential templates are fixed arguments that model-supplied
+  arguments cannot overwrite, and the Skarbiec boundary returns availability or
+  opaque capability IDs rather than redeemed credentials.
+- **Network boundary:** Las opens no sockets. Its only transports are the stdio
+  line protocol with the calling client — one JSON-RPC request per stdin line,
+  one response per stdout line — and one stdio pipe per child it spawns. Las
+  always initiates the child connection; nothing connects inward. Any network
+  traffic belongs to a child and to its own allowlisted configuration, such as
+  `COMPUTE_API_URL` for `stado` or `MOST_BASE_URL` for `most`.
+- **Failure boundary:** verification fails closed, per surface. A missing,
+  invalid, expired, or rolled-back release, a binary/code digest or advertised
+  schema mismatch, an argument or result policy rejection, or a child that will
+  not start removes that surface from the catalogue and writes only its static
+  registry name to Las stderr; child diagnostics are discarded and never enter
+  the protocol stream. The remaining surfaces still federate, so a partial
+  catalogue is a normal outcome and a missing tool must not be read as an empty
+  healthy resource. A child that exits with requests outstanding rejects them,
+  but Las imposes no timeout, so a child that never answers keeps that call in
+  flight. When stdin closes, Las lets in-flight work flush and then closes every
+  spawned child. Because federation is memoized for the process lifetime,
+  recovery is a restart after the signed release or child build is repaired.
+
+The [Architecture](#architecture) sketch below shows the same path in request
+order.
 ## Architecture
 
 ```text
 MCP client / local operator
           │
-          ├─ las onboarding|list|tools|check
-          └─ stdio JSON-RPC -> las-mcp (including las__onboarding)
+          ├─ las list|tools|check
+          └─ stdio JSON-RPC -> las-mcp
                                 │
                      active signed registry
                                 │
@@ -254,7 +303,7 @@ any selected child fails.
 las list
 las tools [surface...]
 las check [surface...]
-las onboarding [show|status|advance|skip|reset]
+
 ```
 
 When installed from an approved source, `package.json` exposes `las` and
@@ -264,7 +313,7 @@ When installed from an approved source, `package.json` exposes `las` and
 node src/cli.mjs list
 node src/cli.mjs tools tama brama
 node src/cli.mjs check tama brama
-node src/cli.mjs onboarding
+
 node src/mcp.mjs
 ```
 
@@ -273,9 +322,7 @@ node src/mcp.mjs
   names or a per-surface error object.
 - `check` performs the same verified handshake and exits non-zero if any selected
   child is down.
-- `onboarding` explains the catalogue/federation model and directs the first
-  real `list` query. `status`, `advance`, `skip`, and `reset` operate on the
-  persisted journey; only a successful query completes it.
+
 - With no names, `tools`/`check` use every active surface after filters.
 - Unknown, unsigned/unconfigured, or filtered-out explicit surfaces are rejected.
 
@@ -291,10 +338,6 @@ Supported methods:
 - `tools/list`;
 - `tools/call`.
 
-`tools/list` includes the product-owned `las__onboarding` tool. Its `show`,
-`status`, `advance`, `skip`, and `reset` actions execute the same persisted
-journey as the CLI. A later successful `tools/list` is the MCP catalogue query
-that completes an in-progress attempt.
 
 Notifications receive no response. Requests before initialization fail. A later
 request may not replace `agentId`; when Skarbiec is active, initialization must
@@ -381,9 +424,7 @@ financial authorization boundary.
   private signing key in this workspace or child environment.
 - Ordinary child environments reject raw-secret variable names. Use Skarbiec or
   child-owned secure transport rather than broad environment inheritance.
-- Onboarding transport uses `STADO_INTEGRATION_API_URL` and the product-scoped
-  `LAS_STADO_INTEGRATION_TOKEN`. Do not pass that token to child environments or
-  write it to the local onboarding state.
+
 - Credential templates are operator-signed fixed arguments. Review them as
   authority-bearing release content even when they are opaque identifiers.
 - Child tool results can contain sensitive customer or operational data. Las does
@@ -401,16 +442,13 @@ financial authorization boundary.
 ## Operational model
 
 - **Configuration:** static source registry, signed release files, trust store,
-  watermark, operator filters, explicitly allowed child variables, and optional
-  Stado onboarding integration variables.
-- **State:** in-memory memoized federation, child processes, pending requests,
-  persistent sequence watermark, and device-scoped onboarding progress with an
-  offline event queue under the user state directory.
+  watermark, operator filters, and explicitly allowed child variables.
+- **State:** in-memory memoized federation, child processes, pending requests, and
+  persistent sequence watermark.
 - **Credentials:** Las holds no general secret store; signed templates and
-  child-specific secure boundaries carry approved authority. The optional
-  product-scoped Stado token is used only by onboarding transport.
-- **Observability:** CLI JSON, first-use journey events, generic per-surface
-  stderr availability/failure lines, child-owned logs, and MCP errors.
+  child-specific secure boundaries carry approved authority.
+- **Observability:** CLI JSON, generic per-surface stderr availability/failure
+  lines, child-owned logs, and MCP errors.
 - **Failure model:** invalid/expired/rolled-back release, byte/schema drift,
   missing build/configuration, child exit/error, or policy rejection fails the
   affected surface. Federation can remain partially available.
