@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "documents": {
+    "docs/what-is-las.md": {},
+    "docs/quick-start.md": {},
+    "docs/catalogue.md": {},
+    "docs/federation-and-policy.md": {},
+    "docs/cli.md": {},
+    "docs/mcp-server.md": {},
+    "docs/configuration.md": {}
+  },
+  "sources": ["src/", "README.md"],
+  "instruction": "The docs must stay true to the surface registry, signed-release verification, CLI commands, and MCP method/policy behavior implemented in src/."
+}
