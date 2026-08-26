@@ -35,9 +35,8 @@ Las does not implement the child tools, broaden their permissions, broker raw
 secrets, or make an unavailable child look healthy. A child remains responsible
 for its own authorization and product behavior.
 
-[Quick start](#quick-start) · [Federated surfaces](#federated-surfaces) ·
-[Signed release boundary](#signed-release-boundary) ·
-[Canonical repository](https://github.com/wisent-ai/las)
+[Product documentation](https://las.wisent.com/docs) · [Quick start](#quick-start) · [Federated surfaces](#federated-surfaces) ·
+[Signed release boundary](#signed-release-boundary) · [Canonical repository](https://github.com/wisent-ai/las)
 
 Current boundary: public development source for Node.js 18+ under Apache-2.0.
 Las expects a coordinated local Wisent workspace and operator-provisioned signed
