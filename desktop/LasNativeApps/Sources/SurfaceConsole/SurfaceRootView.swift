@@ -62,7 +62,10 @@ public struct SurfaceRootView: View {
                     if let snapshot = model.snapshot {
                         destinationView(snapshot)
                     } else if model.isRefreshing {
-                        SurfaceReadingView(name: model.definition.name)
+                        SurfaceReadingView(
+                            name: model.definition.name,
+                            destination: destination ?? .overview
+                        )
                     } else {
                         ContentUnavailableView {
                             Label("Local surface unavailable", systemImage: "questionmark.folder")
@@ -332,14 +335,15 @@ public struct SurfaceRootView: View {
     }
 }
 
-/// The wait, in the shape of the overview the read is about to produce: the
-/// surface's own name and subtitle, the three metric cards, then the readiness
-/// grid. `ContentUnavailableView` is the neighbour of this view and they say
-/// different things — that one says nothing has been read and offers the
-/// remedy, this one says the read is running and holds the cards' places so
-/// nothing jumps when they land.
+/// The wait, in the shape of the pane the read is about to produce: the
+/// surface's own name and subtitle, the metric cards the overview leads with,
+/// then the card grid every destination ends in. `ContentUnavailableView` is
+/// the neighbour of this view and they say different things — that one says
+/// nothing has been read and offers the remedy, this one says the read is
+/// running and holds the cards' places so nothing jumps when they land.
 private struct SurfaceReadingView: View {
     let name: String
+    let destination: ConsoleDestination
 
     var body: some View {
         ScrollView {
@@ -348,12 +352,16 @@ private struct SurfaceReadingView: View {
                     WisentSkeleton(.heading, width: 280, height: 30)
                     WisentSkeleton(.line, width: 340)
                 }
-                HStack(spacing: 12) {
-                    ForEach(0 ..< 3, id: \.self) { _ in
-                        WisentSkeleton(.block, height: 96)
+                // Only the overview opens with the three metric cards; the
+                // other destinations go straight from their header to a grid.
+                if destination == .overview {
+                    HStack(spacing: 12) {
+                        ForEach(0 ..< 3, id: \.self) { _ in
+                            WisentSkeleton(.block, height: 96)
+                        }
                     }
+                    WisentSkeleton(.heading, width: 180)
                 }
-                WisentSkeleton(.heading, width: 180)
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 240), spacing: 12)], spacing: 12) {
                     ForEach(0 ..< 4, id: \.self) { _ in
                         WisentSkeleton(.block, height: 88)
@@ -362,7 +370,7 @@ private struct SurfaceReadingView: View {
             }
             .padding(24)
         }
-        .navigationTitle("Overview")
+        .navigationTitle(destination.title)
     }
 }
 
