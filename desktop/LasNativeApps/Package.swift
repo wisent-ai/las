@@ -9,7 +9,7 @@ let package = Package(
     products: products.map { .executable(name: $0, targets: [$0]) },
     dependencies: [
         // The shared skeleton/design vocabulary, linked instead of copied.
-        .package(url: "https://github.com/wisent-ai/wisent-components.git", exact: "0.7.1"),
+        .package(url: "https://github.com/wisent-ai/wisent-components.git", exact: "0.8.1"),
     ],
     targets: [
         .target(
