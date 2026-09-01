@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import WisentDesignSystem
 
 public enum SurfaceTheme {
     public static let minimumWidth: CGFloat = 960
@@ -24,12 +25,6 @@ public enum SurfaceTheme {
     static let muted = Color(nsColor: .tertiaryLabelColor)
     static let available = Color(nsColor: .systemGreen)
     static let unavailable = Color(nsColor: .systemOrange)
-
-    /// A skeleton bar and the band that sweeps across it. Both come off the
-    /// label colour, so they read the same way against the light and the dark
-    /// canvas without a second palette.
-    static let skeletonBar = Color(nsColor: .labelColor).opacity(0.10)
-    static let skeletonSweep = Color(nsColor: .labelColor).opacity(0.20)
 }
 
 public struct SurfaceRootView: View {
