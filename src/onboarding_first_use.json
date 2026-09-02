@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "product_id": "las",
+  "journey_id": "first-use",
+  "journey_version": "2026-08-04.1",
+  "entry_screen_id": "catalogue-model",
+  "first_success_fact": "catalog_query_completed",
+  "published_at": "2026-08-04T00:00:00.000Z",
+  "source_revision": "las-first-use-2026-08-04.1",
+  "screens": [
+    {
+      "screen_id": "catalogue-model",
+      "screen_kind": "explanation",
+      "title_key": "las.first_use.model.title",
+      "body_key": "las.first_use.model.body",
+      "required": true,
+      "actions": ["las onboarding advance"],
+      "transitions": [
+        {
+          "next_screen_id": "catalogue-query",
+          "reason_code": "catalogue_model_explained",
+          "priority": 10
+        }
+      ],
+      "presentation": { "command": "las onboarding advance" }
+    },
+    {
+      "screen_id": "catalogue-query",
+      "screen_kind": "guided_query",
+      "title_key": "las.first_use.query.title",
+      "body_key": "las.first_use.query.body",
+      "required": true,
+      "completion_evidence": { "kind": "fact", "fact": "catalog_query_completed", "operator": "eq", "value": true },
+      "actions": ["las list"],
+      "transitions": [],
+      "presentation": {
+        "command": "las list",
+        "result": "A JSON catalogue of configured and active federated surfaces"
+      }
+    }
+  ],
+  "analytics_contract": {
+    "contract_version": "1",
+    "surface": "cli_api",
+    "exposure_event": "onboarding_step_viewed",
+    "primary_action_event": "onboarding_first_action_completed",
+    "completion_event": "onboarding_completed",
+    "first_success_event": "onboarding_first_success_observed"
+  }
+}

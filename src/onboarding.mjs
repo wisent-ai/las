@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { readFileSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 
 const PRODUCT_ID = "las";
@@ -31,56 +32,7 @@ const LOCAL_SCREENS = Object.freeze({
 });
 
 
-const FALLBACK_DEFINITION = {
-  schema_version: Number("1"),
-  product_id: PRODUCT_ID,
-  journey_id: JOURNEY_ID,
-  journey_version: JOURNEY_VERSION,
-  entry_screen_id: "catalogue-model",
-  first_success_fact: FIRST_SUCCESS_FACT,
-  published_at: "2026-08-04T00:00:00.000Z",
-  source_revision: "las-first-use-2026-08-04.1",
-  screens: [
-    {
-      screen_id: "catalogue-model",
-      screen_kind: "explanation",
-      title_key: "las.first_use.model.title",
-      body_key: "las.first_use.model.body",
-      required: true,
-      actions: ["las onboarding advance"],
-      transitions: [
-        {
-          next_screen_id: "catalogue-query",
-          reason_code: "catalogue_model_explained",
-          priority: Number("10"),
-        },
-      ],
-      presentation: { command: "las onboarding advance" },
-    },
-    {
-      screen_id: "catalogue-query",
-      screen_kind: "guided_query",
-      title_key: "las.first_use.query.title",
-      body_key: "las.first_use.query.body",
-      required: true,
-      completion_evidence: { kind: "fact", fact: FIRST_SUCCESS_FACT, operator: "eq", value: true },
-      actions: ["las list"],
-      transitions: [],
-      presentation: {
-        command: "las list",
-        result: "A JSON catalogue of configured and active federated surfaces",
-      },
-    },
-  ],
-  analytics_contract: {
-    contract_version: "1",
-    surface: "cli_api",
-    exposure_event: "onboarding_step_viewed",
-    primary_action_event: "onboarding_first_action_completed",
-    completion_event: "onboarding_completed",
-    first_success_event: "onboarding_first_success_observed",
-  },
-};
+const FALLBACK_DEFINITION = JSON.parse(readFileSync(new URL("./onboarding_first_use.json", import.meta.url), "utf8"));
 
 function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
