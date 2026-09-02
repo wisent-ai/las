@@ -14,7 +14,7 @@
       "title_key": "las.first_use.model.title",
       "body_key": "las.first_use.model.body",
       "required": true,
-      "actions": ["las onboarding advance"],
+      "actions": ["advance"],
       "transitions": [
         {
           "next_screen_id": "catalogue-query",
@@ -31,7 +31,7 @@
       "body_key": "las.first_use.query.body",
       "required": true,
       "completion_evidence": { "kind": "fact", "fact": "catalog_query_completed", "operator": "eq", "value": true },
-      "actions": ["las list"],
+      "actions": ["list_catalogue"],
       "transitions": [],
       "presentation": {
         "command": "las list",
