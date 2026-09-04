@@ -4,6 +4,11 @@
   "audience": "Local Wisent operators, coding-agent integrators, security and release operators, and incident responders who need one policy-preserving catalogue of approved agent-tool surfaces.",
   "problem": "Registering many MCP servers independently creates naming collisions and inconsistent launch and security configuration, while blindly aggregating child tools can turn binary or schema drift into an authority escalation.",
   "promise": "One local, policy-preserving MCP federation layer for an operator-approved catalogue of Wisent agent tools.",
+  "hero": {
+    "headline": "Las: one local catalogue for approved agent tools",
+    "lede": "Las is a local, policy-preserving federation layer for Wisent agent tools. It discovers operator-approved sibling MCP servers, verifies signed release contracts, and exposes them through one stdio MCP server and one read-only CLI.",
+    "decidedBy": "Lukasz Bartoszcze (2026-08-27 user request)"
+  },
   "primaryAction": {
     "label": "Read the quick start",
     "kind": "url",
