@@ -80,6 +80,16 @@
     ]
   },
   "analyticsOwner": "Wisent product and design maintainers",
+  "revalidation": {
+    "tags": [
+      "blog:las"
+    ],
+    "paths": [
+      "/blog",
+      "/feed.xml",
+      "/sitemap.xml"
+    ]
+  },
   "notes": [
     "Preserve the current landing's connected-system positioning only as the source-backed policy-preserving local federation contract.",
     "Child products remain responsible for their own authorization and behavior."
