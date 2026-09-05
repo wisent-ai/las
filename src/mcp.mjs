@@ -9,7 +9,7 @@
 // child unchanged: las proxies, it never widens a child's security boundary.
 import readline from "node:readline";
 import { activeSurfaces, authorizeToolArguments, authorizeToolCall, authorizeToolResult, authorizeTools, connect, handshake, requiredSkarbiecAgentIdentity } from "./registry.mjs";
-import { LAS_ONBOARDING_TOOL, recordCatalogueQueryCompleted, runOnboardingAction } from "./onboarding.mjs";
+import { LAS_ONBOARDING_TOOL, runOnboardingAction } from "./onboarding.mjs";
 
 const JSONRPC_VERSION = "2.0";
 const PROTOCOL_VERSION = "2024-11-05";
@@ -134,7 +134,7 @@ async function handle(request) {
   if (method === "tools/list") {
     const fed = await federate();
     send(ok(id, { tools: fed.tools }));
-    await recordCatalogueQueryCompleted({ client: "mcp", surfaceCount: fed.tools.length - Number("1") });
+
     return;
   }
   if (method === "tools/call") {
