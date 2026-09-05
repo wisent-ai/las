@@ -2,27 +2,30 @@
 // las — command-line view of the federated ecosystem agent surface.
 //
 // Reads the same registry the aggregator server uses (one source of truth for
-// which surfaces exist), exposes first-use guidance, and offers three read-only
-// catalogue views:
-//   las onboarding           — explain federation and guide the first query
+// which surfaces exist), exposes first-use guidance, and offers catalogue
+// adoption plus three views:
+//   las adopt [config...]    — adopt supported mcpServers entries
+//   las onboarding           — explain federation and guide catalogue adoption
 //   las list                 — every federated surface + its one-line summary
 //   las tools [surface...]    — advertised tools, spawning each child to ask
 //   las check [surface...]    — connectivity: spawn + initialize handshake
 // With no surface arguments, tools/check cover every active surface (honoring
 // the LAS_ONLY / LAS_SKIP environment filters).
+import { adoptMcpConfigurations, catalogRegistration } from "./catalog.mjs";
 import { SURFACES, activeSurfaces, authorizeTools, connect, handshake, surfaceConfigured } from "./registry.mjs";
-import { recordCatalogueQueryCompleted, runOnboardingAction } from "./onboarding.mjs";
+import { recordCatalogueAdopted, runOnboardingAction } from "./onboarding.mjs";
 
 const SEP = "__";
 
 function usage() {
   process.stderr.write(
     [
-      "usage: las <command> [surface...]",
+      "usage: las <command> [arguments]",
+      "  adopt [--replace] [config...]  adopt supported entries from standard mcpServers JSON",
       "  list                 list every federated surface",
       "  tools [surface...]   list advertised tools (spawns each child)",
       "  check [surface...]   connectivity handshake against each child",
-      "  onboarding [action]  first-use catalogue journey (show, status, advance, skip, reset)",
+      "  onboarding [action]  first-use adoption journey (show, status, advance, skip, reset)",
       "",
       "surfaces: " + SURFACES.map((s) => s.name).join(", "),
       "env: LAS_ONLY=a,b (allow-list)  LAS_SKIP=a,b (deny-list)",
@@ -56,14 +59,22 @@ function pick(names) {
 
 async function cmdList() {
   const active = new Set(activeSurfaces());
-  const rows = SURFACES.map((s) => ({
-    surface: s.name,
-    summary: s.summary,
-    configured: surfaceConfigured(s),
-    active: active.has(s),
-  }));
+  const rows = SURFACES.map((s) => {
+    const registration = catalogRegistration(s);
+    return {
+      surface: s.name,
+      summary: s.summary,
+      registration: !registration.managed ? "compiled-default" : registration.valid ? "adopted" : "absent",
+      ...(registration.registration ? {
+        source: registration.registration.sourcePath,
+        sourceEntry: registration.registration.sourceKey,
+      } : {}),
+      configured: surfaceConfigured(s),
+      active: active.has(s),
+    };
+  });
   process.stdout.write(JSON.stringify(rows, null, Number("2")) + "\n");
-  await recordCatalogueQueryCompleted({ client: "cli", surfaceCount: rows.length });
+
 }
 
 async function withChild(surface, fn) {
@@ -108,6 +119,24 @@ async function cmdCheck(names) {
   process.stdout.write(JSON.stringify(report, null, Number("2")) + "\n");
   if (anyDown) process.exitCode = Number("1");
 }
+async function cmdAdopt(args) {
+  const replace = args.includes("--replace");
+  const sources = args.filter((argument) => argument !== "--replace");
+  const unknown = sources.find((argument) => argument.startsWith("-"));
+  if (unknown) throw new Error(`unknown adopt option '${unknown}'`);
+  const result = adoptMcpConfigurations(SURFACES, { sources, replace });
+  process.stdout.write(JSON.stringify(result, null, Number("2")) + "\n");
+  if (result.status === "imported" || result.status === "unchanged") {
+    await recordCatalogueAdopted({
+      client: "cli",
+      surfaceCount: result.imported.length + result.unchanged.length,
+      catalogPath: result.catalogPath,
+    });
+  } else {
+    process.exitCode = Number("1");
+  }
+}
+
 
 async function cmdOnboarding(args) {
   if (args.length > Number("1")) throw new Error("onboarding accepts at most one action");
@@ -127,7 +156,9 @@ async function cmdOnboarding(args) {
 async function main() {
   const argv = process.argv.slice(Number("2"));
   const [command, ...rest] = argv;
-  if (command === "list") {
+  if (command === "adopt") {
+    await cmdAdopt(rest);
+  } else if (command === "list") {
     await cmdList();
   } else if (command === "tools") {
     await cmdTools(rest);

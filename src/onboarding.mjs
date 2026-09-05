@@ -6,17 +6,17 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 
 const PRODUCT_ID = "las";
 const JOURNEY_ID = "first-use";
-const JOURNEY_VERSION = "2026-08-04.1";
-const JOURNEY_VERSION_ID = "ac30b486-0aa1-4d60-8d85-c7a64760f1de";
-const FIRST_SUCCESS_FACT = "catalog_query_completed";
+const JOURNEY_VERSION = "2026-09-05.1";
+const JOURNEY_VERSION_ID = "ca4c84fd-3de9-47ce-948d-cce351298e6c";
+const FIRST_SUCCESS_FACT = "catalogue_adopted";
 const STATE_PATH = join(process.env.XDG_STATE_HOME || join(homedir(), ".local", "state"), "las", "onboarding.json");
 const REQUEST_TIMEOUT_MS = Number("1500");
 
 const COPY = Object.freeze({
-  "las.first_use.model.title": "Understand Las federation",
-  "las.first_use.model.body": "Las is the local catalogue for Wisent agent surfaces. Each surface owns its tools and security boundary; Las discovers the active surfaces, applies the signed release and operator filters, and presents one federated view without copying or widening child capabilities.",
-  "las.first_use.query.title": "Run your first catalogue query",
-  "las.first_use.query.body": "Run las list to query Las's real local catalogue. The JSON result distinguishes configured surfaces from the active signed and operator-filtered federation.",
+  "las.first_use.model.title": "Adopt your existing MCP catalogue",
+  "las.first_use.model.body": "Las can discover standard local mcpServers JSON and adopt only entries that match its canonical signed surfaces. It validates every selected configuration before one atomic catalogue write and retains approved environment values without printing them.",
+  "las.first_use.adopt.title": "Register the tools you already configured",
+  "las.first_use.adopt.body": "Run las adopt to discover supported local MCP configuration, or pass exact configuration files. An identical registration is unchanged; conflicting or unsupported entries refuse the whole import without replacing your current catalogue.",
 });
 const LOCAL_SCREENS = Object.freeze({
   "catalogue-model": Object.freeze({
@@ -24,10 +24,10 @@ const LOCAL_SCREENS = Object.freeze({
     body: COPY["las.first_use.model.body"],
     actions: Object.freeze(["las onboarding advance"]),
   }),
-  "catalogue-query": Object.freeze({
-    title: COPY["las.first_use.query.title"],
-    body: COPY["las.first_use.query.body"],
-    actions: Object.freeze(["las list"]),
+  "catalogue-adopt": Object.freeze({
+    title: COPY["las.first_use.adopt.title"],
+    body: COPY["las.first_use.adopt.body"],
+    actions: Object.freeze(["las adopt"]),
   }),
 });
 
@@ -342,7 +342,7 @@ class OnboardingSession {
     ]);
   }
 
-  async observeCatalogueQuery(revision, properties) {
+  async observeCatalogueAdoption(revision, properties) {
     if (this.progress.status !== "in_progress") return;
     this.state.evidence = { ...(this.state.evidence || {}), [FIRST_SUCCESS_FACT]: true };
     const events = [];
@@ -475,28 +475,29 @@ export async function runOnboardingAction(action = "show", { client = "cli" } = 
   return view(session);
 }
 
-export async function recordCatalogueQueryCompleted({ client = "cli", surfaceCount } = {}) {
+export async function recordCatalogueAdopted({ client = "cli", surfaceCount, catalogPath } = {}) {
   try {
     const state = await loadState();
     if (!isRecord(state.progress) || state.progress.status !== "in_progress") return false;
     const session = await openSession(client, { start: false });
     if (!session) return false;
     const revision = new Date().toISOString();
-    await session.observeCatalogueQuery(revision, {
+    await session.observeCatalogueAdoption(revision, {
       first_success_fact: FIRST_SUCCESS_FACT,
-      query: client === "mcp" ? "tools/list" : "las list",
+      command: "las adopt",
       surface_count: surfaceCount,
+      catalog_path: catalogPath,
     });
     return session.progress.status === "completed";
   } catch {
-    // Onboarding persistence or transport must never turn a successful product query into a failure.
+    // Onboarding persistence or transport must never turn a successful catalogue import into a failure.
     return false;
   }
 }
 
 export const LAS_ONBOARDING_TOOL = Object.freeze({
   name: "las__onboarding",
-  description: "Run Las first-use onboarding for the federated catalogue, then complete it by making a real tools/list catalogue query.",
+  description: "Run Las first-use onboarding; completion requires a real las adopt operation to persist supported existing MCP configuration.",
   inputSchema: {
     type: "object",
     properties: {

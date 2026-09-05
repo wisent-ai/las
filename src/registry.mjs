@@ -12,6 +12,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { catalogEnvironment, catalogRegistration } from "./catalog.mjs";
 import { fileSha256, jsonSha256, loadSignedManifest } from "./signed-manifest.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -22,11 +23,12 @@ const SYSTEM_PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin";
 const BASE_ENV = Object.freeze({ PATH: SYSTEM_PATH });
 const ENV_NAME = /^[A-Z][A-Z0-9_]*$/;
 
-function declaredEnv(names = []) {
+function declaredEnv(names = [], imported = {}) {
   const env = { ...BASE_ENV };
   for (const name of names) {
-    const value = process.env[name];
-    if (typeof value === "string" && value.length) env[name] = value;
+    const current = process.env[name];
+    if (typeof current === "string" && current.length) env[name] = current;
+    else if (typeof imported[name] === "string" && imported[name].length) env[name] = imported[name];
   }
   return env;
 }
@@ -247,16 +249,19 @@ const FINANCE_CONFIGURATION = Object.freeze([
   "SINGULARITY_FINANCE_CUSTODY_TOKEN_FILE",
 ]);
 
-function financeConfigured() {
+function financeConfigured(surface) {
+  const imported = catalogEnvironment(surface);
   return FINANCE_CONFIGURATION.every((name) => {
-    const value = process.env[name];
+    const value = process.env[name] || imported[name];
     return typeof value === "string" && value.trim().length > 0;
   });
 }
 
 export function surfaceConfigured(surface) {
-  if (surface.name === "finance") return financeConfigured();
   try {
+    const registration = catalogRegistration(surface);
+    if (registration.managed && !registration.valid) return false;
+    if (surface.name === "finance") return financeConfigured(surface);
     releaseFor(surface);
     return true;
   } catch {
@@ -473,7 +478,7 @@ export function buildChildEnvironment(surface) {
     }
     requiredSkarbiecAgentIdentity();
   }
-  return Object.freeze(declaredEnv(surface.envAllowlist));
+  return Object.freeze(declaredEnv(surface.envAllowlist, catalogEnvironment(surface)));
 }
 
 export function authorizeTools(surface, tools) {

@@ -27,9 +27,9 @@ Includes:
 - Finance (Financial Reference and Proposals)
 
 **Las is the local catalogue and policy-preserving federation layer for Wisent
-agent tools: it discovers an operator-approved set of sibling MCP servers,
-verifies their signed release contracts, and exposes them through one stdio MCP
-server and one read-only CLI.**
+agent tools: it adopts operator-approved sibling MCP registrations, verifies
+their signed release contracts, and exposes them through one stdio MCP server
+and one CLI whose only write is the durable local catalogue.**
 
 Las does not implement the child tools, broaden their permissions, broker raw
 secrets, or make an unavailable child look healthy. A child remains responsible
@@ -66,14 +66,16 @@ Las serves:
 
 ### Included
 
-- `las` CLI for registry listing, advertised-tool inventory, and connectivity
-  checks;
+- `las` CLI for adopting existing local MCP configuration, registry listing,
+  advertised-tool inventory, and connectivity checks;
 - `las-mcp` stdio JSON-RPC/MCP server;
 - deterministic `<surface>__<tool>` namespacing;
 - child process launch from a static repository-owned registry;
 - Ed25519-verified, expiring, sequence-watermarked release manifests;
 - exact binding of child command, working directory, argv, inherited environment
   names, binary digest, code digest, tool names, and input-schema digests;
+- owner-only durable catalogue registrations imported from standard
+  `mcpServers` or VS Code `servers` JSON;
 - operator filters that can subtract surfaces through `LAS_ONLY` and `LAS_SKIP`;
 - credential-template injection that model-supplied arguments cannot override;
 - stricter local capability/output policy for the Skarbiec boundary;
@@ -82,8 +84,9 @@ Las serves:
 
 ### Explicit non-goals and limitations
 
-- Las is not service discovery. The surface registry and workspace paths are
-  compiled into source; there is no network registry or plugin auto-discovery.
+- Las is not network or plugin discovery. The supported surface definitions and
+  workspace paths remain compiled into source; local discovery only imports
+  matching stdio registrations from established MCP client JSON.
 - It does not install, build, configure, authenticate, or repair child products.
 - It does not merge tool permissions. Routing through Las grants no permission
   beyond the signed/local policy and the child server's own checks.
@@ -136,9 +139,9 @@ server enforcement determine the callable surface.
 
 - **Actor:** a local operator.
 - **Initial state:** Las can evaluate its signed release/configuration files.
-- **Outcome:** JSON reports every known surface with static summary plus
-  `configured` and `active` booleans.
-- **Boundary:** `las list` does not spawn children or prove connectivity.
+- **Outcome:** JSON reports every known surface with its registration source,
+  static summary, and `configured` and `active` booleans.
+- **Boundary:** `las list` does not spawn children, write state, or prove connectivity.
 
 
 ### Check child connectivity
@@ -265,6 +268,36 @@ npm install
 `npm install` installs no runtime dependencies in the current package; Node core
 modules implement the server. It does not populate sibling repositories or
 release material.
+### Adopt existing MCP configuration
+
+```bash
+las adopt
+las adopt /path/to/existing/mcp.json
+```
+
+With no path, Las discovers `.mcp.json` in the current directory, VS Code's
+`.vscode/mcp.json`, and Claude Desktop's platform configuration. It accepts the
+established top-level `mcpServers` object or VS Code `servers` object and only
+stdio entries whose name, command, arguments, working directory, and
+environment names match a canonical Las surface. It does not execute a child
+or call a tool during adoption.
+
+All selected files and entries are validated before one atomic write to
+`${LAS_CATALOG_PATH:-${XDG_CONFIG_HOME:-~/.config}/las/catalog.json}`. The file
+is owner-only because approved environment values are retained there; command
+output reports source, entry name, and status but never an environment value.
+Repeating the same registration is `unchanged`. Unsupported entries, unknown
+fields, unresolved client interpolation, disabled/remote servers, and malformed
+JSON are `rejected`; two definitions of one surface or an existing different
+registration are `conflicting`. Either condition refuses the whole operation
+and preserves the current catalogue. `--replace` explicitly updates a
+conflicting retained registration while preserving every unrelated one.
+
+Once the durable catalogue exists, only registered canonical surfaces are
+eligible for federation. Signed release verification and `LAS_ONLY`/`LAS_SKIP`
+still apply, and the imported environment is consumed only through each
+surface's existing allowlist.
+
 
 Configure the signed release boundary:
 
@@ -275,15 +308,18 @@ export LAS_RELEASE_TRUST_STORE_FILE=/absolute/path/trust-store.json
 export LAS_RELEASE_WATERMARK_FILE=/absolute/path/watermark.json
 ```
 
-Then inspect the registry without spawning children:
+Then adopt the existing MCP registrations and inspect the registry without
+spawning children:
 
 ```bash
+node src/cli.mjs adopt /path/to/existing/mcp.json
 node src/cli.mjs list
 ```
 
-Expected result: a JSON array containing each known surface, summary,
-`configured`, and `active`. A missing/invalid manifest makes ordinary signed
-surfaces unconfigured rather than silently trusting current files.
+Expected result: adoption reports imported or unchanged canonical surfaces, and
+`list` returns each known surface with `registration`, `configured`, and
+`active`. A missing/invalid signed manifest still makes ordinary signed
+surfaces unconfigured rather than trusting current files.
 
 Check a selected subset:
 
@@ -299,6 +335,8 @@ any selected child fails.
 ### CLI
 
 ```text
+las adopt [--replace] [config...]
+las onboarding [show|status|advance|skip|reset]
 las list
 las tools [surface...]
 las check [surface...]
@@ -309,6 +347,8 @@ When installed from an approved source, `package.json` exposes `las` and
 `las-mcp`. Running source directly is equivalent:
 
 ```bash
+node src/cli.mjs adopt /path/to/existing/mcp.json
+node src/cli.mjs onboarding
 node src/cli.mjs list
 node src/cli.mjs tools tama brama
 node src/cli.mjs check tama brama
@@ -316,6 +356,8 @@ node src/cli.mjs check tama brama
 node src/mcp.mjs
 ```
 
+- `adopt` validates and atomically registers supported existing MCP entries
+  without spawning them;
 - `list` reads registry/configuration state only.
 - `tools` spawns and handshakes selected children, returning namespaced tool
   names or a per-surface error object.
@@ -324,6 +366,19 @@ node src/mcp.mjs
 
 - With no names, `tools`/`check` use every active surface after filters.
 - Unknown, unsigned/unconfigured, or filtered-out explicit surfaces are rejected.
+- After adoption, an unregistered surface is inactive even when a signed
+  release exists; the registration never bypasses release or tool policy.
+ 
+### First use and replay
+
+`las onboarding` starts the shipped first-use journey and `las onboarding
+advance` reaches the durable action, `las adopt`. A successful import or an
+identical retained registration records `catalogue_adopted`; reading the
+screens or running `las list` does not. `las onboarding reset` discards the
+recorded journey progress so the same idempotent adoption can complete a new
+attempt. `status` only inspects progress. `skip` preserves the current catalogue;
+before a first adoption, compiled defaults remain eligible, while an existing
+durable catalogue keeps governing eligibility.
 
 ### MCP transport
 
