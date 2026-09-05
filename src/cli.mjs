@@ -3,8 +3,9 @@
 //
 // Reads the same registry the aggregator server uses (one source of truth for
 // which surfaces exist), exposes first-use guidance, and offers catalogue
-// adoption plus three views:
+// adoption plus four views:
 //   las adopt [config...]    — adopt supported mcpServers entries
+//   las gui [--port PORT]    — serve the local graphical catalogue importer
 //   las onboarding           — explain federation and guide catalogue adoption
 //   las list                 — every federated surface + its one-line summary
 //   las tools [surface...]    — advertised tools, spawning each child to ask
@@ -12,6 +13,7 @@
 // With no surface arguments, tools/check cover every active surface (honoring
 // the LAS_ONLY / LAS_SKIP environment filters).
 import { adoptMcpConfigurations, catalogRegistration } from "./catalog.mjs";
+import { startLasGui } from "./gui.mjs";
 import { SURFACES, activeSurfaces, authorizeTools, connect, handshake, surfaceConfigured } from "./registry.mjs";
 import { recordCatalogueAdopted, runOnboardingAction } from "./onboarding.mjs";
 
@@ -22,6 +24,7 @@ function usage() {
     [
       "usage: las <command> [arguments]",
       "  adopt [--replace] [config...]  adopt supported entries from standard mcpServers JSON",
+      "  gui [--port PORT]    serve the loopback graphical catalogue importer",
       "  list                 list every federated surface",
       "  tools [surface...]   list advertised tools (spawns each child)",
       "  check [surface...]   connectivity handshake against each child",
@@ -136,6 +139,20 @@ async function cmdAdopt(args) {
     process.exitCode = Number("1");
   }
 }
+async function cmdGui(args) {
+  let port = Number("0");
+  if (args.length) {
+    let value;
+    if (args.length === Number("2") && args[Number("0")] === "--port") value = args[Number("1")];
+    else if (args.length === Number("1") && args[Number("0")].startsWith("--port=")) value = args[Number("0")].slice("--port=".length);
+    else throw new Error("gui accepts only --port PORT");
+    if (!/^\d+$/.test(value)) throw new Error("GUI port must be an integer from 0 through 65535");
+    port = Number(value);
+  }
+  const { url } = await startLasGui({ port });
+  process.stdout.write(`Las GUI: ${url}\n`);
+}
+
 
 
 async function cmdOnboarding(args) {
@@ -158,6 +175,8 @@ async function main() {
   const [command, ...rest] = argv;
   if (command === "adopt") {
     await cmdAdopt(rest);
+  } else if (command === "gui") {
+    await cmdGui(rest);
   } else if (command === "list") {
     await cmdList();
   } else if (command === "tools") {

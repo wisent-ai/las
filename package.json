@@ -6,6 +6,9 @@
   "repository": "https://github.com/wisent-ai/las",
   "type": "module",
   "description": "Local catalogue and federation layer for Wisent agent tools.",
+  "files": [
+    "src/**"
+  ],
   "bin": {
     "las": "src/cli.mjs",
     "las-mcp": "src/mcp.mjs"

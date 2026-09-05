@@ -6,7 +6,7 @@
   "promise": "One local, policy-preserving MCP federation layer for an operator-approved catalogue of Wisent agent tools.",
   "hero": {
     "headline": "Las: one local catalogue for approved agent tools",
-    "lede": "Las is a local, policy-preserving federation layer for Wisent agent tools. It discovers operator-approved sibling MCP servers, verifies signed release contracts, and exposes them through one stdio MCP server and one read-only CLI.",
+    "lede": "Las is a local, policy-preserving federation layer for Wisent agent tools. It adopts operator-approved MCP registrations through a CLI or packaged graphical importer, verifies signed release contracts, and exposes children through one stdio MCP server.",
     "decidedBy": "Lukasz Bartoszcze (2026-08-27 user request)"
   },
   "primaryAction": {
@@ -25,7 +25,7 @@
       "evidence": "README.md#Las: Every Tool Your AI Agents Need Through One MCP"
     },
     {
-      "claim": "Las discovers an operator-approved set of sibling MCP servers, verifies signed release contracts, and exposes them through one stdio MCP server and one read-only CLI.",
+      "claim": "Las adopts operator-approved MCP registrations through the CLI or an on-demand packaged graphical importer, verifies signed release contracts, and exposes children through one stdio MCP server.",
       "evidence": "README.md#Las: Every Tool Your AI Agents Need Through One MCP"
     },
     {
@@ -53,8 +53,8 @@
       "evidence": "README.md#Core use cases; README.md#Primary interfaces"
     },
     {
-      "claim": "Las opens no sockets; it communicates with its client and spawned children only through stdio.",
-      "evidence": "README.md#How it works"
+      "claim": "Ordinary CLI and MCP operation has no listening socket; `las gui` explicitly serves a token-protected graphical importer on 127.0.0.1 without opening a browser, spawning a child, or probing connectivity.",
+      "evidence": "README.md#How it works; README.md#Use the graphical importer"
     },
     {
       "claim": "The current public development source requires Node.js 18 or newer, a coordinated local Wisent workspace, and operator-provisioned signed release files.",
@@ -64,7 +64,7 @@
   "requiredProof": [
     "The one-client-to-Las-to-verified-child stdio request path.",
     "The exact signed manifest bindings and sequence watermark boundary.",
-    "The las list, las tools, las check, and las-mcp source interfaces.",
+    "The las adopt, las gui, las list, las tools, las check, and las-mcp source interfaces.",
     "The fail-closed per-surface behavior and explicit non-goals."
   ],
   "brand": {
@@ -74,8 +74,8 @@
     ],
     "rules": [
       "Use the canonical Wisent type, color, spacing, radius, and motion tokens.",
-      "Make the federation, signed-release, child-authority, and stdio boundaries concrete.",
-      "Use one primary action and source-backed CLI or contract evidence."
+      "Make the federation, signed-release, child-authority, stdio, and on-demand loopback GUI boundaries concrete.",
+      "Use one primary action and source-backed CLI, GUI, or contract evidence."
     ],
     "forbidden": [
       "Calling Las hosted service discovery, a package installer, a sandbox, or a secret broker.",

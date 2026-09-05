@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Las catalogue importer</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="masthead">
+    <a class="brand" href="/" aria-label="Las catalogue importer home">
+      <span class="brand-mark" aria-hidden="true">L</span>
+      <span>Las</span>
+    </a>
+    <span class="local-badge">Local workspace</span>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="page-title">
+      <p class="eyebrow">Existing MCP configuration</p>
+      <h1 id="page-title">Adopt the catalogue you already trust.</h1>
+      <p class="lede">Select standard <code>mcpServers</code> or VS Code <code>servers</code> JSON. Las accepts only registrations that exactly match its canonical signed surfaces, then writes the whole accepted batch atomically.</p>
+    </section>
+
+    <section class="workspace" aria-labelledby="import-title">
+      <div class="section-heading">
+        <div>
+          <p class="step">01 / Import</p>
+          <h2 id="import-title">Choose a source</h2>
+        </div>
+        <p>No child process starts, no tool runs, and credential values are never displayed.</p>
+      </div>
+
+      <form id="adopt-form">
+        <fieldset class="source-modes">
+          <legend>Source method</legend>
+          <label class="mode-card">
+            <input type="radio" name="mode" value="discover" checked>
+            <span><strong>Discover standard files</strong><small>Current project, VS Code, and Claude Desktop locations</small></span>
+          </label>
+          <label class="mode-card">
+            <input type="radio" name="mode" value="paths">
+            <span><strong>Use exact local paths</strong><small>One absolute or working-directory-relative path per line</small></span>
+          </label>
+          <label class="mode-card">
+            <input type="radio" name="mode" value="uploads">
+            <span><strong>Upload JSON files</strong><small>Stored owner-only in Las state so retained source identity remains readable</small></span>
+          </label>
+        </fieldset>
+
+        <div id="paths-panel" class="source-panel" hidden>
+          <label for="source-paths">Configuration paths</label>
+          <textarea id="source-paths" rows="4" spellcheck="false" placeholder="/Users/you/project/.mcp.json&#10;/Users/you/.config/client/mcp.json"></textarea>
+        </div>
+
+        <div id="uploads-panel" class="source-panel" hidden>
+          <label for="source-files">Configuration files</label>
+          <input id="source-files" type="file" accept=".json,application/json" multiple>
+          <p id="file-summary" class="field-note">No files selected.</p>
+        </div>
+
+        <div class="conflict-choice">
+          <label>
+            <input id="replace" type="checkbox">
+            <span><strong>Replace a different retained registration</strong><small>Preserves unrelated catalogue entries. Leave off to report the conflict without writing.</small></span>
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button id="submit-button" type="submit">Validate and adopt</button>
+          <p id="request-status" role="status" aria-live="polite">Ready. The current catalogue is shown below.</p>
+        </div>
+      </form>
+    </section>
+
+    <section id="result-section" class="results" aria-labelledby="result-title" hidden>
+      <div class="section-heading">
+        <div>
+          <p class="step">02 / Result</p>
+          <h2 id="result-title">Adoption result</h2>
+        </div>
+        <strong id="result-status" class="status-pill"></strong>
+      </div>
+      <p id="result-summary" class="result-summary"></p>
+      <div id="result-groups" class="result-grid"></div>
+    </section>
+
+    <section class="catalogue" aria-labelledby="catalog-title">
+      <div class="section-heading">
+        <div>
+          <p class="step">03 / Readback</p>
+          <h2 id="catalog-title">Canonical catalogue</h2>
+        </div>
+        <p id="catalog-path" class="path-value"></p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <caption class="visually-hidden">Canonical Las surfaces and their actual retained registration state</caption>
+          <thead>
+            <tr>
+              <th scope="col">Surface</th>
+              <th scope="col">Registration</th>
+              <th scope="col">Configured</th>
+              <th scope="col">Active</th>
+              <th scope="col">Retained source</th>
+            </tr>
+          </thead>
+          <tbody id="catalog-body"></tbody>
+        </table>
+      </div>
+      <p class="catalog-note">Configured and active are read from the same canonical registry used by <code>las list</code>. This view does not connect to a child or prove availability.</p>
+    </section>
+  </main>
+
+  <footer>
+    <span>Las by Wisent</span>
+    <span>Loopback-only session</span>
+  </footer>
+</body>
+</html>

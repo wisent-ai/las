@@ -28,8 +28,8 @@ Includes:
 
 **Las is the local catalogue and policy-preserving federation layer for Wisent
 agent tools: it adopts operator-approved sibling MCP registrations, verifies
-their signed release contracts, and exposes them through one stdio MCP server
-and one CLI whose only write is the durable local catalogue.**
+their signed release contracts, and exposes them through one stdio MCP server,
+one CLI, and an on-demand loopback graphical importer.**
 
 Las does not implement the child tools, broaden their permissions, broker raw
 secrets, or make an unavailable child look healthy. A child remains responsible
@@ -67,7 +67,9 @@ Las serves:
 ### Included
 
 - `las` CLI for adopting existing local MCP configuration, registry listing,
-  advertised-tool inventory, and connectivity checks;
+  advertised-tool inventory, connectivity checks, and the durable `las gui`
+  host;
+- an accessible browser importer served by `las gui` from the installed package;
 - `las-mcp` stdio JSON-RPC/MCP server;
 - deterministic `<surface>__<tool>` namespacing;
 - child process launch from a static repository-owned registry;
@@ -166,30 +168,32 @@ server enforcement determine the callable surface.
 
 ## How it works
 
-Las is a single local process with no service of its own. The CLI and the MCP
-server share one static registry compiled into `src/registry.mjs`, resolve every
-child from the parent Wisent workspace, admit a surface only when its signed
-release entry verifies, then spawn that child's own MCP server over stdio and
-proxy JSON-RPC to it. Tool names are namespaced on the way out; arguments and
-results are policed on the way in and back. Las adds no capability of its own —
-the child remains the authority for what it will do.
+Las normally runs as one local CLI or stdio MCP process. `las gui` instead starts
+an explicit loopback-only HTTP workspace for catalogue adoption; it does not
+open a browser. All three surfaces share the static registry compiled into
+`src/registry.mjs`. Federation resolves every child from the parent Wisent
+workspace, admits a surface only when its signed release entry verifies, then
+spawns that child's own MCP server over stdio and proxies JSON-RPC to it. Tool
+names are namespaced on the way out; arguments and results are policed on the way
+in and back. Las adds no child capability of its own.
 
 ```mermaid
 flowchart LR
-    Client["MCP client or operator CLI"] --> Las["las / las-mcp"]
+    Client["MCP client, local operator, or loopback GUI"] --> Las["las / las gui / las-mcp"]
     Las --> Verify["Signed manifest + trust store"]
     Verify --> Watermark["Sequence watermark file"]
     Las --> Child["Child MCP server: exact command, cwd, argv, env"]
     Child --> Result["surface__tool result"]
 ```
 
-- **Durable state:** the sequence watermark named by
-  `LAS_RELEASE_WATERMARK_FILE` is the only thing Las writes. It is advanced only
-  to a higher manifest sequence, through an owner-only temporary file, `fsync`,
-  and an atomic rename. The manifest, its detached signature, the trust store,
-  and child policy files are operator-owned inputs that Las only reads.
-  Everything else — the memoized federation result, spawned child handles, and
-  pending requests — lives in memory for one Las process. Child product data
+- **Durable state:** the owner-only catalogue contains adopted registrations;
+  the sequence watermark named by `LAS_RELEASE_WATERMARK_FILE` advances only to a
+  higher manifest sequence through an owner-only temporary file, `fsync`, and an
+  atomic rename; first-use progress is stored under the user's state directory.
+  Browser-uploaded sources are retained owner-only under
+  `${XDG_STATE_HOME:-~/.local/state}/las/gui-imports/` so the catalogue's source
+  path remains real and inspectable. The manifest, detached signature, trust
+  store, and child policy files remain operator-owned inputs. Child product data
   stays with the child.
 - **Credential boundary:** Las never inherits the parent environment. Each child
   receives a frozen environment built from a fixed system `PATH` plus only the
@@ -200,12 +204,14 @@ flowchart LR
   workspace. Signed credential templates are fixed arguments that model-supplied
   arguments cannot overwrite, and the Skarbiec boundary returns availability or
   opaque capability IDs rather than redeemed credentials.
-- **Network boundary:** Las opens no sockets. Its only transports are the stdio
-  line protocol with the calling client — one JSON-RPC request per stdin line,
-  one response per stdout line — and one stdio pipe per child it spawns. Las
-  always initiates the child connection; nothing connects inward. Any network
-  traffic belongs to a child and to its own allowlisted configuration, such as
-  `COMPUTE_API_URL` for `stado` or `MOST_BASE_URL` for `most`.
+- **Network boundary:** ordinary CLI commands and `las-mcp` open no listening
+  socket. `las gui` binds `127.0.0.1` only for its process lifetime, prints the
+  exact tokenized URL, and never opens a browser. The host rejects mismatched
+  `Host` headers, requires the per-session bearer token for API reads and writes,
+  requires the exact session `Origin` for adoption, and caps request bodies
+  before parsing. It never spawns or probes a child. Federation transports remain
+  the stdio line protocol and one stdio pipe per child; any child network traffic
+  belongs to that child and its allowlisted configuration.
 - **Failure boundary:** verification fails closed, per surface. A missing,
   invalid, expired, or rolled-back release, a binary/code digest or advertised
   schema mismatch, an argument or result policy rejection, or a child that will
@@ -298,6 +304,31 @@ eligible for federation. Signed release verification and `LAS_ONLY`/`LAS_SKIP`
 still apply, and the imported environment is consumed only through each
 surface's existing allowlist.
 
+### Use the graphical importer
+
+```bash
+las gui
+las gui --port 41731
+```
+
+`las gui` serves the frontend shipped in the npm package on `127.0.0.1`; port
+`0` (the default) asks the OS for an available port. Open the exact URL printed
+to stdout. Las does not open the browser itself. The URL carries a random
+per-session token that the page removes from its address after loading.
+
+Choose discovery, enter one or more exact local paths, or upload JSON files.
+Uploads are retained in the owner's Las state directory rather than `/tmp`.
+The Replace checkbox is the graphical equivalent of `--replace`. The API calls
+the same `adoptMcpConfigurations` engine as `las adopt`, so signed surface
+matching, environment-name allowlists, credential-reference constraints,
+all-or-nothing writes, source identity, and refusal reasons are identical.
+
+The result shows every `imported`, `unchanged`, `conflicting`, and `rejected`
+record. Its catalogue table is a fresh readback from the canonical registry and
+durable catalogue; it does not infer success from selection or input, expose
+environment values, start an MCP child, or run a connectivity check.
+
+
 
 Configure the signed release boundary:
 
@@ -336,6 +367,7 @@ any selected child fails.
 
 ```text
 las adopt [--replace] [config...]
+las gui [--port PORT]
 las onboarding [show|status|advance|skip|reset]
 las list
 las tools [surface...]
@@ -348,6 +380,7 @@ When installed from an approved source, `package.json` exposes `las` and
 
 ```bash
 node src/cli.mjs adopt /path/to/existing/mcp.json
+node src/cli.mjs gui
 node src/cli.mjs onboarding
 node src/cli.mjs list
 node src/cli.mjs tools tama brama
@@ -358,6 +391,8 @@ node src/mcp.mjs
 
 - `adopt` validates and atomically registers supported existing MCP entries
   without spawning them;
+- `gui` serves the packaged graphical importer on loopback and invokes that same
+  adoption engine; it prints the URL without opening a browser;
 - `list` reads registry/configuration state only.
 - `tools` spawns and handshakes selected children, returning namespaced tool
   names or a per-surface error object.
@@ -501,7 +536,8 @@ financial authorization boundary.
   persistent sequence watermark.
 - **Credentials:** Las holds no general secret store; signed templates and
   child-specific secure boundaries carry approved authority.
-- **Observability:** CLI JSON, generic per-surface stderr availability/failure
+- **Observability:** CLI/API adoption results and canonical catalogue readback
+  without environment values, generic per-surface stderr availability/failure
   lines, child-owned logs, and MCP errors.
 - **Failure model:** invalid/expired/rolled-back release, byte/schema drift,
   missing build/configuration, child exit/error, or policy rejection fails the
@@ -528,10 +564,12 @@ contract.
 
 - **Maturity:** public development source; coordinated workspace/release
   provisioning required.
-- **Distribution:** source package with CLI/MCP bin declarations; no stable public
-  registry package or supported binary release is promised.
-- **Compatibility:** Node.js 18+, macOS/Linux-style local workspace paths as
-  encoded by the child registry, and stdio MCP `2024-11-05`.
+- **Distribution:** source/npm package with CLI/MCP bin declarations and the
+  `las gui` frontend assets; no stable public registry package or supported
+  binary release is promised.
+- **Compatibility:** Node.js 18+, an available loopback TCP port for `las gui`,
+  macOS/Linux-style local workspace paths as encoded by the child registry, and
+  stdio MCP `2024-11-05`.
 - **Issues:** [`wisent-ai/las`](https://github.com/wisent-ai/las/issues).
 - **Security:** use private GitHub Security Advisories; do not include signed
   release material, internal paths, policy files, agent/capability identifiers,
