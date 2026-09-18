@@ -81,12 +81,15 @@ function renderCatalog(catalog) {
   }
 }
 
+// The catalogue table has five columns; a refusal row spans them all.
+const CATALOG_COLUMNS = 5;
+
 function renderCatalogError(message) {
   catalogPath.textContent = message;
   catalogBody.replaceChildren();
   const row = document.createElement("tr");
   const cell = document.createElement("td");
-  cell.colSpan = Number("5");
+  cell.colSpan = CATALOG_COLUMNS;
   cell.textContent = `Catalogue readback refused: ${message}`;
   row.append(cell);
   catalogBody.append(row);

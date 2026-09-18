@@ -13,8 +13,13 @@ import {
 import { homedir } from "node:os";
 import path from "node:path";
 
-const SCHEMA_VERSION = Number("1");
-const MAX_CONFIG_BYTES = Number("4194304");
+const SCHEMA_VERSION = 1;
+// One MCP configuration file larger than 4 MiB is not one an editor wrote.
+const MAX_CONFIG_BYTES = 4 * 1024 * 1024;
+// The catalogue directory and file are owner-only.
+const OWNER_ONLY_DIRECTORY = 0o700;
+const OWNER_ONLY_FILE = 0o600;
+const JSON_INDENT = 2;
 const ENV_NAME = /^[A-Z][A-Z0-9_]*$/;
 const ENTRY_FIELDS = ["command", "args", "cwd", "env", "disabled", "type"];
 const TOP_LEVEL_FIELDS = ["$schema", "mcpServers", "servers"];
@@ -134,7 +139,7 @@ function writeCatalog(catalog) {
       throw new Error(`Las catalogue directory must be a real directory: ${directory}`);
     }
   } else {
-    mkdirSync(directory, { recursive: true, mode: Number("448") });
+    mkdirSync(directory, { recursive: true, mode: OWNER_ONLY_DIRECTORY });
   }
   if (existsSync(target)) {
     const metadata = lstatSync(target);
@@ -142,16 +147,16 @@ function writeCatalog(catalog) {
       throw new Error(`Las catalogue must be a regular file: ${target}`);
     }
   }
-  chmodSync(directory, Number("448"));
+  chmodSync(directory, OWNER_ONLY_DIRECTORY);
   const temporary = `${target}.tmp-${process.pid}-${randomUUID()}`;
   try {
-    writeFileSync(temporary, `${JSON.stringify(catalog, null, Number("2"))}\n`, {
+    writeFileSync(temporary, `${JSON.stringify(catalog, null, JSON_INDENT)}\n`, {
       encoding: "utf8",
       flag: "wx",
-      mode: Number("384"),
+      mode: OWNER_ONLY_FILE,
     });
     renameSync(temporary, target);
-    chmodSync(target, Number("384"));
+    chmodSync(target, OWNER_ONLY_FILE);
   } finally {
     if (existsSync(temporary)) unlinkSync(temporary);
   }

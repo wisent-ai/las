@@ -15,8 +15,29 @@ import { recordCatalogueAdopted } from "./onboarding.mjs";
 import { SURFACES, activeSurfaces, surfaceConfigured } from "./registry.mjs";
 
 const LOOPBACK_HOST = "127.0.0.1";
-const MAX_REQUEST_BYTES = Number("8388608");
-const MAX_SOURCES = Number("32");
+// One adoption request carries at most 8 MiB and names at most 32 source files; a file name is
+// at most 256 characters and is stored under a 120-character base; a path is at most 4096.
+const MAX_REQUEST_BYTES = 8 * 1024 * 1024;
+const MAX_SOURCES = 32;
+const MAX_UPLOAD_NAME_CHARS = 256;
+const STORED_NAME_CHARS = 120;
+const MAX_PATH_CHARS = 4096;
+const UPLOAD_INDEX_DIGITS = 2;
+// Import storage is owner-only; the session token is 32 random bytes; the largest TCP port.
+const OWNER_ONLY_DIRECTORY = 0o700;
+const OWNER_ONLY_FILE = 0o600;
+const SESSION_TOKEN_BYTES = 32;
+const MAX_PORT = 65535;
+// The statuses the GUI answers with.
+const HTTP_OK = 200;
+const HTTP_BAD_REQUEST = 400;
+const HTTP_FORBIDDEN = 403;
+const HTTP_NOT_FOUND = 404;
+const HTTP_CONFLICT = 409;
+const HTTP_LENGTH_REQUIRED = 411;
+const HTTP_PAYLOAD_TOO_LARGE = 413;
+const HTTP_UNSUPPORTED_MEDIA_TYPE = 415;
+const HTTP_MISDIRECTED_REQUEST = 421;
 const GUI_ASSETS = new Map([
   ["/", ["./gui/index.html", "text/html; charset=utf-8"]],
   ["/app.js", ["./gui/app.js", "text/javascript; charset=utf-8"]],
@@ -85,21 +106,21 @@ function catalogReadback() {
 function readRequestJson(request) {
   const declared = request.headers["content-length"];
   if (typeof declared !== "string" || !/^\d+$/.test(declared)) {
-    throw Object.assign(new Error("Content-Length is required"), { status: Number("411") });
+    throw Object.assign(new Error("Content-Length is required"), { status: HTTP_LENGTH_REQUIRED });
   }
   if (Number(declared) > MAX_REQUEST_BYTES) {
-    throw Object.assign(new Error("request exceeds 8 MiB"), { status: Number("413") });
+    throw Object.assign(new Error("request exceeds 8 MiB"), { status: HTTP_PAYLOAD_TOO_LARGE });
   }
-  if (request.headers["content-type"]?.split(";", Number("1"))[Number("0")].trim() !== "application/json") {
-    throw Object.assign(new Error("Content-Type must be application/json"), { status: Number("415") });
+  if (request.headers["content-type"]?.split(";", 1)[0].trim() !== "application/json") {
+    throw Object.assign(new Error("Content-Type must be application/json"), { status: HTTP_UNSUPPORTED_MEDIA_TYPE });
   }
   return new Promise((resolve, reject) => {
     const chunks = [];
-    let size = Number("0");
+    let size = 0;
     request.on("data", (chunk) => {
       size += chunk.length;
       if (size > MAX_REQUEST_BYTES) {
-        reject(Object.assign(new Error("request exceeds 8 MiB"), { status: Number("413") }));
+        reject(Object.assign(new Error("request exceeds 8 MiB"), { status: HTTP_PAYLOAD_TOO_LARGE }));
         request.destroy();
         return;
       }
@@ -109,7 +130,7 @@ function readRequestJson(request) {
       try {
         resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
       } catch {
-        reject(Object.assign(new Error("request body is not valid JSON"), { status: Number("400") }));
+        reject(Object.assign(new Error("request body is not valid JSON"), { status: HTTP_BAD_REQUEST }));
       }
     });
     request.on("error", reject);
@@ -119,13 +140,13 @@ function readRequestJson(request) {
 function guiImportDirectory(sessionId) {
   const root = path.join(process.env.XDG_STATE_HOME || path.join(homedir(), ".local", "state"), "las", "gui-imports");
   const directory = path.join(root, sessionId);
-  mkdirSync(directory, { recursive: true, mode: Number("448") });
+  mkdirSync(directory, { recursive: true, mode: OWNER_ONLY_DIRECTORY });
   for (const candidate of [root, directory]) {
     const metadata = lstatSync(candidate);
     if (metadata.isSymbolicLink() || !metadata.isDirectory() || realpathSync(candidate) !== path.resolve(candidate)) {
       throw new Error(`GUI import storage must be a real directory: ${candidate}`);
     }
-    chmodSync(candidate, Number("448"));
+    chmodSync(candidate, OWNER_ONLY_DIRECTORY);
   }
   return directory;
 }
@@ -134,16 +155,16 @@ function stageUploads(uploads, sessionId) {
   if (!uploads.length) return [];
   for (const [index, upload] of uploads.entries()) {
     if (!isRecord(upload) || Object.keys(upload).some((key) => key !== "name" && key !== "content")
-      || typeof upload.name !== "string" || upload.name.length === Number("0") || upload.name.length > Number("256")
+      || typeof upload.name !== "string" || upload.name.length === 0 || upload.name.length > MAX_UPLOAD_NAME_CHARS
       || typeof upload.content !== "string") {
-      throw new Error(`upload ${index + Number("1")} must contain only a file name and text content`);
+      throw new Error(`upload ${index + 1} must contain only a file name and text content`);
     }
   }
   const directory = guiImportDirectory(sessionId);
   return uploads.map((upload, index) => {
-    const base = path.basename(upload.name).replaceAll(/[^A-Za-z0-9._-]/g, "_").slice(Number("0"), Number("120")) || "mcp.json";
-    const target = path.join(directory, `${String(index + Number("1")).padStart(Number("2"), "0")}-${randomUUID()}-${base}`);
-    writeFileSync(target, upload.content, { encoding: "utf8", flag: "wx", mode: Number("384") });
+    const base = path.basename(upload.name).replaceAll(/[^A-Za-z0-9._-]/g, "_").slice(0, STORED_NAME_CHARS) || "mcp.json";
+    const target = path.join(directory, `${String(index + 1).padStart(UPLOAD_INDEX_DIGITS, "0")}-${randomUUID()}-${base}`);
+    writeFileSync(target, upload.content, { encoding: "utf8", flag: "wx", mode: OWNER_ONLY_FILE });
     return target;
   });
 }
@@ -155,9 +176,9 @@ function adoptionSources(body, sessionId) {
   if (!["discover", "paths", "uploads"].includes(body.mode)) throw new Error("mode must be discover, paths, or uploads");
   if (typeof body.replace !== "boolean") throw new Error("replace must be boolean");
   if (!Array.isArray(body.paths) || !Array.isArray(body.uploads)) throw new Error("paths and uploads must be arrays");
-  if (body.paths.length + body.uploads.length > MAX_SOURCES) throw new Error("at most 32 source files may be selected");
-  if (body.paths.some((source) => typeof source !== "string" || source.length === Number("0") || source.length > Number("4096"))) {
-    throw new Error("every source path must be a non-empty path of at most 4096 characters");
+  if (body.paths.length + body.uploads.length > MAX_SOURCES) throw new Error(`at most ${MAX_SOURCES} source files may be selected`);
+  if (body.paths.some((source) => typeof source !== "string" || source.length === 0 || source.length > MAX_PATH_CHARS)) {
+    throw new Error(`every source path must be a non-empty path of at most ${MAX_PATH_CHARS} characters`);
   }
   if (body.mode === "discover") {
     if (body.paths.length || body.uploads.length) throw new Error("discovery mode does not accept explicit sources");
@@ -178,11 +199,11 @@ function authorized(request, authority, origin, token, mutation) {
   return null;
 }
 
-export async function startLasGui({ port = Number("0") } = {}) {
-  if (!Number.isInteger(port) || port < Number("0") || port > Number("65535")) {
-    throw new Error("GUI port must be an integer from 0 through 65535");
+export async function startLasGui({ port = 0 } = {}) {
+  if (!Number.isInteger(port) || port < 0 || port > MAX_PORT) {
+    throw new Error(`GUI port must be an integer from 0 through ${MAX_PORT}`);
   }
-  const token = randomBytes(Number("32")).toString("base64url");
+  const token = randomBytes(SESSION_TOKEN_BYTES).toString("base64url");
   const sessionId = randomUUID();
   let authority;
   let origin;
@@ -190,33 +211,33 @@ export async function startLasGui({ port = Number("0") } = {}) {
   const server = createServer((request, response) => {
     void (async () => {
       if (!authority || request.headers.host !== authority) {
-        sendJson(response, Number("421"), { error: "Host does not match this Las GUI session" });
+        sendJson(response, HTTP_MISDIRECTED_REQUEST, { error: "Host does not match this Las GUI session" });
         return;
       }
       const url = new URL(request.url || "/", origin);
       if (url.origin !== origin) {
-        sendJson(response, Number("421"), { error: "Request target does not match this Las GUI session" });
+        sendJson(response, HTTP_MISDIRECTED_REQUEST, { error: "Request target does not match this Las GUI session" });
         return;
       }
       if (request.method === "GET" && GUI_ASSETS.has(url.pathname)) {
         const [asset, contentType] = GUI_ASSETS.get(url.pathname);
-        send(response, Number("200"), contentType, readFileSync(new URL(asset, import.meta.url)));
+        send(response, HTTP_OK, contentType, readFileSync(new URL(asset, import.meta.url)));
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/catalog") {
         const refusal = authorized(request, authority, origin, token, false);
         if (refusal) {
-          sendJson(response, Number("403"), { error: refusal });
+          sendJson(response, HTTP_FORBIDDEN, { error: refusal });
           return;
         }
         const readback = catalogReadback();
-        sendJson(response, readback.catalog ? Number("200") : Number("409"), readback);
+        sendJson(response, readback.catalog ? HTTP_OK : HTTP_CONFLICT, readback);
         return;
       }
       if (request.method === "POST" && url.pathname === "/api/adopt") {
         const refusal = authorized(request, authority, origin, token, true);
         if (refusal) {
-          sendJson(response, Number("403"), { error: refusal });
+          sendJson(response, HTTP_FORBIDDEN, { error: refusal });
           return;
         }
         const body = await readRequestJson(request);
@@ -229,13 +250,13 @@ export async function startLasGui({ port = Number("0") } = {}) {
             catalogPath: result.catalogPath,
           });
         }
-        sendJson(response, Number("200"), { result, ...catalogReadback() });
+        sendJson(response, HTTP_OK, { result, ...catalogReadback() });
         return;
       }
-      sendJson(response, Number("404"), { error: "route not found" });
+      sendJson(response, HTTP_NOT_FOUND, { error: "route not found" });
     })().catch((error) => {
       if (response.headersSent || response.destroyed) return;
-      sendJson(response, Number.isInteger(error?.status) ? error.status : Number("400"), {
+      sendJson(response, Number.isInteger(error?.status) ? error.status : HTTP_BAD_REQUEST, {
         error: error instanceof Error ? error.message : String(error),
       });
     });

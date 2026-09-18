@@ -10,7 +10,13 @@ const JOURNEY_VERSION = "2026-09-05.1";
 const JOURNEY_VERSION_ID = "ca4c84fd-3de9-47ce-948d-cce351298e6c";
 const FIRST_SUCCESS_FACT = "catalogue_adopted";
 const STATE_PATH = join(process.env.XDG_STATE_HOME || join(homedir(), ".local", "state"), "las", "onboarding.json");
-const REQUEST_TIMEOUT_MS = Number("1500");
+// The control plane gets a second and a half to record an event; a journey graph has at most
+// 128 screens; the state file and its directory are owner-only.
+const REQUEST_TIMEOUT_MS = 1500;
+const MAX_JOURNEY_SCREENS = 128;
+const OWNER_ONLY_DIRECTORY = 0o700;
+const OWNER_ONLY_FILE = 0o600;
+const JSON_INDENT = 2;
 
 const COPY = Object.freeze({
   "las.first_use.model.title": "Adopt your existing MCP catalogue",
@@ -88,7 +94,7 @@ function validateBundle(bundle) {
     || sha256(bundle.canonical_definition) !== bundle.content_sha256) {
     throw new Error("onboarding bundle integrity is invalid");
   }
-  if (!Array.isArray(definition.screens) || definition.screens.length === Number("0") || definition.screens.length > Number("128")) {
+  if (!Array.isArray(definition.screens) || definition.screens.length === 0 || definition.screens.length > MAX_JOURNEY_SCREENS) {
     throw new Error("onboarding screen graph is invalid");
   }
   const ids = new Set();
@@ -126,9 +132,9 @@ async function loadState() {
 }
 
 async function saveState(state) {
-  await mkdir(dirname(STATE_PATH), { recursive: true, mode: Number("448") });
+  await mkdir(dirname(STATE_PATH), { recursive: true, mode: OWNER_ONLY_DIRECTORY });
   const temporary = `${STATE_PATH}.${process.pid}.${randomUUID()}.tmp`;
-  await writeFile(temporary, JSON.stringify(state, null, Number("2")) + "\n", { mode: Number("384") });
+  await writeFile(temporary, JSON.stringify(state, null, JSON_INDENT) + "\n", { mode: OWNER_ONLY_FILE });
   await rename(temporary, STATE_PATH);
 }
 

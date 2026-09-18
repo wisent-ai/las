@@ -7,6 +7,9 @@ const DOMAIN = Buffer.from("LAS\0release-manifest\0v1\0", "utf8");
 const TYPE = "las.release-manifest";
 const HEX256 = /^[0-9a-f]{64}$/;
 const KEY_ID = /^[A-Za-z0-9._-]{1,128}$/;
+// The mode bits that grant the group or other users any access; an Ed25519 signature is 64 bytes.
+const GROUP_OR_OTHER_ACCESS_BITS = 0o077;
+const ED25519_SIGNATURE_BYTES = 64;
 const CONFIG_ENV = Object.freeze({
   manifest: "LAS_RELEASE_MANIFEST_FILE",
   signature: "LAS_RELEASE_MANIFEST_SIGNATURE_FILE",
@@ -29,7 +32,7 @@ function ownerOnlyFile(file, label) {
   regularFile(file, label);
   const stat = statSync(file);
   if (typeof process.getuid === "function" && stat.uid !== process.getuid()) throw new Error(`${label}: file is not owned by the current user`);
-  if ((stat.mode & 0o077) !== 0) throw new Error(`${label}: permissions must be owner-only`);
+  if ((stat.mode & GROUP_OR_OTHER_ACCESS_BITS) !== 0) throw new Error(`${label}: permissions must be owner-only`);
 }
 
 function base64(value, label) {
@@ -146,7 +149,7 @@ export function loadSignedManifest() {
   assertExactKeys(envelope, ["type", "version", "key_id", "signature"], [], "las manifest signature");
   if (envelope.type !== TYPE || envelope.version !== 1 || typeof envelope.key_id !== "string" || !KEY_ID.test(envelope.key_id)) throw new Error("las manifest signature: unsupported envelope");
   const signature = base64(envelope.signature, "las manifest signature");
-  if (signature.length !== 64) throw new Error("las manifest signature: Ed25519 signature must be 64 bytes");
+  if (signature.length !== ED25519_SIGNATURE_BYTES) throw new Error(`las manifest signature: Ed25519 signature must be ${ED25519_SIGNATURE_BYTES} bytes`);
   const publicKey = readTrustStore(trustFile, envelope.key_id);
   if (publicKey.asymmetricKeyType !== "ed25519" || !verify(null, Buffer.concat([DOMAIN, payload]), publicKey, signature)) throw new Error("las manifest: detached signature verification failed");
   const manifest = parseStrictJson(payload, "las manifest");

@@ -1,6 +1,9 @@
 import { TextDecoder } from "node:util";
 
 const UTF8 = new TextDecoder("utf-8", { fatal: true });
+// A `\uXXXX` escape carries four hex digits; code points below the space are control characters.
+const UNICODE_ESCAPE_DIGITS = 4;
+const FIRST_PRINTABLE_CODE_POINT = 0x20;
 
 export function parseStrictJson(bytes, label = "JSON") {
   let text;
@@ -31,10 +34,10 @@ export function parseStrictJson(bytes, label = "JSON") {
         offset += 1;
         if (offset >= text.length || !/["\\/bfnrtu]/.test(text[offset])) fail("invalid escape");
         if (text[offset] === "u") {
-          if (!/^[0-9a-fA-F]{4}$/.test(text.slice(offset + 1, offset + 5))) fail("invalid unicode escape");
-          offset += 4;
+          if (!/^[0-9a-fA-F]{4}$/.test(text.slice(offset + 1, offset + 1 + UNICODE_ESCAPE_DIGITS))) fail("invalid unicode escape");
+          offset += UNICODE_ESCAPE_DIGITS;
         }
-      } else if (char.charCodeAt(0) < 0x20) {
+      } else if (char.charCodeAt(0) < FIRST_PRINTABLE_CODE_POINT) {
         fail("unescaped control character");
       }
       offset += 1;
