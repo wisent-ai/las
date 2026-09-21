@@ -42,6 +42,9 @@ const GUI_ASSETS = new Map([
   ["/", ["./gui/index.html", "text/html; charset=utf-8"]],
   ["/app.js", ["./gui/app.js", "text/javascript; charset=utf-8"]],
   ["/styles.css", ["./gui/styles.css", "text/css; charset=utf-8"]],
+  ["/styles/base.css", ["./gui/styles/base.css", "text/css; charset=utf-8"]],
+  ["/styles/workspace.css", ["./gui/styles/workspace.css", "text/css; charset=utf-8"]],
+  ["/styles/results.css", ["./gui/styles/results.css", "text/css; charset=utf-8"]],
 ]);
 
 function isRecord(value) {

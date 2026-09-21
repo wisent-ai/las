@@ -1,0 +1,126 @@
+@font-face {
+  font-family: system-ui;
+  src: local("Arial");
+}
+
+:root {
+  color-scheme: light;
+  --ink: #10231c;
+  --muted: #60736b;
+  --line: #d5e2dc;
+  --paper: #f6faf8;
+  --white: #ffffff;
+  --forest: #124f3b;
+  --mint: #c8f1df;
+  --amber: #f2d39a;
+  --red: #8f2e2e;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 92% 4%, rgba(200, 241, 223, 0.55), transparent 28rem),
+    var(--paper);
+}
+
+button, input, textarea { font: inherit; }
+
+button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible {
+  outline: 3px solid #2b8a68;
+  outline-offset: 3px;
+}
+
+.masthead, footer {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.4rem clamp(1.25rem, 4vw, 4rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 1.1rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.brand-mark {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: grid;
+  place-items: center;
+  border-radius: 0.65rem;
+  color: white;
+  background: var(--forest);
+  font-family: Georgia, serif;
+  font-size: 1.3rem;
+}
+
+.local-badge, .table-badge, .status-pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  background: rgba(255, 255, 255, 0.75);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+main {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 3rem clamp(1.25rem, 4vw, 4rem) 5rem;
+}
+
+.hero {
+  max-width: 850px;
+  padding: 4rem 0 5rem;
+}
+
+.eyebrow, .step {
+  margin: 0 0 0.8rem;
+  color: var(--forest);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+h1, h2, h3, p { margin-top: 0; }
+
+h1 {
+  margin-bottom: 1.4rem;
+  max-width: 780px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.8rem, 7vw, 5.75rem);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+}
+
+.lede {
+  max-width: 760px;
+  color: #40564d;
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  line-height: 1.65;
+}
+
+code {
+  border-radius: 0.3rem;
+  padding: 0.1rem 0.3rem;
+  background: #e6efeb;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.88em;
+}
+
