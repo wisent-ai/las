@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { readFileSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { OnboardingSession } from "./session.mjs";
 
 const PRODUCT_ID = "las";
 const JOURNEY_ID = "first-use";
@@ -250,134 +251,6 @@ function validProgress(progress, bundle, subjectHash) {
     && Array.isArray(progress.completed_screen_ids) && Array.isArray(progress.answers);
 }
 
-class OnboardingSession {
-  constructor(state, bundle, transport, subjectHash) {
-    this.state = state;
-    this.bundle = bundle;
-    this.transport = transport;
-    this.subjectHash = subjectHash;
-  }
-
-  get progress() {
-    return this.state.progress;
-  }
-
-  get screen() {
-    return this.bundle.definition.screens.find((screen) => screen.screen_id === this.progress.current_screen_id);
-  }
-
-  async save() {
-    await saveState(this.state);
-  }
-
-  event(name, revision, properties = {}, screenId = this.progress.current_screen_id, decision) {
-    return {
-      event_id: randomUUID(),
-      event_name: name,
-      attempt_id: this.progress.attempt_id,
-      product_id: PRODUCT_ID,
-      journey_version_id: this.progress.journey_version_id,
-      subject_hash: this.subjectHash,
-      scope_kind: "device",
-      screen_id: screenId,
-      occurred_at: new Date().toISOString(),
-      evidence_revision: revision,
-      experiment_id: this.progress.experiment_id,
-      variant_id: this.progress.variant_id,
-      selected_next_screen_id: decision?.screen_id,
-      reason_code: decision?.reason_code,
-      properties,
-      answers: this.progress.answers,
-    };
-  }
-
-  async emit(events) {
-    const queued = Array.isArray(this.state.pending_events) ? this.state.pending_events : [];
-    const ids = new Set(queued.map((event) => event.event_id));
-    for (const event of events) if (!ids.has(event.event_id)) queued.push(event);
-    this.state.pending_events = queued;
-    await this.save();
-    await this.flush();
-  }
-
-  async flush() {
-    while (this.state.pending_events.length) {
-      const event = this.state.pending_events[Number("0")];
-      try {
-        await this.transport.collectEvent(event);
-      } catch {
-        return;
-      }
-      this.state.pending_events.shift();
-      await this.save();
-    }
-  }
-
-  async expose(revision) {
-    if (this.progress.status !== "completed" && this.progress.status !== "skipped") {
-      await this.emit([this.event("onboarding_step_viewed", revision)]);
-    }
-  }
-
-  async advance(revision) {
-    if (this.progress.status !== "in_progress") return null;
-    const current = this.screen;
-    const decision = selectNext(this.bundle, current.screen_id, this.state.evidence || {});
-    if (!decision) return null;
-    this.progress.current_screen_id = decision.screen_id;
-    if (!this.progress.completed_screen_ids.includes(current.screen_id)) this.progress.completed_screen_ids.push(current.screen_id);
-    this.progress.evidence_revision = revision;
-    await this.emit([this.event("onboarding_step_completed", revision, {}, current.screen_id, decision)]);
-    return decision;
-  }
-
-  async skip(revision) {
-    if (this.progress.status === "completed") return;
-    this.progress.status = "skipped";
-    this.progress.evidence_revision = revision;
-    await this.emit([this.event("onboarding_step_skipped", revision)]);
-  }
-
-  async reset(revision) {
-    this.state.evidence = {};
-    this.state.meta = {};
-    this.state.progress = newProgress(this.bundle, this.subjectHash, revision);
-    await this.emit([
-      this.event("onboarding_reset", revision),
-      this.event("onboarding_started", revision),
-    ]);
-  }
-
-  async observeCatalogueAdoption(revision, properties) {
-    if (this.progress.status !== "in_progress") return;
-    this.state.evidence = { ...(this.state.evidence || {}), [FIRST_SUCCESS_FACT]: true };
-    const events = [];
-    if (!this.state.meta?.first_action_recorded) {
-      this.state.meta = { ...(this.state.meta || {}), first_action_recorded: true };
-      events.push(this.event("onboarding_first_action_completed", revision, properties));
-    }
-    for (let index = Number("0"); index < this.bundle.definition.screens.length; index += Number("1")) {
-      const current = this.screen;
-      if (current.transitions.length === Number("0")) break;
-      const decision = selectNext(this.bundle, current.screen_id, this.state.evidence);
-      if (!decision) break;
-      if (!this.progress.completed_screen_ids.includes(current.screen_id)) this.progress.completed_screen_ids.push(current.screen_id);
-      this.progress.current_screen_id = decision.screen_id;
-      events.push(this.event("onboarding_step_completed", revision, properties, current.screen_id, decision));
-    }
-    const terminal = this.screen;
-    if (terminal.transitions.length === Number("0") && this.state.evidence[FIRST_SUCCESS_FACT] === true
-      && evaluate(terminal.completion_evidence, this.state.evidence)) {
-      if (!this.progress.completed_screen_ids.includes(terminal.screen_id)) this.progress.completed_screen_ids.push(terminal.screen_id);
-      this.progress.status = "completed";
-      events.push(this.event("onboarding_step_completed", revision, properties, terminal.screen_id));
-      events.push(this.event("onboarding_first_success_observed", revision, properties, terminal.screen_id));
-      events.push(this.event("onboarding_completed", revision, properties, terminal.screen_id));
-    }
-    this.progress.evidence_revision = revision;
-    await this.emit(events);
-  }
-}
 
 function newProgress(bundle, subjectHash, revision) {
   return {
@@ -421,7 +294,14 @@ async function openSession(client, { start = true } = {}) {
     state.evidence = {};
     state.meta = {};
   }
-  const session = new OnboardingSession(state, bundle, transport, subjectHash);
+  const session = new OnboardingSession(state, bundle, transport, subjectHash, {
+    saveState,
+    selectNext,
+    evaluate,
+    newProgress,
+    productId: PRODUCT_ID,
+    firstSuccessFact: FIRST_SUCCESS_FACT,
+  });
   await session.save();
   if (existing) {
     try { await transport.readRemoteState(session.progress); } catch { /* Local state remains authoritative offline. */ }
