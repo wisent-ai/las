@@ -9,7 +9,7 @@
 // child unchanged: las proxies, it never widens a child's security boundary.
 import readline from "node:readline";
 import { activeSurfaces, authorizeToolArguments, authorizeToolCall, authorizeToolResult, authorizeTools, connect, handshake, requiredSkarbiecAgentIdentity } from "./registry.mjs";
-import { LAS_ONBOARDING_TOOL, runOnboardingAction } from "./onboarding.mjs";
+import { LAS_ONBOARDING_TOOL, runOnboardingAction } from "./onboarding/journey.mjs";
 
 const JSONRPC_VERSION = "2.0";
 const PROTOCOL_VERSION = "2024-11-05";

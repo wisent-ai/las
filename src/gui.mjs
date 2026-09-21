@@ -11,7 +11,7 @@ import { createServer } from "node:http";
 import { homedir } from "node:os";
 import path from "node:path";
 import { adoptMcpConfigurations, catalogPath, catalogRegistration } from "./catalog.mjs";
-import { recordCatalogueAdopted } from "./onboarding.mjs";
+import { recordCatalogueAdopted } from "./onboarding/journey.mjs";
 import { SURFACES, activeSurfaces, surfaceConfigured } from "./registry.mjs";
 
 const LOOPBACK_HOST = "127.0.0.1";

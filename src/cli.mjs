@@ -15,7 +15,7 @@
 import { adoptMcpConfigurations, catalogRegistration } from "./catalog.mjs";
 import { startLasGui } from "./gui.mjs";
 import { SURFACES, activeSurfaces, authorizeTools, connect, handshake, surfaceConfigured } from "./registry.mjs";
-import { recordCatalogueAdopted, runOnboardingAction } from "./onboarding.mjs";
+import { recordCatalogueAdopted, runOnboardingAction } from "./onboarding/journey.mjs";
 
 const SEP = "__";
 

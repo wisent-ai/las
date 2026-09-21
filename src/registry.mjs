@@ -7,7 +7,7 @@
 // initialize + tools/list handshake, and routes calls. It never widens any
 // child's own security boundary — a read-only child stays read-only here.
 import { createHash } from "node:crypto";
-import { jsonSha256 } from "./signed-manifest.mjs";
+import { jsonSha256 } from "./release/signed-manifest.mjs";
 import { connect as connectChild } from "./registry/client.mjs";
 import {
   buildChildEnvironment,

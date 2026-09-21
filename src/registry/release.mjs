@@ -6,7 +6,7 @@
 // stays there.
 
 import { catalogEnvironment, catalogRegistration } from "../catalog.mjs";
-import { loadSignedManifest } from "../signed-manifest.mjs";
+import { loadSignedManifest } from "../release/signed-manifest.mjs";
 import { SURFACES } from "./surfaces.mjs";
 
 /// Finance is not admitted through the ordinary signed-manifest map; it is

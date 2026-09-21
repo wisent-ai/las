@@ -12,7 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { catalogEnvironment } from "../catalog.mjs";
-import { fileSha256 } from "../signed-manifest.mjs";
+import { fileSha256 } from "../release/signed-manifest.mjs";
 import { releaseFor } from "./release.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
