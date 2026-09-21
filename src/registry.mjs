@@ -6,276 +6,21 @@
 // Model Context Protocol over stdio; las only spawns a child, performs the
 // initialize + tools/list handshake, and routes calls. It never widens any
 // child's own security boundary — a read-only child stays read-only here.
-import { spawn } from "node:child_process";
-import readline from "node:readline";
-import { createHash, randomUUID } from "node:crypto";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
-import { catalogEnvironment, catalogRegistration } from "./catalog.mjs";
-import { fileSha256, jsonSha256, loadSignedManifest } from "./signed-manifest.mjs";
+import { createHash } from "node:crypto";
+import { jsonSha256 } from "./signed-manifest.mjs";
+import { connect as connectChild } from "./registry/client.mjs";
+import {
+  buildChildEnvironment,
+  requiredSkarbiecAgentIdentity,
+  validateCommand,
+  validateCwd,
+  validateReleaseBinding,
+} from "./registry/launch.mjs";
+import { releaseFor } from "./registry/release.mjs";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-// las/src -> las -> Wisent workspace root shared by every sibling project.
-const ROOT = path.resolve(HERE, "..", "..");
-
-const SYSTEM_PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin";
-const BASE_ENV = Object.freeze({ PATH: SYSTEM_PATH });
-const ENV_NAME = /^[A-Z][A-Z0-9_]*$/;
-
-function declaredEnv(names = [], imported = {}) {
-  const env = { ...BASE_ENV };
-  for (const name of names) {
-    const current = process.env[name];
-    if (typeof current === "string" && current.length) env[name] = current;
-    else if (typeof imported[name] === "string" && imported[name].length) env[name] = imported[name];
-  }
-  return env;
-}
-
-// One entry per federated surface. `command`+`args` launch that surface's MCP
-// server; `cwd` is its project root; `summary` is a one-line human hint.
-export const SURFACES = [
-  {
-    name: "weles",
-    command: process.execPath,
-    args: [path.join(ROOT, "weles", "dist", "mcp.js")],
-    cwd: path.join(ROOT, "weles"),
-    summary: "Anti-detect browser automation. Runs only on its dedicated host.",
-    envAllowlist: [],
-  },
-  {
-    name: "skarbiec",
-    command: path.join(
-      ROOT,
-      "entitlements-rotator",
-      "target",
-      "release",
-      "skarbiec-entitlements-router",
-    ),
-    args: ["mcp"],
-    cwd: path.join(ROOT, "entitlements-rotator"),
-    summary: "Credential capability broker. Opaque grants only; redemption is workload-bound over AF_UNIX.",
-    allowTools: ["health", "capability_available", "capability_request"],
-    envAllowlist: [
-      "SKARBIEC_CAP_POLICY",
-      "SKARBIEC_CAP_POLICY_SIG",
-      "SKARBIEC_CAP_TRUST_ROOT",
-      "SKARBIEC_WORKLOAD_REGISTRY",
-      "SKARBIEC_WORKLOAD_REGISTRY_SIG",
-      "SKARBIEC_CAP_STATE",
-      "SKARBIEC_CAP_SOCKET",
-      "SKARBIEC_WORM_RECEIPT_DIR",
-      "SKARBIEC_WORM_CHECKPOINT",
-      "SKARBIEC_WORM_RECEIPT_COMMAND",
-      "SKARBIEC_MCP_AGENT_ID",
-    ],
-  },
-  {
-    name: "tama",
-    command: process.execPath,
-    args: [path.join(ROOT, "hooks-rotator", "src", "mcp-server.mjs")],
-    cwd: path.join(ROOT, "hooks-rotator"),
-    summary: "Adaptive hook enforcement. Catalog, source inspection, validation, and documentation; runtime policy remains fail-safe.",
-    allowTools: [
-      "list_hooks",
-      "show_hook",
-      "read_hook_source",
-      "validate_hooks",
-      "render_hook_docs",
-    ],
-    envAllowlist: [],
-  },
-  {
-    name: "stado",
-    command: "/usr/bin/python3",
-    args: ["-m", "stado.mcp.server"],
-    cwd: path.join(ROOT, "wisent-compute"),
-    summary: "GPU job queue. Read-only status, cost, quota, schedules.",
-    envAllowlist: [
-      "COMPUTE_API_URL",
-      "GCP_PROJECT",
-      "GCP_REGION",
-      "GCP_REGIONS",
-      "WC_BUCKET",
-      "WC_PROVIDERS",
-      "WC_STORAGE_BACKEND",
-    ],
-  },
-  {
-    name: "lem",
-    command: path.join(ROOT, "lem-desktop", ".build", "debug", "LemMCP"),
-    args: [],
-    cwd: path.join(ROOT, "lem-desktop"),
-    summary: "Research-paper manager. Read-only registry + provenance.",
-    envAllowlist: [],
-  },
-  {
-    name: "echo",
-    command: process.execPath,
-    args: [path.join(ROOT, "echo", "agent", "mcp.mjs")],
-    cwd: path.join(ROOT, "echo"),
-    summary: "Growth/content dashboard. Read-only Supabase reads.",
-    envAllowlist: ["NEXT_PUBLIC_SUPABASE_URL"],
-  },
-  {
-    name: "most",
-    command: "/usr/bin/python3",
-    args: [path.join(ROOT, "most", "most_agent", "mcp_server.py")],
-    cwd: path.join(ROOT, "most"),
-    summary: "iMessage/RCS/SMS bridge. Read-only health + diagnostics.",
-    envAllowlist: ["MOST_BASE_URL"],
-  },
-  {
-    name: "probierz",
-    command: process.execPath,
-    args: [path.join(ROOT, "probierz", "agent", "mcp.mjs")],
-    cwd: path.join(ROOT, "probierz"),
-    summary: "Cross-platform test toolkit. Discovery (surfaces/specs) + toolchain check/setup + change-driven ci: select targets a change affects, run the ready ones (recording video/trace/screenshots), analyze the verdict.",
-    envAllowlist: [
-      "ANDROID_HOME",
-      "ANDROID_SDK_ROOT",
-      "APPIUM_HOME",
-      "APP_IOS",
-      "BUNDLE_ID",
-      "IOS_DEVICE",
-      "IOS_VERSION",
-      "PLAYWRIGHT_BROWSERS_PATH",
-    ],
-  },
-  {
-    name: "byk",
-    command: path.join(ROOT, "swiatowid", ".build", "debug", "oko-mcp"),
-    args: [],
-    cwd: path.join(ROOT, "swiatowid"),
-    summary: "Founder strategy tool (Oko). Read-only org roster, auto-goals, velocity.",
-    envAllowlist: [],
-  },
-  {
-    name: "brama",
-    command: path.join(ROOT, "brama", "target", "debug", "brama"),
-    args: ["mcp"],
-    cwd: path.join(ROOT, "brama"),
-    summary: "Multi-provider LLM gateway (formerly model-router). Read-only hardware detect + model list.",
-    envAllowlist: [],
-  },
-  {
-    name: "warsztat",
-    command: path.join(ROOT, "singularity", "target", "debug", "singularity-repo-mcp"),
-    args: [],
-    cwd: path.join(ROOT, "singularity"),
-    summary: "Policy-gated repository proposals. Never merge, deploy, or restart.",
-    allowTools: [
-      "workspace_create",
-      "workspace_read",
-      "workspace_apply_patch",
-      "workspace_diff",
-      "workspace_seal",
-      "workspace_check",
-      "commit_create",
-      "branch_publish",
-      "pull_request_open",
-      "proposal_status",
-    ],
-    envAllowlist: ["LAS_ONLY", "LAS_SKIP"],
-  },
-  {
-    name: "finance",
-    command: path.join(ROOT, "singularity", "target", "release", "singularity-finance-mcp"),
-    args: [],
-    cwd: path.join(ROOT, "singularity"),
-    summary: "Policy-bound finance lifecycle with isolated signed execution.",
-    envAllowlist: [
-      "SINGULARITY_FINANCE_POLICY_FILE",
-      "SINGULARITY_FINANCE_ENABLE_LEASE_FILE",
-      "SINGULARITY_FINANCE_STATE_DIR",
-      "SINGULARITY_FINANCE_VERIFY_KEY_HEX",
-      "SINGULARITY_FINANCE_BINARY_SHA256",
-      "SINGULARITY_FINANCE_EXECUTOR",
-      "SINGULARITY_FINANCE_CUSTODY_URL",
-      "SINGULARITY_FINANCE_CUSTODY_TOKEN_FILE",
-    ],
-  },
-];
-
-for (const surface of SURFACES) {
-  Object.freeze(surface.args);
-  Object.freeze(surface.envAllowlist);
-  if (surface.allowTools) Object.freeze(surface.allowTools);
-  Object.freeze(surface);
-}
-Object.freeze(SURFACES);
-
-let signedRelease = null;
-let signedReleaseExpiresAt = null;
-let signedReleaseError = null;
-
-function signedManifest() {
-  if (signedRelease) {
-    if (signedReleaseExpiresAt <= Date.now()) throw new Error("las manifest: manifest has expired");
-    return signedRelease;
-  }
-  if (signedReleaseError) throw signedReleaseError;
-  try {
-    const loaded = loadSignedManifest();
-    const known = new Set(SURFACES.filter((surface) => surface.name !== "finance").map((surface) => surface.name));
-    for (const release of loaded.manifest.surfaces) {
-      if (!known.has(release.name)) throw new Error(`las manifest: unknown or separately trusted surface '${release.name}'`);
-    }
-    signedReleaseExpiresAt = Date.parse(loaded.manifest.expires_at);
-    signedRelease = new Map(loaded.manifest.surfaces.map((surface) => [surface.name, surface]));
-    return signedRelease;
-  } catch (error) {
-    signedReleaseError = error;
-    throw error;
-  }
-}
-
-function releaseFor(surface) {
-  if (surface.name === "finance") return null;
-  const release = signedManifest().get(surface.name);
-  if (!release) throw new Error(`${surface.name}: absent from owner-signed release manifest`);
-  return release;
-}
-
-const FINANCE_CONFIGURATION = Object.freeze([
-  "SINGULARITY_FINANCE_POLICY_FILE",
-  "SINGULARITY_FINANCE_ENABLE_LEASE_FILE",
-  "SINGULARITY_FINANCE_STATE_DIR",
-  "SINGULARITY_FINANCE_VERIFY_KEY_HEX",
-  "SINGULARITY_FINANCE_BINARY_SHA256",
-  "SINGULARITY_FINANCE_EXECUTOR",
-  "SINGULARITY_FINANCE_CUSTODY_URL",
-  "SINGULARITY_FINANCE_CUSTODY_TOKEN_FILE",
-]);
-
-function financeConfigured(surface) {
-  const imported = catalogEnvironment(surface);
-  return FINANCE_CONFIGURATION.every((name) => {
-    const value = process.env[name] || imported[name];
-    return typeof value === "string" && value.trim().length > 0;
-  });
-}
-
-export function surfaceConfigured(surface) {
-  try {
-    const registration = catalogRegistration(surface);
-    if (registration.managed && !registration.valid) return false;
-    if (surface.name === "finance") return financeConfigured(surface);
-    releaseFor(surface);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// Both operator filters can only subtract from configured, signed surfaces.
-export function activeSurfaces() {
-  const eligible = SURFACES.filter(surfaceConfigured);
-  const only = new Set((process.env.LAS_ONLY || "").split(",").map((s) => s.trim()).filter(Boolean));
-  const skip = new Set((process.env.LAS_SKIP || "").split(",").map((s) => s.trim()).filter(Boolean));
-  return eligible.filter((surface) => (!only.size || only.has(surface.name)) && !skip.has(surface.name));
-}
+export { SURFACES } from "./registry/surfaces.mjs";
+export { activeSurfaces, surfaceConfigured } from "./registry/release.mjs";
+export { buildChildEnvironment, requiredSkarbiecAgentIdentity };
 
 const FINANCE_POLICY_DOCUMENT = JSON.stringify({
   version: 1,
@@ -319,18 +64,6 @@ const SKARBIEC_TOOL_DESCRIPTIONS = new Map([
   ["capability_available", "Check whether the authenticated agent may request an exactly bounded capability. Returns only availability."],
   ["capability_request", "Request an opaque, bounded capability for the authenticated agent. Returns only status and an opaque capability ID."],
 ]);
-const SKARBIEC_PATH_ENV = new Set([
-  "SKARBIEC_CAP_POLICY",
-  "SKARBIEC_CAP_POLICY_SIG",
-  "SKARBIEC_CAP_TRUST_ROOT",
-  "SKARBIEC_WORKLOAD_REGISTRY",
-  "SKARBIEC_WORKLOAD_REGISTRY_SIG",
-  "SKARBIEC_CAP_STATE",
-  "SKARBIEC_CAP_SOCKET",
-  "SKARBIEC_WORM_RECEIPT_DIR",
-  "SKARBIEC_WORM_CHECKPOINT",
-  "SKARBIEC_WORM_RECEIPT_COMMAND",
-]);
 const CAPABILITY_ID = /^[0-9a-f]{64}$/;
 const SKARBIEC_HEALTH_FIELDS = new Set([
   "ok",
@@ -341,7 +74,6 @@ const SKARBIEC_HEALTH_FIELDS = new Set([
   "active_capabilities",
   "anomaly_count",
 ]);
-const RAW_SECRET_ENV = /(?:^|_)(?:TOKEN|SECRET|PASSWORD|UNLOCK|PRIVATE_KEY|SIGNING_KEY)(?:_|$)/;
 const SKARBIEC_MAX_TTL_SECONDS = 60;
 const SKARBIEC_MAX_USES = 1;
 const SKARBIEC_MAX_DELEGATION_DEPTH = 0;
@@ -378,108 +110,6 @@ function verifyFinancePolicyFingerprint() {
   }
 }
 
-function validateCwd(surface) {
-  if (typeof surface.cwd !== "string" || !path.isAbsolute(surface.cwd)) {
-    throw new Error(`${surface.name}: cwd must be an absolute path`);
-  }
-  if (!existsSync(surface.cwd) || !statSync(surface.cwd).isDirectory()) {
-    throw new Error(`${surface.name}: cwd is not an existing directory`);
-  }
-  const root = realpathSync(ROOT);
-  const cwd = realpathSync(surface.cwd);
-  if (cwd !== root && !cwd.startsWith(root + path.sep)) {
-    throw new Error(`${surface.name}: cwd escapes the workspace root`);
-  }
-}
-
-function validateCommand(surface) {
-  if (typeof surface.command !== "string" || !surface.command || surface.command.includes("\0")) {
-    throw new Error(`${surface.name}: invalid command`);
-  }
-  if (!Array.isArray(surface.args) || surface.args.some((arg) => typeof arg !== "string" || arg.includes("\0"))) {
-    throw new Error(`${surface.name}: invalid command arguments`);
-  }
-  if (surface.args.some((arg) => path.isAbsolute(arg))) {
-    const root = realpathSync(ROOT);
-    for (const arg of surface.args.filter((value) => path.isAbsolute(value))) {
-      if (!existsSync(arg)) throw new Error(`${surface.name}: command argument does not exist`);
-      const resolved = realpathSync(arg);
-      if (resolved !== root && !resolved.startsWith(root + path.sep)) {
-        throw new Error(`${surface.name}: command argument resolves outside the workspace`);
-      }
-    }
-  }
-  if (!path.isAbsolute(surface.command)) {
-    throw new Error(`${surface.name}: command must be an absolute path`);
-  }
-  const command = path.resolve(surface.command);
-  if (!existsSync(command) || !statSync(command).isFile()) {
-    throw new Error(`${surface.name}: command is not an existing file`);
-  }
-  const realCommand = realpathSync(command);
-  const root = realpathSync(ROOT);
-  const trustedExternal = new Set([realpathSync(process.execPath), realpathSync("/usr/bin/python3")]);
-  if (!trustedExternal.has(realCommand) && realCommand !== root && !realCommand.startsWith(root + path.sep)) {
-    throw new Error(`${surface.name}: command resolves outside the workspace`);
-  }
-  if (surface.name === "finance") {
-    const expectedDigest = process.env.SINGULARITY_FINANCE_BINARY_SHA256?.trim().toLowerCase();
-    if (!expectedDigest || !/^[0-9a-f]{64}$/.test(expectedDigest)) {
-      throw new Error("finance: SINGULARITY_FINANCE_BINARY_SHA256 must be a 64-character lowercase SHA-256 digest");
-    }
-    const actualDigest = createHash("sha256").update(readFileSync(realCommand)).digest("hex");
-    if (actualDigest !== expectedDigest) {
-      throw new Error("finance: release binary digest mismatch");
-    }
-  }
-}
-
-function validateReleaseBinding(surface) {
-  if (surface.name === "finance") return;
-  const release = releaseFor(surface);
-  const exact = [
-    [release.command, surface.command, "command"],
-    [release.cwd, surface.cwd, "cwd"],
-  ];
-  if (surface.allowTools && JSON.stringify(release.tools.map((tool) => tool.name)) !== JSON.stringify(surface.allowTools)) {
-    throw new Error(`${surface.name}: signed tool names exceed the local release policy`);
-  }
-  verifySkarbiecReleasePolicy(release);
-  for (const [actual, expected, field] of exact) if (actual !== expected) throw new Error(`${surface.name}: signed ${field} mismatch`);
-  if (JSON.stringify(release.argv) !== JSON.stringify(surface.args)) throw new Error(`${surface.name}: signed argv mismatch`);
-  if (JSON.stringify(release.env_names) !== JSON.stringify(surface.envAllowlist)) throw new Error(`${surface.name}: signed environment-name mismatch`);
-  const command = realpathSync(surface.command);
-  const code = realpathSync(release.code_path);
-  if (!statSync(code).isFile()) throw new Error(`${surface.name}: signed code path is not a file`);
-  if (fileSha256(command) !== release.binary_sha256) throw new Error(`${surface.name}: release binary digest mismatch`);
-  if (fileSha256(code) !== release.code_sha256) throw new Error(`${surface.name}: release code digest mismatch`);
-}
-
-export function requiredSkarbiecAgentIdentity() {
-  const agentId = process.env.SKARBIEC_MCP_AGENT_ID;
-  if (typeof agentId !== "string" || agentId.trim() !== agentId || !agentId.length || agentId === "*" || agentId.includes("\0")) {
-    throw new Error("skarbiec: SKARBIEC_MCP_AGENT_ID must name one explicit agent identity");
-  }
-  return agentId;
-}
-
-export function buildChildEnvironment(surface) {
-  if (!Array.isArray(surface.envAllowlist)
-    || surface.envAllowlist.some((name) => typeof name !== "string" || !ENV_NAME.test(name))
-    || new Set(surface.envAllowlist).size !== surface.envAllowlist.length) {
-    throw new Error(`${surface.name}: envAllowlist must contain unique, explicit environment names`);
-  }
-  if (surface.name !== "finance" && surface.envAllowlist.some((name) => RAW_SECRET_ENV.test(name))) throw new Error(`${surface.name}: raw-secret environment inheritance is prohibited`);
-  if (surface.name === "skarbiec") {
-    for (const name of SKARBIEC_PATH_ENV) {
-      if (!surface.envAllowlist.includes(name)) continue;
-      const value = process.env[name];
-      if (typeof value !== "string" || !path.isAbsolute(value) || value.includes("\0")) throw new Error(`skarbiec: ${name} must name an absolute path`);
-    }
-    requiredSkarbiecAgentIdentity();
-  }
-  return Object.freeze(declaredEnv(surface.envAllowlist, catalogEnvironment(surface)));
-}
 
 export function authorizeTools(surface, tools) {
   if (!Array.isArray(tools)) throw new Error(`${surface.name}: invalid tools/list response`);
@@ -629,91 +259,15 @@ export function authorizeToolResult(surface, remoteName, result) {
   return result;
 }
 
-const JSONRPC_VERSION = "2.0";
-const PROTOCOL_VERSION = "2024-11-05";
-
-// Spawn a child surface's MCP server and return a small JSON-RPC client:
-// { surface, request(method, params) -> Promise<result>, close() }.
-// Resolution is completion-based: a pending request settles when the child
-// answers, or rejects if the child errors or exits first. No limit is imposed
-// on how long a child may take — it runs to completion.
+// Spawn a child surface after this module's own gates admit it. The
+// protocol client lives beside this file; the decision to admit does not.
 export function connect(surface) {
-  validateCwd(surface);
-  validateCommand(surface);
-  validateReleaseBinding(surface);
-  const env = buildChildEnvironment(surface);
-  const child = spawn(surface.command, surface.args, {
-    cwd: surface.cwd,
-    stdio: ["pipe", "pipe", "pipe"],
-    env,
+  return connectChild(surface, (admitted) => {
+    validateCwd(admitted);
+    validateCommand(admitted);
+    validateReleaseBinding(admitted, verifySkarbiecReleasePolicy);
+    return buildChildEnvironment(admitted);
   });
-
-  const pending = new Map();
-  let fatal = null;
-
-  function failAll(err) {
-    fatal = err;
-    for (const entry of pending.values()) entry.reject(err);
-    pending.clear();
-  }
-
-  child.on("error", (err) => failAll(err));
-  child.on("exit", (codeVal) => {
-    if (pending.size) failAll(new Error(`${surface.name} exited (${codeVal})`));
-  });
-  // Child diagnostics belong on its own stderr; las does not forward them to
-  // its stdout, which must stay a clean protocol stream.
-  child.stderr.on("data", () => {});
-
-  const rl = readline.createInterface({ input: child.stdout });
-  rl.on("line", (line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-    let msg;
-    try {
-      msg = JSON.parse(trimmed);
-    } catch {
-      return;
-    }
-    const rid = msg && msg.id;
-    if (rid === undefined || rid === null) return;
-    const entry = pending.get(rid);
-    if (!entry) return;
-    pending.delete(rid);
-    if (msg.error) entry.reject(new Error(msg.error.message || "child error"));
-    else entry.resolve(msg.result);
-  });
-
-  function request(method, params) {
-    return new Promise((resolve, reject) => {
-      if (fatal) {
-        reject(fatal);
-        return;
-      }
-      const id = randomUUID();
-      pending.set(id, { resolve, reject });
-      const payload = JSON.stringify({ jsonrpc: JSONRPC_VERSION, id, method, params: params || {} });
-      child.stdin.write(payload + "\n");
-    });
-  }
-
-  function close() {
-    try { rl.close(); } catch { /* already closed */ }
-    try { child.stdin.end(); } catch { /* already ended */ }
-    try { child.kill(); } catch { /* already gone */ }
-  }
-
-  return { surface, request, close };
 }
 
-// Standard MCP handshake against a connected child: initialize, then list its
-// tools. Returns the child's tool array (possibly empty).
-export async function handshake(client) {
-  await client.request("initialize", {
-    protocolVersion: PROTOCOL_VERSION,
-    capabilities: {},
-    clientInfo: { name: "las", version: "0.1.0" },
-  });
-  const result = await client.request("tools/list", {});
-  return (result && result.tools) || [];
-}
+export { handshake } from "./registry/client.mjs";
