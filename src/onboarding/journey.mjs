@@ -5,122 +5,27 @@ import { readFileSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { OnboardingSession } from "./session.mjs";
 
-const PRODUCT_ID = "las";
-const JOURNEY_ID = "first-use";
-const JOURNEY_VERSION = "2026-09-05.1";
-const JOURNEY_VERSION_ID = "ca4c84fd-3de9-47ce-948d-cce351298e6c";
-const FIRST_SUCCESS_FACT = "catalogue_adopted";
-const STATE_PATH = join(process.env.XDG_STATE_HOME || join(homedir(), ".local", "state"), "las", "onboarding.json");
-// The control plane gets a second and a half to record an event; a journey graph has at most
-// 128 screens; the state file and its directory are owner-only.
-const REQUEST_TIMEOUT_MS = 1500;
-const MAX_JOURNEY_SCREENS = 128;
-const OWNER_ONLY_DIRECTORY = 0o700;
-const OWNER_ONLY_FILE = 0o600;
-const JSON_INDENT = 2;
 
-const COPY = Object.freeze({
-  "las.first_use.model.title": "Adopt your existing MCP catalogue",
-  "las.first_use.model.body": "Las can discover standard local mcpServers JSON and adopt only entries that match its canonical signed surfaces. It validates every selected configuration before one atomic catalogue write and retains approved environment values without printing them.",
-  "las.first_use.adopt.title": "Register the tools you already configured",
-  "las.first_use.adopt.body": "Run las adopt to discover supported local MCP configuration, or pass exact configuration files. An identical registration is unchanged; conflicting or unsupported entries refuse the whole import without replacing your current catalogue.",
-});
-const LOCAL_SCREENS = Object.freeze({
-  "catalogue-model": Object.freeze({
-    title: COPY["las.first_use.model.title"],
-    body: COPY["las.first_use.model.body"],
-    actions: Object.freeze(["las onboarding advance"]),
-  }),
-  "catalogue-adopt": Object.freeze({
-    title: COPY["las.first_use.adopt.title"],
-    body: COPY["las.first_use.adopt.body"],
-    actions: Object.freeze(["las adopt"]),
-  }),
-});
+import {
+  FIRST_SUCCESS_FACT,
+  JOURNEY_ID,
+  JOURNEY_VERSION,
+  JOURNEY_VERSION_ID,
+  JSON_INDENT,
+  OWNER_ONLY_DIRECTORY,
+  OWNER_ONLY_FILE,
+  PRODUCT_ID,
+  STATE_PATH,
+} from "./journey/contract.mjs";
+import {
+  canonicalFallback,
+  isRecord,
+  sha256,
+  validateBundle,
+} from "./journey/bundle.mjs";
+import { StadoTransport } from "./journey/transport.mjs";
+import { COPY, LOCAL_SCREENS } from "./journey/screens.mjs";
 
-
-const FALLBACK_DEFINITION = JSON.parse(readFileSync(new URL("./onboarding_first_use.json", import.meta.url), "utf8"));
-
-function canonical(value) {
-  if (Array.isArray(value)) return value.map(canonical);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(Object.entries(value)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, entry]) => [key, canonical(entry)]));
-  }
-  return value;
-}
-
-function sha256(value) {
-  return createHash("sha256").update(value).digest("hex");
-}
-
-function canonicalFallback() {
-  const canonical_definition = JSON.stringify(canonical(FALLBACK_DEFINITION));
-  return {
-    journey_version_id: JOURNEY_VERSION_ID,
-    definition: FALLBACK_DEFINITION,
-    canonical_definition,
-    content_sha256: sha256(canonical_definition),
-    source_revision: FALLBACK_DEFINITION.source_revision,
-  };
-}
-
-function isRecord(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function validateCondition(condition) {
-  if (!isRecord(condition) || typeof condition.kind !== "string") return false;
-  if (condition.kind === "all" || condition.kind === "any") {
-    return Array.isArray(condition.conditions) && condition.conditions.every(validateCondition);
-  }
-  if (condition.kind === "not") return validateCondition(condition.condition);
-  return condition.kind === "fact" && typeof condition.fact === "string"
-    && ["present", "absent", "eq", "not_eq", "contains", "gt", "gte", "lt", "lte"].includes(condition.operator);
-}
-
-function validateBundle(bundle) {
-  if (!isRecord(bundle) || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(bundle.journey_version_id)
-    || !/^[0-9a-f]{64}$/.test(bundle.content_sha256) || typeof bundle.canonical_definition !== "string") {
-    throw new Error("onboarding bundle envelope is invalid");
-  }
-  const definition = bundle.definition;
-  if (!isRecord(definition) || definition.schema_version !== Number("1") || definition.product_id !== PRODUCT_ID
-    || definition.journey_id !== JOURNEY_ID || definition.journey_version !== JOURNEY_VERSION
-    || definition.first_success_fact !== FIRST_SUCCESS_FACT || typeof definition.entry_screen_id !== "string") {
-    throw new Error("onboarding bundle identity is invalid");
-  }
-  if (JSON.stringify(canonical(definition)) !== bundle.canonical_definition
-    || sha256(bundle.canonical_definition) !== bundle.content_sha256) {
-    throw new Error("onboarding bundle integrity is invalid");
-  }
-  if (!Array.isArray(definition.screens) || definition.screens.length === 0 || definition.screens.length > MAX_JOURNEY_SCREENS) {
-    throw new Error("onboarding screen graph is invalid");
-  }
-  const ids = new Set();
-  for (const screen of definition.screens) {
-    if (!isRecord(screen) || typeof screen.screen_id !== "string" || !LOCAL_SCREENS[screen.screen_id] || ids.has(screen.screen_id)
-      || typeof screen.title_key !== "string" || typeof screen.body_key !== "string"
-      || !Array.isArray(screen.actions) || !screen.actions.every((action) => typeof action === "string")
-      || !Array.isArray(screen.transitions)
-      || (screen.completion_evidence !== undefined && !validateCondition(screen.completion_evidence))) {
-      throw new Error("onboarding screen is invalid");
-    }
-    ids.add(screen.screen_id);
-  }
-  if (!ids.has(definition.entry_screen_id)) throw new Error("onboarding entry screen is missing");
-  for (const screen of definition.screens) {
-    if (screen.fallback_screen_id !== undefined && !ids.has(screen.fallback_screen_id)) throw new Error("onboarding fallback is missing");
-    for (const transition of screen.transitions) {
-      if (!isRecord(transition) || !ids.has(transition.next_screen_id) || typeof transition.reason_code !== "string"
-        || typeof transition.priority !== "number" || (transition.condition !== undefined && !validateCondition(transition.condition))) {
-        throw new Error("onboarding transition is invalid");
-      }
-    }
-  }
-  return bundle;
-}
 
 async function loadState() {
   try {
@@ -139,79 +44,6 @@ async function saveState(state) {
   await rename(temporary, STATE_PATH);
 }
 
-class StadoTransport {
-  constructor(client) {
-    this.client = client;
-    this.available = true;
-  }
-
-  async post(operation, body) {
-    const baseValue = process.env.STADO_INTEGRATION_API_URL;
-    const token = process.env.LAS_STADO_INTEGRATION_TOKEN;
-    if (!this.available || !baseValue || !token) throw new Error("onboarding control plane is unavailable");
-    let base;
-    try {
-      base = new URL(baseValue);
-      if (base.protocol !== "https:" || base.username || base.password) throw new Error("invalid origin");
-    } catch {
-      this.available = false;
-      throw new Error("onboarding control plane URL is invalid");
-    }
-    const endpoint = new URL(`/integration/${encodeURIComponent(this.client)}/onboarding/${PRODUCT_ID}/${operation}`, base);
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-      const envelope = await response.json();
-      if (!response.ok || !isRecord(envelope) || envelope.ok !== true || !("result" in envelope)) {
-        throw new Error("onboarding control plane rejected the request");
-      }
-      return envelope.result;
-    } catch (error) {
-      this.available = false;
-      throw error;
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
-  readBundle() {
-    return this.post("bundle.read", {
-      product_id: PRODUCT_ID,
-      journey_id: JOURNEY_ID,
-      journey_version: JOURNEY_VERSION,
-      if_none_match: null,
-    });
-  }
-
-  readRemoteState(progress) {
-    return this.post("state.read", {
-      product_id: PRODUCT_ID,
-      attempt_id: progress.attempt_id,
-      subject_hash: progress.subject_hash,
-    });
-  }
-
-  assignExperiment(subjectHash) {
-    return this.post("experiments.assign", {
-      product_id: PRODUCT_ID,
-      journey_id: JOURNEY_ID,
-      journey_version: JOURNEY_VERSION,
-      subject_hash: subjectHash,
-      scope_kind: "device",
-      surface: this.client,
-    });
-  }
-
-  collectEvent(event) {
-    return this.post("events.collect", event);
-  }
-}
 
 function evaluate(condition, evidence) {
   if (!condition) return true;
