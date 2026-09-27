@@ -12,7 +12,7 @@
       "runner_platform": "linux-amd64",
       "quality": [],
       "build": {
-        "argv": ["python3", "release/build-package.py"]
+        "argv": ["bash", "release/build-package.sh"]
       },
       "stage": {
         "dist/las.tgz": "las.tgz",
@@ -28,7 +28,7 @@
     {
       "name": "npm",
       "platform": "npm-package",
-      "argv": ["python3", "release/deliver-npm.py"],
+      "argv": ["bash", "release/deliver-npm.sh"],
       "required": true,
       "secret_env": {
         "NPM_TOKEN": "npm-registry#token"
