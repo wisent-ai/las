@@ -1,12 +1,13 @@
 #!/bin/bash
 # Stado's release build: one npm pack of this package, staged as dist/las.tgz
-# with its SHA-256 beside it, for the npm delivery to publish unchanged.
+# inside WISENT_OUTPUT_DIR (where the stage map reads it) with its SHA-256
+# beside it, for the npm delivery to publish unchanged.
 set -euo pipefail
-root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-out="$root/dist"
+source=${WISENT_SOURCE_DIR:?Stado must provide WISENT_SOURCE_DIR}
+out="${WISENT_OUTPUT_DIR:?Stado must provide WISENT_OUTPUT_DIR}/dist"
 rm -rf "$out"
 mkdir -p "$out"
-cd "$root"
+cd "$source"
 npm pack --ignore-scripts --pack-destination "$out" >/dev/null
 shopt -s nullglob
 packed=("$out"/*.tgz)
