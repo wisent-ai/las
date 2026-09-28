@@ -14,6 +14,9 @@
       "build": {
         "argv": ["stado", "product", "npm", "pack"]
       },
+      "tests": [
+        {"name": "cli", "argv": ["node", "--test", "tests/cli/surfaces.test.mjs"]}
+      ],
       "stage": {
         "release/npm-package.tgz": "npm-package.tgz",
         "release/npm-package.tgz.sha256": "npm-package.tgz.sha256"
