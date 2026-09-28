@@ -12,11 +12,11 @@
       "runner_platform": "linux-amd64",
       "quality": [],
       "build": {
-        "argv": ["bash", "release/build-package.sh"]
+        "argv": ["stado", "product", "npm", "pack"]
       },
       "stage": {
-        "dist/las.tgz": "las.tgz",
-        "dist/las.tgz.sha256": "las.tgz.sha256"
+        "release/npm-package.tgz": "npm-package.tgz",
+        "release/npm-package.tgz.sha256": "npm-package.tgz.sha256"
       }
     }
   },
@@ -28,7 +28,7 @@
     {
       "name": "npm",
       "platform": "npm-package",
-      "argv": ["bash", "release/deliver-npm.sh"],
+      "argv": ["stado", "product", "deliver", "npm"],
       "required": true,
       "secret_env": {
         "NPM_TOKEN": "npm-registry#token"
