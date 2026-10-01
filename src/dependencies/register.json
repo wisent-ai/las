@@ -509,16 +509,17 @@
       "requires": "stado",
       "feature": "production message storage",
       "how": "the fleet database Stado places for the product (stado_database FleetDatabase for most)",
-      "whenAbsent": "refusal",
-      "detail": "MOST_COMPOSITION=prod stops with \"prod database initialization failed: …\"; the dev compositions keep rows only in process memory",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without MOST_DATABASE_URL, MOST_COMPOSITION=prod stops with \"prod database initialization failed: …\"",
+      "alternative": "MOST_DATABASE_URL names the user's own Postgres; the server and most-migrate open it and ask Stado nothing",
       "evidence": [
         {
-          "at": "most/most-rs/crates/most-server/src/boot/composition/store.rs:25",
-          "contains": "PostgresStorage::connect_fleet()"
+          "at": "most/most-rs/crates/most-core/src/storage/pg/mod.rs:107",
+          "contains": "let Some(url) = std::env::var(\"MOST_DATABASE_URL\")"
         },
         {
-          "at": "most/most-rs/crates/most-server/src/boot/composition/select.rs:91",
-          "contains": "prod database initialization failed"
+          "at": "most/most-rs/crates/most-server/src/boot/composition/store.rs:26",
+          "contains": "PostgresStorage::connect().await"
         }
       ]
     },
