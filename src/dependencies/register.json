@@ -329,12 +329,17 @@
       "requires": "stado",
       "feature": "placing a browser session",
       "how": "runs the Stado binary (STADO_BIN or the installed one)",
-      "whenAbsent": "refusal",
-      "detail": "stops with \"no Stado binary on this host; set STADO_BIN\"",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without WELES_STANDALONE it stops with \"BLOCKED: … cannot verify Weles placement through Stado: …. On a machine without Stado set WELES_STANDALONE=1.\"",
+      "alternative": "WELES_STANDALONE=1 runs Weles as the only host and skips the placement check, saying so on stderr",
       "evidence": [
         {
-          "at": "weles/src/session/placement/service-placement.ts:31",
-          "contains": "no Stado binary on this host; set STADO_BIN"
+          "at": "weles/src/session/placement/service-placement.ts:64",
+          "contains": "process.env.WELES_STANDALONE === '1'"
+        },
+        {
+          "at": "weles/src/session/placement/service-placement.ts:85",
+          "contains": "On a machine without Stado set WELES_STANDALONE=1."
         }
       ]
     },
