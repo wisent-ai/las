@@ -4,7 +4,7 @@
  * says whether the plane answered at all.
  */
 
-import { JOURNEY_ID, JOURNEY_VERSION, PRODUCT_ID, REQUEST_TIMEOUT_MS } from "./contract.mjs";
+import { JOURNEY_ID, JOURNEY_VERSION, PRODUCT_ID } from "./contract.mjs";
 
 class StadoTransport {
   constructor(client) {
@@ -25,25 +25,20 @@ class StadoTransport {
       throw new Error("onboarding control plane URL is invalid");
     }
     const endpoint = new URL(`/integration/${encodeURIComponent(this.client)}/onboarding/${PRODUCT_ID}/${operation}`, base);
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        signal: controller.signal,
       });
       const envelope = await response.json();
       if (!response.ok || !isRecord(envelope) || envelope.ok !== true || !("result" in envelope)) {
-        throw new Error("onboarding control plane rejected the request");
+        throw new Error(`onboarding control plane rejected ${operation} (HTTP ${response.status})`);
       }
       return envelope.result;
     } catch (error) {
       this.available = false;
       throw error;
-    } finally {
-      clearTimeout(timeout);
     }
   }
 
