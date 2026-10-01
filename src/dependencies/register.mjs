@@ -135,6 +135,29 @@ export function moveDependencyLines() {
   return { moved, remaining };
 }
 
+/**
+ * Record one entry: the entry with the same product, required product and
+ * feature is replaced, otherwise the entry is added. It is written only when
+ * it is valid and every citation it carries says what it quotes now, so the
+ * register never holds a claim its own check would refuse. Answers whether
+ * it replaced or added, or the citations that refused it.
+ */
+export function recordDependency(entry) {
+  const file = path.join(HERE, "register.json");
+  const document = JSON.parse(fs.readFileSync(file, "utf8"));
+  const position = document.dependencies.findIndex((existing) =>
+    existing.product === entry.product && existing.requires === entry.requires && existing.feature === entry.feature);
+  const candidate = JSON.parse(JSON.stringify(document));
+  if (position >= 0) candidate.dependencies[position] = entry;
+  else candidate.dependencies.push(entry);
+  const checked = validated(JSON.parse(JSON.stringify(candidate)));
+  const recorded = checked.dependencies[position >= 0 ? position : checked.dependencies.length - 1];
+  const refused = recorded.evidence.map(verify).filter((cited) => !cited.ok);
+  if (refused.length) return { recorded: false, refused };
+  fs.writeFileSync(file, JSON.stringify(candidate, null, 2) + "\n");
+  return { recorded: true, replaced: position >= 0 };
+}
+
 /** What the GUI shows: the register narrowed to the products this machine
  * does not have (all entries when none), every product it names, and the
  * evidence check, so a stale entry is visible beside it. */

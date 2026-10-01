@@ -124,6 +124,7 @@ las tools [surface...]
 las check [surface...]
 las dependencies [product...] [--requires PRODUCT] [--without PRODUCT[,PRODUCT...]] [--json]
 las dependencies check [--move-lines] [--json]
+las dependencies set <product> <requires> --feature TEXT --how TEXT --when-absent OUTCOME --detail TEXT [--alternative TEXT] --at <repository>/<file>:<line> --contains TEXT [--at … --contains …]
 ```
 
 When installed from an approved source, `package.json` exposes `las` and
@@ -187,6 +188,14 @@ in the register and lists every citation whose quote changed or vanished, which
 needs a person to read the code again (exit `1`). A product name the register
 does not hold, an unknown option, `check` with a filter, or `--move-lines`
 without `check` exits `2` with the usage.
+
+An entry is recorded with `las dependencies set`. The entry with the same
+product, required product and feature is replaced, otherwise it is added. It
+is written only when it is valid (an `alternative` outcome names its
+alternative, the outcome is one of the register's) and every `--at` line
+contains the `--contains` text that follows it; otherwise nothing is written
+and each failing citation is printed with what the line says now (exit `1`),
+or the invalid field is named (exit `2`).
 
 `las gui` shows the same register under *Dependencies*: tick the products the
 machine does not have and the table narrows to what needs them, with the

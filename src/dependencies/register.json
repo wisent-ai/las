@@ -181,12 +181,17 @@
       "requires": "oko",
       "feature": "the stop gate and task assignment",
       "how": "runs the Oko CLI (`TAMA_OKO_CLI`, default `oko`) for the task and defect registers",
-      "whenAbsent": "refusal",
-      "detail": "every stop is refused with \"cannot confirm completion for session …: … An unreadable task ledger is not an empty task ledger.\"; there is no register Tama can use without Oko",
+      "whenAbsent": "alternative",
+      "detail": "an installed Oko that cannot be read still refuses every stop with \"… An unreadable task ledger is not an empty task ledger.\"",
+      "alternative": "with no Oko CLI installed (neither TAMA_OKO_CLI nor oko on PATH) the stop gate uses the session's own todo list as the only register and refuses only on its open items",
       "evidence": [
         {
-          "at": "tama/rust/crates/tama-hook-tools/src/assignment/rules.rs:35",
-          "contains": "TAMA_OKO_CLI"
+          "at": "tama/rust/crates/tama-hook-tools/src/assignment/rules.rs:45",
+          "contains": "pub fn oko_installed()"
+        },
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/programs/block/stop/block_stop_with_open_work.rs:72",
+          "contains": "if !rules::oko_installed()"
         },
         {
           "at": "tama/rust/crates/tama-hook-tools/src/programs/block/stop/block_stop_with_open_work.rs:163",

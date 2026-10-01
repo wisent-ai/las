@@ -34,6 +34,8 @@ function usage(stream = process.stderr) {
       "  dependencies [product...] [--requires P] [--without P,...] [--json]",
       "                       what each Wisent product needs from another and what happens without it",
       "  dependencies check [--move-lines] [--json]  re-read every source line the register cites",
+      "  dependencies set <product> <requires> --feature … --how … --when-absent … --detail … --at … --contains …",
+      "                       record one entry; refused unless every cited line says what it quotes",
       "",
       "surfaces: " + SURFACES.map((s) => s.name).join(", "),
       "env: LAS_ONLY=a,b (allow-list)  LAS_SKIP=a,b (deny-list)",
