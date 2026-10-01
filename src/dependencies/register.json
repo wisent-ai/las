@@ -499,7 +499,7 @@
       "detail": "stops with \"Unable to find Stado executable <name>.\"",
       "evidence": [
         {
-          "at": "lem/Sources/LemBackend/Stado/LemStadoProcessAdapter.swift:17",
+          "at": "lem/Sources/LemBackend/Stado/LemStadoProcessAdapter.swift:15",
           "contains": "Unable to find Stado executable"
         }
       ]
@@ -519,6 +519,29 @@
         {
           "at": "most/most-rs/crates/most-backend-twilio/src/transport.rs:37",
           "contains": "STADO_INTEGRATION_API_URL is required for wisent-integrations"
+        }
+      ]
+    },
+    {
+      "product": "byk-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado's integration API with STADO_INTEGRATION_API_URL and BYK_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued in UserDefaults until Stado answers",
+      "evidence": [
+        {
+          "at": "byk-desktop/Sources/BykDesktop/Onboarding/Controller.swift:34",
+          "contains": "BYK_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "byk-desktop/Sources/BykDesktop/Onboarding/Controller.swift:196",
+          "contains": "let fallback = try Self.loadFallback()"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
         }
       ]
     }
