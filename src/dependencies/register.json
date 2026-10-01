@@ -15,7 +15,10 @@
       "whenAbsent": "refusal",
       "detail": "a run without a Brama address stops with \"BRAMA_URL is required; configure the Brama model-router service URL\"; Jeden has no other model route",
       "evidence": [
-        { "at": "jeden/rust/agent/runtime/routing/mod.rs:125", "contains": "BRAMA_URL is required" }
+        {
+          "at": "jeden/rust/agent/runtime/routing/mod.rs:125",
+          "contains": "BRAMA_URL is required"
+        }
       ]
     },
     {
@@ -27,8 +30,14 @@
       "detail": "without Stado the read fails with \"the Stado CLI could not be started … Install Stado, or carry … and BRAMA_URL in this process's environment\"",
       "alternative": "set the Brama secret and BRAMA_URL in the environment; Jeden reads Stado only when the environment does not carry them",
       "evidence": [
-        { "at": "jeden/rust/agent/credential/mod.rs:71", "contains": "Command::new(\"stado\")" },
-        { "at": "jeden/rust/agent/credential/mod.rs:106", "contains": "env::var(variable)" }
+        {
+          "at": "jeden/rust/agent/credential/mod.rs:71",
+          "contains": "Command::new(\"stado\")"
+        },
+        {
+          "at": "jeden/rust/agent/credential/mod.rs:106",
+          "contains": "env::var(variable)"
+        }
       ]
     },
     {
@@ -39,8 +48,14 @@
       "whenAbsent": "refusal",
       "detail": "the rebuild stops with \"cannot inspect the running code identity: …\"",
       "evidence": [
-        { "at": "jeden/rust/cli/run/self_rebuild.rs:50", "contains": "Command::new(\"stado\")" },
-        { "at": "jeden/rust/cli/run/self_rebuild.rs:54", "contains": "cannot inspect the running code identity" }
+        {
+          "at": "jeden/rust/cli/run/self_rebuild.rs:50",
+          "contains": "Command::new(\"stado\")"
+        },
+        {
+          "at": "jeden/rust/cli/run/self_rebuild.rs:54",
+          "contains": "cannot inspect the running code identity"
+        }
       ]
     },
     {
@@ -51,8 +66,14 @@
       "whenAbsent": "refusal",
       "detail": "stops with \"launch Probierz: …; set PROBIERZ_ROOT to a Probierz source checkout or install its CLI\"",
       "evidence": [
-        { "at": "jeden/rust/cli/tooling/probierz.rs:39", "contains": "Command::new(\"probierz\")" },
-        { "at": "jeden/rust/cli/tooling/probierz.rs:51", "contains": "set PROBIERZ_ROOT" }
+        {
+          "at": "jeden/rust/cli/tooling/probierz.rs:39",
+          "contains": "Command::new(\"probierz\")"
+        },
+        {
+          "at": "jeden/rust/cli/tooling/probierz.rs:51",
+          "contains": "set PROBIERZ_ROOT"
+        }
       ]
     },
     {
@@ -63,8 +84,14 @@
       "whenAbsent": "degraded",
       "detail": "says \"the Stado registry is unreadable, so no registry host is listed\" on stderr and lists only the placement selectors and `local`",
       "evidence": [
-        { "at": "probierz/probierz-rs/src/discovery/commands.rs:76", "contains": "Command::new(\"stado\")" },
-        { "at": "probierz/probierz-rs/src/discovery/commands.rs:89", "contains": "the Stado registry is unreadable" }
+        {
+          "at": "probierz/probierz-rs/src/discovery/commands.rs:76",
+          "contains": "Command::new(\"stado\")"
+        },
+        {
+          "at": "probierz/probierz-rs/src/discovery/commands.rs:89",
+          "contains": "the Stado registry is unreadable"
+        }
       ]
     },
     {
@@ -75,8 +102,14 @@
       "whenAbsent": "degraded",
       "detail": "the repository's row carries \"tama find-violations cannot be run: <error>\" and the overview goes on with the other repositories",
       "evidence": [
-        { "at": "probierz/probierz-rs/src/status/fleet/overview.rs:6", "contains": "Command::new(\"tama\")" },
-        { "at": "probierz/probierz-rs/src/status/fleet/overview.rs:12", "contains": "tama find-violations cannot be run" }
+        {
+          "at": "probierz/probierz-rs/src/status/fleet/overview.rs:6",
+          "contains": "Command::new(\"tama\")"
+        },
+        {
+          "at": "probierz/probierz-rs/src/status/fleet/overview.rs:12",
+          "contains": "tama find-violations cannot be run"
+        }
       ]
     },
     {
@@ -88,44 +121,41 @@
       "detail": "with no store configured Stado talks to Skarbiec and fails when it is not there",
       "alternative": "configure the store as an absolute file path (`file:///path` or `/path`); reads, writes, removals and listings then use that file",
       "evidence": [
-        { "at": "stado/stado-rs/src/credential_store/mod.rs:138", "contains": "Backend::Skarbiec { url: None }" },
-        { "at": "stado/stado-rs/src/credential_store/mod.rs:145", "contains": "strip_prefix(\"file://\")" }
+        {
+          "at": "stado/stado-rs/src/credential_store/mod.rs:138",
+          "contains": "Backend::Skarbiec { url: None }"
+        },
+        {
+          "at": "stado/stado-rs/src/credential_store/mod.rs:145",
+          "contains": "strip_prefix(\"file://\")"
+        }
       ]
     },
     {
       "product": "stado",
       "requires": "skarbiec",
-      "feature": "`stado credentials get|put|ls|rm`",
-      "how": "a Skarbiec client built from the admin credentials, whatever store is configured",
-      "whenAbsent": "refusal",
-      "detail": "these commands do not use the file store even when it is configured; without Skarbiec they fail on the connection",
+      "feature": "`stado credentials get|put|ls|rm`, build secrets of `stado product` builds and signing credentials of `stado product signing`",
+      "how": "the selected credential store; build and signing secrets are read through `stado credentials get`",
+      "whenAbsent": "alternative",
+      "detail": "with Skarbiec selected and absent these fail on the connection; a build reports each missing secret as \"build secret unavailable: …\" and goes on, signing stops",
+      "alternative": "select a file store (`file:///path`); these commands then read and write that file and need no Skarbiec",
       "evidence": [
-        { "at": "stado/stado-rs/src/cli/secrets/commands/dispatch.rs:69", "contains": "SecretsCommands::Get" },
-        { "at": "stado/stado-rs/src/cli/secrets/store/resolve.rs:11", "contains": "crate::skarbiec::Client::new(" }
-      ]
-    },
-    {
-      "product": "stado",
-      "requires": "skarbiec",
-      "feature": "build secrets of `stado product` builds",
-      "how": "runs `skarbiec get <item> --field <field>` directly",
-      "whenAbsent": "degraded",
-      "detail": "each secret is reported as \"build secret unavailable: …\" on stderr and the build goes on without it; the configured credential store is not used",
-      "evidence": [
-        { "at": "stado/stado-rs/product/src/install/recipes/build/manifest.rs:100", "contains": "Command::new(\"skarbiec\")" },
-        { "at": "stado/stado-rs/product/src/install/recipes/build/manifest.rs:106", "contains": "build secret unavailable" }
-      ]
-    },
-    {
-      "product": "stado",
-      "requires": "skarbiec",
-      "feature": "signing credentials of `stado product signing`",
-      "how": "runs `skarbiec get <item> --field <field>` directly",
-      "whenAbsent": "refusal",
-      "detail": "signing stops; a missing binary surfaces as the operating system's spawn error without naming Skarbiec; the configured credential store is not used",
-      "evidence": [
-        { "at": "stado/stado-rs/product/src/signing/credentials.rs:25", "contains": "Command::new(\"skarbiec\")" },
-        { "at": "stado/stado-rs/product/src/signing/credentials.rs:30", "contains": "no other identity was attempted" }
+        {
+          "at": "stado/stado-rs/src/cli/secrets/store/items.rs:32",
+          "contains": "Backend::File { path } => Ok(Store::File(path))"
+        },
+        {
+          "at": "stado/stado-rs/product/src/common/mod.rs:84",
+          "contains": "\"credentials\", \"get\", item"
+        },
+        {
+          "at": "stado/stado-rs/product/src/install/recipes/build/manifest.rs:100",
+          "contains": "crate::common::credential_field"
+        },
+        {
+          "at": "stado/stado-rs/product/src/signing/credentials.rs:23",
+          "contains": "crate::common::credential_field"
+        }
       ]
     },
     {
@@ -136,8 +166,14 @@
       "whenAbsent": "refusal",
       "detail": "the build is refused with \"cannot verify recorded user build approval through Tama: …\"",
       "evidence": [
-        { "at": "stado/stado-rs/src/scheduler/builds/approval.rs:15", "contains": "Command::new(\"tama\")" },
-        { "at": "stado/stado-rs/src/scheduler/builds/approval.rs:29", "contains": "cannot verify recorded user build approval through Tama" }
+        {
+          "at": "stado/stado-rs/src/scheduler/builds/approval.rs:15",
+          "contains": "Command::new(\"tama\")"
+        },
+        {
+          "at": "stado/stado-rs/src/scheduler/builds/approval.rs:29",
+          "contains": "cannot verify recorded user build approval through Tama"
+        }
       ]
     },
     {
@@ -148,8 +184,14 @@
       "whenAbsent": "refusal",
       "detail": "every stop is refused with \"cannot confirm completion for session …: … An unreadable task ledger is not an empty task ledger.\"; there is no register Tama can use without Oko",
       "evidence": [
-        { "at": "tama/rust/crates/tama-hook-tools/src/assignment/rules.rs:35", "contains": "TAMA_OKO_CLI" },
-        { "at": "tama/rust/crates/tama-hook-tools/src/programs/block/stop/block_stop_with_open_work.rs:154", "contains": "An unreadable task ledger is not an empty task ledger." }
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/assignment/rules.rs:35",
+          "contains": "TAMA_OKO_CLI"
+        },
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/programs/block/stop/block_stop_with_open_work.rs:163",
+          "contains": "An unreadable task ledger is not an empty task ledger."
+        }
       ]
     },
     {
@@ -161,8 +203,14 @@
       "detail": "a failed read is recorded and the last kept listing is used",
       "alternative": "a listing file named by the guard's listing variable, or the listing kept from the last successful read",
       "evidence": [
-        { "at": "tama/rust/crates/tama-hook-tools/src/ports/block_internal_names/names.rs:132", "contains": "std::env::var(VAULT_LISTING_ENV)" },
-        { "at": "tama/rust/crates/tama-hook-tools/src/ports/block_internal_names/names.rs:140", "contains": "Command::new(\"stado\")" }
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/ports/block_internal_names/names.rs:132",
+          "contains": "std::env::var(VAULT_LISTING_ENV)"
+        },
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/ports/block_internal_names/names.rs:140",
+          "contains": "Command::new(\"stado\")"
+        }
       ]
     },
     {
@@ -173,8 +221,14 @@
       "whenAbsent": "refusal",
       "detail": "every command that needs the database fails until one resolve succeeded; the answer kept in ~/.oko/database.json is used afterwards",
       "evidence": [
-        { "at": "oko/rust/src/database/resolved.rs:36", "contains": "stado::request(&[\"database\", \"resolve\"" },
-        { "at": "oko/rust/src/database/resolved.rs:54", "contains": ".oko/database.json" }
+        {
+          "at": "oko/rust/src/database/resolved.rs:36",
+          "contains": "stado::request(&[\"database\", \"resolve\""
+        },
+        {
+          "at": "oko/rust/src/database/resolved.rs:54",
+          "contains": ".oko/database.json"
+        }
       ]
     },
     {
@@ -185,7 +239,10 @@
       "whenAbsent": "refusal",
       "detail": "as for Stado: no database until one resolve succeeded",
       "evidence": [
-        { "at": "oko/rust/src/database/resolved.rs:39", "contains": "secrets::read_field(&item, \"url\"" }
+        {
+          "at": "oko/rust/src/database/resolved.rs:39",
+          "contains": "secrets::read_field(&item, \"url\""
+        }
       ]
     },
     {
@@ -197,7 +254,10 @@
       "detail": "without Brama a message stays unread; Tama's stop gate holds the turn on unread messages",
       "alternative": "`oko transcripts tasks add <session> <number> --by …` records the message as the task it is, without a model",
       "evidence": [
-        { "at": "oko/rust/src/tasks/reading/mod.rs:5", "contains": "Brama's decision route" }
+        {
+          "at": "oko/rust/src/tasks/reading/mod.rs:5",
+          "contains": "Brama's decision route"
+        }
       ]
     },
     {
@@ -209,7 +269,10 @@
       "detail": "without the judge no verdict is recorded",
       "alternative": "the operator closes the task himself with `oko transcripts tasks close <task> --reason TEXT` or Close on Oko Desktop's Tasks screen",
       "evidence": [
-        { "at": "oko/rust/src/tasks/record/verdict.rs:71", "contains": "pub fn close(" }
+        {
+          "at": "oko/rust/src/tasks/record/verdict.rs:71",
+          "contains": "pub fn close("
+        }
       ]
     },
     {
@@ -221,8 +284,14 @@
       "detail": "a managed installation without Skarbiec has no provider credential and refuses the request",
       "alternative": "`brama serve --local-credentials-stdin` takes a provider-to-credential JSON object on stdin and keeps it in memory for the server's lifetime",
       "evidence": [
-        { "at": "brama/src/gateway/broker.rs:3", "contains": "Capability redemption through the local Skarbiec broker" },
-        { "at": "brama/src/cli/serving.rs:17", "contains": "local_credentials_stdin: bool" }
+        {
+          "at": "brama/src/gateway/broker.rs:3",
+          "contains": "Capability redemption through the local Skarbiec broker"
+        },
+        {
+          "at": "brama/src/cli/serving.rs:17",
+          "contains": "local_credentials_stdin: bool"
+        }
       ]
     },
     {
@@ -234,8 +303,14 @@
       "detail": "with no Stado configuration Skarbiec uses its own default",
       "alternative": "SKARBIEC_VAULT_FILE, else ~/.local/share/skarbiec/skarbiec.vault.json",
       "evidence": [
-        { "at": "skarbiec/src/core/mod.rs:44", "contains": "std::env::var(\"SKARBIEC_VAULT_FILE\")" },
-        { "at": "skarbiec/src/core/mod.rs:56", "contains": ".local/share/skarbiec/skarbiec.vault.json" }
+        {
+          "at": "skarbiec/src/core/mod.rs:44",
+          "contains": "std::env::var(\"SKARBIEC_VAULT_FILE\")"
+        },
+        {
+          "at": "skarbiec/src/core/mod.rs:56",
+          "contains": ".local/share/skarbiec/skarbiec.vault.json"
+        }
       ]
     },
     {
@@ -246,7 +321,10 @@
       "whenAbsent": "refusal",
       "detail": "stops with \"no Stado binary on this host; set STADO_BIN\"",
       "evidence": [
-        { "at": "weles/src/session/placement/service-placement.ts:31", "contains": "no Stado binary on this host; set STADO_BIN" }
+        {
+          "at": "weles/src/session/placement/service-placement.ts:31",
+          "contains": "no Stado binary on this host; set STADO_BIN"
+        }
       ]
     },
     {
@@ -257,7 +335,10 @@
       "whenAbsent": "refusal",
       "detail": "stops with \"WC_SKARBIEC_URL is required from the Stado service directory\"",
       "evidence": [
-        { "at": "weles/src/secrets/scoped-service/transport.ts:63", "contains": "WC_SKARBIEC_URL is required from the Stado service directory" }
+        {
+          "at": "weles/src/secrets/scoped-service/transport.ts:63",
+          "contains": "WC_SKARBIEC_URL is required from the Stado service directory"
+        }
       ]
     },
     {
@@ -268,7 +349,10 @@
       "whenAbsent": "refusal",
       "detail": "stops with \"missing required STADO_MODEL_ROUTER_URL\"",
       "evidence": [
-        { "at": "weles/src/agent/jeden.ts:96", "contains": "missing required STADO_MODEL_ROUTER_URL" }
+        {
+          "at": "weles/src/agent/jeden.ts:96",
+          "contains": "missing required STADO_MODEL_ROUTER_URL"
+        }
       ]
     },
     {
@@ -279,8 +363,14 @@
       "whenAbsent": "refusal",
       "detail": "the install installs Skarbiec's service first and fails when it cannot; the catalogue has no alternative for it",
       "evidence": [
-        { "at": "stado/catalog/products.yml:172", "contains": "- product: skarbiec" },
-        { "at": "stado/stado-rs/product/src/install/mod.rs:88", "contains": "perform(" }
+        {
+          "at": "stado/catalog/products.yml:172",
+          "contains": "- product: skarbiec"
+        },
+        {
+          "at": "stado/stado-rs/product/src/install/mod.rs:88",
+          "contains": "perform("
+        }
       ]
     },
     {
@@ -291,7 +381,10 @@
       "whenAbsent": "refusal",
       "detail": "as for every catalogue dependency: installed first, no alternative",
       "evidence": [
-        { "at": "stado/catalog/products.yml:246", "contains": "- product: brama" }
+        {
+          "at": "stado/catalog/products.yml:246",
+          "contains": "- product: brama"
+        }
       ]
     },
     {
@@ -302,7 +395,10 @@
       "whenAbsent": "refusal",
       "detail": "as for every catalogue dependency: installed first, no alternative",
       "evidence": [
-        { "at": "stado/catalog/products.yml:249", "contains": "- product: skarbiec" }
+        {
+          "at": "stado/catalog/products.yml:249",
+          "contains": "- product: skarbiec"
+        }
       ]
     },
     {
@@ -313,7 +409,10 @@
       "whenAbsent": "refusal",
       "detail": "as for every catalogue dependency: installed first, no alternative",
       "evidence": [
-        { "at": "stado/catalog/products.yml:700", "contains": "- product: brama" }
+        {
+          "at": "stado/catalog/products.yml:700",
+          "contains": "- product: brama"
+        }
       ]
     },
     {
@@ -324,7 +423,10 @@
       "whenAbsent": "refusal",
       "detail": "as for every catalogue dependency: installed first, no alternative",
       "evidence": [
-        { "at": "stado/catalog/products.yml:979", "contains": "- product: brama" }
+        {
+          "at": "stado/catalog/products.yml:979",
+          "contains": "- product: brama"
+        }
       ]
     }
   ]

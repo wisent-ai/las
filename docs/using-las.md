@@ -123,7 +123,7 @@ las list
 las tools [surface...]
 las check [surface...]
 las dependencies [product...] [--requires PRODUCT] [--without PRODUCT[,PRODUCT...]] [--json]
-las dependencies check [--json]
+las dependencies check [--move-lines] [--json]
 ```
 
 When installed from an approved source, `package.json` exposes `las` and
@@ -176,12 +176,17 @@ las dependencies --without brama,skarbiec   # what a machine without both gets
 las dependencies --json
 ```
 
-Every entry cites the source lines it was read from.
+Every entry cites the source lines it was read from, as
+`<repository>/<file>:<line>` with the text that line contains.
 `las dependencies check` reads each cited line again and exits `1` when one no
 longer says what the register quotes, naming the file, the line, the quoted
-text and what the line says now (or that the file cannot be read). A product
-name the register does not hold, an unknown option, or `check` with a filter
-exits `2` with the usage.
+text and what the line says now (or that the file cannot be read). When the
+quote only moved to exactly one other line of the same file, the report says
+which line; `las dependencies check --move-lines` rewrites those line numbers
+in the register and lists every citation whose quote changed or vanished, which
+needs a person to read the code again (exit `1`). A product name the register
+does not hold, an unknown option, `check` with a filter, or `--move-lines`
+without `check` exits `2` with the usage.
 
 `las gui` shows the same register under *Dependencies*: tick the products the
 machine does not have and the table narrows to what needs them, with the

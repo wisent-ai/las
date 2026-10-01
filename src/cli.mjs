@@ -33,7 +33,7 @@ function usage(stream = process.stderr) {
       "  onboarding [action]  first-use adoption journey (show, status, advance, skip, reset)",
       "  dependencies [product...] [--requires P] [--without P,...] [--json]",
       "                       what each Wisent product needs from another and what happens without it",
-      "  dependencies check [--json]  re-read every source line the register cites",
+      "  dependencies check [--move-lines] [--json]  re-read every source line the register cites",
       "",
       "surfaces: " + SURFACES.map((s) => s.name).join(", "),
       "env: LAS_ONLY=a,b (allow-list)  LAS_SKIP=a,b (deny-list)",

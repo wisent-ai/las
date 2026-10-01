@@ -1,17 +1,19 @@
 // `las dependencies`: the register of what each Wisent product needs from
 // another one, printed for a person or as JSON, and `las dependencies check`,
-// which reads every cited source line again.
+// which reads every cited source line again and, with `--move-lines`,
+// follows quotes that only moved to another line.
 
 import {
   checkDependencyEvidence,
   dependencyRegister,
   describeDependency,
+  moveDependencyLines,
   selectDependencies,
 } from "./register.mjs";
 
 export const DEPENDENCIES_USAGE = [
   "las dependencies [product...] [--requires PRODUCT] [--without PRODUCT[,PRODUCT...]] [--json]",
-  "las dependencies check [--json]",
+  "las dependencies check [--move-lines] [--json]",
 ].join("\n");
 
 class UsageError extends Error {}
@@ -23,10 +25,11 @@ function value(args, index, flag) {
 }
 
 function parse(args) {
-  const query = { products: [], requires: null, without: [], json: false, check: false };
+  const query = { products: [], requires: null, without: [], json: false, check: false, moveLines: false };
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === "--json") query.json = true;
+    else if (argument === "--move-lines") query.moveLines = true;
     else if (argument === "--requires") query.requires = value(args, index++, argument);
     else if (argument === "--without") query.without.push(...value(args, index++, argument).split(",").filter(Boolean));
     else if (argument.startsWith("-")) throw new UsageError(`unknown dependencies option '${argument}'`);
@@ -34,9 +37,23 @@ function parse(args) {
     else query.products.push(argument);
   }
   if (query.check && (query.products.length || query.requires || query.without.length)) {
-    throw new UsageError("dependencies check takes only --json");
+    throw new UsageError("dependencies check takes only --move-lines and --json");
   }
+  if (query.moveLines && !query.check) throw new UsageError("--move-lines belongs to dependencies check");
   return query;
+}
+
+function printMoved(result, json) {
+  if (json) {
+    process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+  } else {
+    for (const move of result.moved) process.stdout.write(`moved ${move.from} -> ${move.to} (${JSON.stringify(move.contains)})\n`);
+    if (!result.moved.length) process.stdout.write("no citation only moved; nothing was rewritten\n");
+    for (const cited of result.remaining) {
+      process.stdout.write(`still stale, read the code again: ${cited.product} -> ${cited.requires} (${cited.feature}): ${cited.repository}/${cited.file}:${cited.line} should contain ${JSON.stringify(cited.contains)}; ${cited.observed}\n`);
+    }
+  }
+  if (result.remaining.length) process.exitCode = 1;
 }
 
 function printCheck(report, json) {
@@ -61,6 +78,10 @@ export async function cmdDependencies(args) {
     if (!(error instanceof UsageError)) throw error;
     process.stderr.write(`las: ${error.message}\nusage:\n${DEPENDENCIES_USAGE}\n`);
     process.exitCode = 2;
+    return;
+  }
+  if (query.check && query.moveLines) {
+    printMoved(moveDependencyLines(), query.json);
     return;
   }
   const register = dependencyRegister();

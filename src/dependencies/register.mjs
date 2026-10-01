@@ -69,7 +69,12 @@ export function selectDependencies(register, query) {
     && (!query.without.length || query.without.includes(entry.requires)));
 }
 
-/** One cited line read again: whether it still says what the register quotes. */
+/**
+ * One cited line read again: whether it still says what the register quotes.
+ * A quote no longer at its line but on exactly one other line of the same
+ * file is reported with `movedTo`, the line it is on now; only that case can
+ * be repaired without reading the code again.
+ */
 function verify(cited) {
   const file = path.join(WORKSPACE, cited.repository, cited.file);
   let lines;
@@ -79,8 +84,12 @@ function verify(cited) {
     return { ...cited, ok: false, observed: `the file cannot be read: ${error.message}` };
   }
   const observed = lines[cited.line - 1];
-  if (observed === undefined) return { ...cited, ok: false, observed: `the file has only ${lines.length} lines` };
-  return observed.includes(cited.contains) ? { ...cited, ok: true } : { ...cited, ok: false, observed: `the line reads ${JSON.stringify(observed.trim())}` };
+  if (observed !== undefined && observed.includes(cited.contains)) return { ...cited, ok: true };
+  const found = lines.flatMap((line, index) => (line.includes(cited.contains) ? [index + 1] : []));
+  if (found.length === 1) return { ...cited, ok: false, movedTo: found[0], observed: `the quote moved to line ${found[0]}` };
+  const where = found.length ? `the quote is on ${found.length} lines (${found.join(", ")})` : "the quote is nowhere in the file";
+  if (observed === undefined) return { ...cited, ok: false, observed: `the file has only ${lines.length} lines; ${where}` };
+  return { ...cited, ok: false, observed: `the line reads ${JSON.stringify(observed.trim())}; ${where}` };
 }
 
 /** Every cited line checked; `ok` is false when any one moved or changed. */
@@ -95,6 +104,35 @@ export function checkDependencyEvidence(register) {
     }
   }
   return { ok: stale.length === 0, workspace: WORKSPACE, checked, stale };
+}
+
+/**
+ * Rewrite the line of every citation whose quote moved to exactly one other
+ * line of its file, and answer what was moved and what still needs a person
+ * to read the code again. The quote, the entry and its outcome are never
+ * changed: a changed quote means the behaviour may have changed.
+ */
+export function moveDependencyLines() {
+  const file = path.join(HERE, "register.json");
+  const document = JSON.parse(fs.readFileSync(file, "utf8"));
+  const register = validated(JSON.parse(JSON.stringify(document)));
+  const moved = [];
+  const remaining = [];
+  register.dependencies.forEach((entry, entryIndex) => {
+    entry.evidence.forEach((cited, citedIndex) => {
+      const result = verify(cited);
+      if (result.ok) return;
+      if (result.movedTo) {
+        const at = `${cited.repository}/${cited.file}:${result.movedTo}`;
+        document.dependencies[entryIndex].evidence[citedIndex].at = at;
+        moved.push({ from: `${cited.repository}/${cited.file}:${cited.line}`, to: at, contains: cited.contains });
+      } else {
+        remaining.push({ product: entry.product, requires: entry.requires, feature: entry.feature, ...result });
+      }
+    });
+  });
+  if (moved.length) fs.writeFileSync(file, JSON.stringify(document, null, 2) + "\n");
+  return { moved, remaining };
 }
 
 /** What the GUI shows: the register narrowed to the products this machine
