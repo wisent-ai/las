@@ -544,6 +544,75 @@
           "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
         }
       ]
+    },
+    {
+      "product": "brama-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado's integration API with STADO_INTEGRATION_API_URL and BRAMA_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued in UserDefaults until Stado answers",
+      "evidence": [
+        {
+          "at": "brama-desktop/Sources/BramaDesktop/Brama/Onboarding/BramaOnboarding.swift:25",
+          "contains": "BRAMA_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "brama-desktop/Sources/BramaDesktop/Brama/Onboarding/BramaOnboarding.swift:178",
+          "contains": "let fallback = try Self.loadFallback()"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "byk-ios",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado's integration API with STADO_INTEGRATION_API_URL and BYK_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued in UserDefaults until Stado answers",
+      "evidence": [
+        {
+          "at": "byk-ios/Sources/Features/BykFirstUseJourney.swift:123",
+          "contains": "BYK_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "byk-ios/Sources/Features/BykFirstUseJourney.swift:113",
+          "contains": "let fallback = try JourneyRouter.makeBundle("
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "echo-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado's integration API with STADO_INTEGRATION_API_URL and ECHO_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued in UserDefaults until Stado answers",
+      "evidence": [
+        {
+          "at": "echo-desktop/Sources/EchoDesktop/Onboarding/Controller.swift:238",
+          "contains": "ECHO_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "echo-desktop/Sources/EchoDesktop/Onboarding/Controller.swift:227",
+          "contains": "let fallback = try Self.loadFallback()"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
     }
   ]
 }
