@@ -433,6 +433,94 @@
           "contains": "- product: brama"
         }
       ]
+    },
+    {
+      "product": "echo",
+      "requires": "stado",
+      "feature": "the Echo database address and key",
+      "how": "runs `stado credentials get --field value <item>` (ECHO_STADO_BIN, default ~/.stado/bin/stado) as consumer jeden-echo-reader",
+      "whenAbsent": "alternative",
+      "detail": "without Stado it stops with \"Skarbiec refused <item> for consumer …\"",
+      "alternative": "set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in the environment; Stado is asked only for a value the environment does not carry",
+      "evidence": [
+        {
+          "at": "echo/lib/env/credential.mjs:15",
+          "contains": "execFileSync(stadoBin, [\"credentials\", \"get\""
+        },
+        {
+          "at": "echo/lib/env/credential.mjs:33",
+          "contains": "process.env.NEXT_PUBLIC_SUPABASE_URL ||="
+        }
+      ]
+    },
+    {
+      "product": "lem",
+      "requires": "stado",
+      "feature": "finding Brama's address",
+      "how": "runs `stado service directory connect brama --consumer <consumer> --json`",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without a configured url the gateway address is empty and no model call is made",
+      "alternative": "set `url` in Lem's Brama configuration; the directory is then only reported beside it",
+      "evidence": [
+        {
+          "at": "lem/Sources/LemCore/Brama/LemBramaConfig.swift:124",
+          "contains": "LemStado.service(service, consumer: skarbiec.consumer)"
+        },
+        {
+          "at": "lem/Sources/LemCore/Brama/LemBramaConfig.swift:125",
+          "contains": "if !explicit.isEmpty { return (explicit, entry) }"
+        }
+      ]
+    },
+    {
+      "product": "most",
+      "requires": "stado",
+      "feature": "production message storage",
+      "how": "the fleet database Stado places for the product (stado_database FleetDatabase for most)",
+      "whenAbsent": "refusal",
+      "detail": "MOST_COMPOSITION=prod stops with \"prod database initialization failed: …\"; the dev compositions keep rows only in process memory",
+      "evidence": [
+        {
+          "at": "most/most-rs/crates/most-server/src/boot/composition/store.rs:25",
+          "contains": "PostgresStorage::connect_fleet()"
+        },
+        {
+          "at": "most/most-rs/crates/most-server/src/boot/composition/select.rs:91",
+          "contains": "prod database initialization failed"
+        }
+      ]
+    },
+    {
+      "product": "lem",
+      "requires": "stado",
+      "feature": "remote compute jobs",
+      "how": "runs `stado machine submit|status …` (LEM_STADO_EXECUTABLE, default stado on PATH)",
+      "whenAbsent": "refusal",
+      "detail": "stops with \"Unable to find Stado executable <name>.\"",
+      "evidence": [
+        {
+          "at": "lem/Sources/LemBackend/Stado/LemStadoProcessAdapter.swift:17",
+          "contains": "Unable to find Stado executable"
+        }
+      ]
+    },
+    {
+      "product": "most",
+      "requires": "stado",
+      "feature": "SMS through Twilio",
+      "how": "HTTP to Stado's integration API (STADO_INTEGRATION_API_URL) with MOST_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "degraded",
+      "detail": "without the token the prod composition registers no Twilio backend and goes on with the mac relay and direct Apple backends; a dev composition that asks for Twilio logs \"STADO_INTEGRATION_API_URL is required for wisent-integrations\"",
+      "evidence": [
+        {
+          "at": "most/most-rs/crates/most-server/src/boot/composition/select.rs:68",
+          "contains": "MOST_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "most/most-rs/crates/most-backend-twilio/src/transport.rs:37",
+          "contains": "STADO_INTEGRATION_API_URL is required for wisent-integrations"
+        }
+      ]
     }
   ]
 }
