@@ -13,9 +13,6 @@
     "las": "src/cli.mjs",
     "las-mcp": "src/mcp.mjs"
   },
-  "scripts": {
-    "test": "node --test tests/cli/surfaces.test.mjs"
-  },
   "engines": {
     "node": ">=18"
   }
