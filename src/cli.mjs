@@ -46,8 +46,9 @@ function pick(names) {
   for (const n of names) {
     const s = byName.get(n);
     if (!s) {
-      process.stderr.write(`las: unknown surface '${n}'\n`);
-      process.exitCode = Number("1");
+      // A surface name the registry does not hold is a wrong invocation: exit 2 (cli.md rule 10).
+      process.stderr.write(`las: unknown surface '${n}'; known: ${SURFACES.map((surface) => surface.name).join(", ")}\n`);
+      process.exitCode = Number("2");
       return null;
     }
     if (!surfaceConfigured(s) || !active.has(s)) {
@@ -193,8 +194,10 @@ async function main() {
   } else if (command === "onboarding") {
     await cmdOnboarding(rest);
   } else {
+    // No or an unknown command is a wrong invocation: exit 2 (cli.md rule 10).
+    if (command) process.stderr.write(`las: unknown command '${command}'\n`);
     usage();
-    process.exitCode = Number("1");
+    process.exitCode = Number("2");
   }
 }
 
