@@ -64,7 +64,7 @@ function validateBundle(bundle) {
     throw new Error("onboarding bundle envelope is invalid");
   }
   const definition = bundle.definition;
-  if (!isRecord(definition) || definition.schema_version !== Number("1") || definition.product_id !== PRODUCT_ID
+  if (!isRecord(definition) || definition.schema_version !== 1 || definition.product_id !== PRODUCT_ID
     || definition.journey_id !== JOURNEY_ID || definition.journey_version !== JOURNEY_VERSION
     || definition.first_success_fact !== FIRST_SUCCESS_FACT || typeof definition.entry_screen_id !== "string") {
     throw new Error("onboarding bundle identity is invalid");

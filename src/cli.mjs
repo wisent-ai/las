@@ -55,12 +55,12 @@ function pick(names) {
     if (!s) {
       // A surface name the registry does not hold is a wrong invocation: exit 2 (cli.md rule 10).
       process.stderr.write(`las: unknown surface '${n}'; known: ${SURFACES.map((surface) => surface.name).join(", ")}\n`);
-      process.exitCode = Number("2");
+      process.exitCode = 2;
       return null;
     }
     if (!surfaceConfigured(s) || !active.has(s)) {
       process.stderr.write(`las: surface '${n}' is not active under the signed release and operator filters\n`);
-      process.exitCode = Number("1");
+      process.exitCode = 1;
       return null;
     }
     chosen.push(s);
@@ -84,7 +84,7 @@ async function cmdList() {
       active: active.has(s),
     };
   });
-  process.stdout.write(JSON.stringify(rows, null, Number("2")) + "\n");
+  process.stdout.write(JSON.stringify(rows, null, 2) + "\n");
 
 }
 
@@ -110,7 +110,7 @@ async function cmdTools(names) {
       out[surface.name] = { error: err.message };
     }
   }
-  process.stdout.write(JSON.stringify(out, null, Number("2")) + "\n");
+  process.stdout.write(JSON.stringify(out, null, 2) + "\n");
 }
 
 async function cmdCheck(names) {
@@ -127,8 +127,8 @@ async function cmdCheck(names) {
       anyDown = true;
     }
   }
-  process.stdout.write(JSON.stringify(report, null, Number("2")) + "\n");
-  if (anyDown) process.exitCode = Number("1");
+  process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+  if (anyDown) process.exitCode = 1;
 }
 async function cmdAdopt(args) {
   const replace = args.includes("--replace");
@@ -136,7 +136,7 @@ async function cmdAdopt(args) {
   const unknown = sources.find((argument) => argument.startsWith("-"));
   if (unknown) throw new Error(`unknown adopt option '${unknown}'`);
   const result = adoptMcpConfigurations(SURFACES, { sources, replace });
-  process.stdout.write(JSON.stringify(result, null, Number("2")) + "\n");
+  process.stdout.write(JSON.stringify(result, null, 2) + "\n");
   if (result.status === "imported" || result.status === "unchanged") {
     await recordCatalogueAdopted({
       client: "cli",
@@ -144,15 +144,15 @@ async function cmdAdopt(args) {
       catalogPath: result.catalogPath,
     });
   } else {
-    process.exitCode = Number("1");
+    process.exitCode = 1;
   }
 }
 async function cmdGui(args) {
-  let port = Number("0");
+  let port = 0;
   if (args.length) {
     let value;
-    if (args.length === Number("2") && args[Number("0")] === "--port") value = args[Number("1")];
-    else if (args.length === Number("1") && args[Number("0")].startsWith("--port=")) value = args[Number("0")].slice("--port=".length);
+    if (args.length === 2 && args[0] === "--port") value = args[1];
+    else if (args.length === 1 && args[0].startsWith("--port=")) value = args[0].slice("--port=".length);
     else throw new Error("gui accepts only --port PORT");
     if (!/^\d+$/.test(value)) throw new Error("GUI port must be an integer from 0 through 65535");
     port = Number(value);
@@ -164,8 +164,8 @@ async function cmdGui(args) {
 
 
 async function cmdOnboarding(args) {
-  if (args.length > Number("1")) throw new Error("onboarding accepts at most one action");
-  const result = await runOnboardingAction(args[Number("0")] || "show", { client: "cli" });
+  if (args.length > 1) throw new Error("onboarding accepts at most one action");
+  const result = await runOnboardingAction(args[0] || "show", { client: "cli" });
   process.stdout.write(
     [
       `${result.title}`,
@@ -179,7 +179,7 @@ async function cmdOnboarding(args) {
 }
 
 async function main() {
-  const argv = process.argv.slice(Number("2"));
+  const argv = process.argv.slice(2);
   const [command, ...rest] = argv;
   // `--help`, `-h` or `help` anywhere prints the usage to stdout and runs
   // nothing: `las adopt --help` used to fail as an unknown adopt option and
@@ -206,11 +206,11 @@ async function main() {
     // No or an unknown command is a wrong invocation: exit 2 (cli.md rule 10).
     if (command) process.stderr.write(`las: unknown command '${command}'\n`);
     usage();
-    process.exitCode = Number("2");
+    process.exitCode = 2;
   }
 }
 
 main().catch((err) => {
   process.stderr.write(`las: ${err.message}\n`);
-  process.exitCode = Number("1");
+  process.exitCode = 1;
 });

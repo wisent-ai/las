@@ -8,9 +8,6 @@
 
 import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
 
-const ONE = Number("1");
-const NONE = Number("0");
-
 /**
  * @param {string} sourcePath the configuration file to read
  * @param {Map<string, object>} surfacesByName canonical surfaces, by name
@@ -51,13 +48,13 @@ export function parseSource(sourcePath, surfacesByName, shape) {
   }
   const serverCollections = [decoded?.mcpServers, decoded?.servers].filter((value) => value !== undefined);
   if (!isRecord(decoded) || Object.keys(decoded).some((key) => !topLevelFields.includes(key))
-    || serverCollections.length !== ONE || !isRecord(serverCollections[NONE])
+    || serverCollections.length !== 1 || !isRecord(serverCollections[0])
     || (decoded.$schema !== undefined && typeof decoded.$schema !== "string")) {
     rejected.push({ source: realSource, reason: "configuration must contain exactly one mcpServers or servers object and no unsupported top-level fields" });
     return { source: realSource, registrations, rejected };
   }
-  const entries = Object.entries(serverCollections[NONE]).sort(([left], [right]) => left.localeCompare(right));
-  if (entries.length === NONE) {
+  const entries = Object.entries(serverCollections[0]).sort(([left], [right]) => left.localeCompare(right));
+  if (entries.length === 0) {
     rejected.push({ source: realSource, reason: "MCP server collection contains no entries" });
     return { source: realSource, registrations, rejected };
   }

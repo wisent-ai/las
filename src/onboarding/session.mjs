@@ -7,10 +7,6 @@
 
 import { randomUUID } from "node:crypto";
 
-const FIRST_INDEX = Number("0");
-const ONE = Number("1");
-const NONE = Number("0");
-
 export class OnboardingSession {
   /**
    * `deps` is what the journey owns and this class only uses: writing the
@@ -69,7 +65,7 @@ export class OnboardingSession {
 
   async flush() {
     while (this.state.pending_events.length) {
-      const event = this.state.pending_events[FIRST_INDEX];
+      const event = this.state.pending_events[0];
       try {
         await this.transport.collectEvent(event);
       } catch {
@@ -123,9 +119,9 @@ export class OnboardingSession {
       this.state.meta = { ...(this.state.meta || {}), first_action_recorded: true };
       events.push(this.event("onboarding_first_action_completed", revision, properties));
     }
-    for (let index = FIRST_INDEX; index < this.bundle.definition.screens.length; index += ONE) {
+    for (let index = 0; index < this.bundle.definition.screens.length; index += 1) {
       const current = this.screen;
-      if (current.transitions.length === NONE) break;
+      if (current.transitions.length === 0) break;
       const decision = this.deps.selectNext(this.bundle, current.screen_id, this.state.evidence);
       if (!decision) break;
       if (!this.progress.completed_screen_ids.includes(current.screen_id)) this.progress.completed_screen_ids.push(current.screen_id);
@@ -133,7 +129,7 @@ export class OnboardingSession {
       events.push(this.event("onboarding_step_completed", revision, properties, current.screen_id, decision));
     }
     const terminal = this.screen;
-    if (terminal.transitions.length === NONE && this.state.evidence[this.deps.firstSuccessFact] === true
+    if (terminal.transitions.length === 0 && this.state.evidence[this.deps.firstSuccessFact] === true
       && this.deps.evaluate(terminal.completion_evidence, this.state.evidence)) {
       if (!this.progress.completed_screen_ids.includes(terminal.screen_id)) this.progress.completed_screen_ids.push(terminal.screen_id);
       this.progress.status = "completed";

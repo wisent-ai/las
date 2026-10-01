@@ -30,11 +30,11 @@ import { COPY, LOCAL_SCREENS } from "./journey/screens.mjs";
 async function loadState() {
   try {
     const parsed = JSON.parse(await readFile(STATE_PATH, "utf8"));
-    if (isRecord(parsed) && parsed.schema_version === Number("1")) return parsed;
+    if (isRecord(parsed) && parsed.schema_version === 1) return parsed;
   } catch {
     // Missing or damaged local state falls back to a fresh, valid store.
   }
-  return { schema_version: Number("1"), installation_id: randomUUID(), pending_events: [], evidence: {}, meta: {} };
+  return { schema_version: 1, installation_id: randomUUID(), pending_events: [], evidence: {}, meta: {} };
 }
 
 async function saveState(state) {
