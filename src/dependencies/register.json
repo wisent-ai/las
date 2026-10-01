@@ -31,16 +31,17 @@
       "requires": "stado",
       "feature": "rebuilding itself on macOS",
       "how": "runs `stado product signing inspect` and `stado product signing sign`",
-      "whenAbsent": "refusal",
-      "detail": "the rebuild stops with \"cannot inspect the running code identity: …\"",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without JEDEN_CODESIGN_IDENTITY the rebuild stops with \"cannot inspect the running code identity through Stado: …; without Stado set JEDEN_CODESIGN_IDENTITY …\"",
+      "alternative": "JEDEN_CODESIGN_IDENTITY (a codesign identity, or - for ad-hoc) signs the new build with /usr/bin/codesign and asks Stado nothing",
       "evidence": [
         {
           "at": "jeden/rust/cli/run/self_rebuild.rs:50",
-          "contains": "Command::new(\"stado\")"
+          "contains": "let own_identity = std::env::var(\"JEDEN_CODESIGN_IDENTITY\")"
         },
         {
-          "at": "jeden/rust/cli/run/self_rebuild.rs:54",
-          "contains": "cannot inspect the running code identity"
+          "at": "jeden/rust/cli/run/self_rebuild.rs:102",
+          "contains": "Command::new(\"/usr/bin/codesign\")"
         }
       ]
     },
