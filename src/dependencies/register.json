@@ -349,12 +349,17 @@
       "requires": "brama",
       "feature": "model reasoning inside a browser workflow",
       "how": "HTTP to STADO_MODEL_ROUTER_URL with Weles' Brama identity",
-      "whenAbsent": "refusal",
-      "detail": "stops with \"missing required STADO_MODEL_ROUTER_URL\"",
+      "whenAbsent": "alternative",
+      "detail": "without Brama and without WELES_MODEL_ENDPOINT it stops with \"missing required STADO_MODEL_ROUTER_URL; without Brama set WELES_MODEL_ENDPOINT and WELES_MODEL …\"",
+      "alternative": "WELES_MODEL_ENDPOINT, WELES_MODEL (and WELES_MODEL_KEY) send the same unsigned calls to an OpenAI-compatible provider; native Jeden tasks get JEDEN_MODEL_ENDPOINT",
       "evidence": [
         {
-          "at": "weles/src/agent/jeden.ts:96",
-          "contains": "missing required STADO_MODEL_ROUTER_URL"
+          "at": "weles/src/agent/jeden.ts:98",
+          "contains": "const directUrl = nonEmpty(process.env.WELES_MODEL_ENDPOINT);"
+        },
+        {
+          "at": "weles/src/agent/jeden.ts:120",
+          "contains": "without Brama set WELES_MODEL_ENDPOINT and WELES_MODEL"
         }
       ]
     },
