@@ -125,6 +125,7 @@ las check [surface...]
 las dependencies [product...] [--requires PRODUCT] [--without PRODUCT[,PRODUCT...]] [--json]
 las dependencies check [--move-lines] [--json]
 las dependencies set <product> <requires> --feature TEXT --how TEXT --when-absent OUTCOME --detail TEXT [--alternative TEXT] --at <repository>/<file>:<line> --contains TEXT [--at … --contains …]
+las dependencies remove <product> <requires> --feature TEXT
 ```
 
 When installed from an approved source, `package.json` exposes `las` and
@@ -196,6 +197,12 @@ alternative, the outcome is one of the register's) and every `--at` line
 contains the `--contains` text that follows it; otherwise nothing is written
 and each failing citation is printed with what the line says now (exit `1`),
 or the invalid field is named (exit `2`).
+
+`las dependencies remove <product> <requires> --feature TEXT` drops the entry
+with that key, for a dependency that is gone or now described by another
+entry, and prints `removed the entry`. A key the register does not hold is
+refused with `las: no entry <product> -> <requires> with feature "…"` (exit
+`1`).
 
 `las gui` shows the same register under *Dependencies*: tick the products the
 machine does not have and the table narrows to what needs them, with the

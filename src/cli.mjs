@@ -36,6 +36,7 @@ function usage(stream = process.stderr) {
       "  dependencies check [--move-lines] [--json]  re-read every source line the register cites",
       "  dependencies set <product> <requires> --feature … --how … --when-absent … --detail … --at … --contains …",
       "                       record one entry; refused unless every cited line says what it quotes",
+      "  dependencies remove <product> <requires> --feature …  drop one entry",
       "",
       "surfaces: " + SURFACES.map((s) => s.name).join(", "),
       "env: LAS_ONLY=a,b (allow-list)  LAS_SKIP=a,b (deny-list)",

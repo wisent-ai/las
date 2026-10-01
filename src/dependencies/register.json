@@ -9,34 +9,20 @@
   "dependencies": [
     {
       "product": "jeden",
-      "requires": "brama",
-      "feature": "every model request",
-      "how": "HTTP to BRAMA_URL with BRAMA_TOKEN",
-      "whenAbsent": "refusal",
-      "detail": "a run without a Brama address stops with \"BRAMA_URL is required; configure the Brama model-router service URL\"; Jeden has no other model route",
-      "evidence": [
-        {
-          "at": "jeden/rust/agent/runtime/routing/mod.rs:125",
-          "contains": "BRAMA_URL is required"
-        }
-      ]
-    },
-    {
-      "product": "jeden",
       "requires": "stado",
       "feature": "reading its own Brama credentials",
       "how": "runs `stado credentials get <item> --field <field>`",
       "whenAbsent": "alternative",
       "detail": "without Stado the read fails with \"the Stado CLI could not be started … Install Stado, or carry … and BRAMA_URL in this process's environment\"",
-      "alternative": "set the Brama secret and BRAMA_URL in the environment; Jeden reads Stado only when the environment does not carry them",
+      "alternative": "set the Brama secret and BRAMA_URL in the environment, or name an OpenAI-compatible provider with JEDEN_MODEL_ENDPOINT; in both cases Stado is not asked",
       "evidence": [
         {
-          "at": "jeden/rust/agent/credential/mod.rs:71",
+          "at": "jeden/rust/agent/credential/mod.rs:97",
           "contains": "Command::new(\"stado\")"
         },
         {
-          "at": "jeden/rust/agent/credential/mod.rs:106",
-          "contains": "env::var(variable)"
+          "at": "jeden/rust/agent/credential/mod.rs:163",
+          "contains": "if direct_provider().is_some() {"
         }
       ]
     },
@@ -622,6 +608,25 @@
         {
           "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
           "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "jeden",
+      "requires": "brama",
+      "feature": "model calls",
+      "how": "BRAMA_URL serves /v1/models and /v1/chat/completions, signed with WISENT_APP_AGENT_AUTH_SECRET",
+      "whenAbsent": "alternative",
+      "detail": "without Brama and without JEDEN_MODEL_ENDPOINT a run stops with \"BRAMA_URL is required; … or set JEDEN_MODEL_ENDPOINT to an OpenAI-compatible provider to run without Brama\"",
+      "alternative": "JEDEN_MODEL_ENDPOINT (bearer JEDEN_MODEL_KEY) sends the same calls to any OpenAI-compatible provider, unsigned, without asking Stado for Brama credentials",
+      "evidence": [
+        {
+          "at": "jeden/rust/agent/runtime/routing/mod.rs:46",
+          "contains": "let direct = crate::agent::credential::direct_provider();"
+        },
+        {
+          "at": "jeden/rust/agent/credential/mod.rs:32",
+          "contains": "pub(crate) const DIRECT_URL: &str = \"JEDEN_MODEL_ENDPOINT\";"
         }
       ]
     }

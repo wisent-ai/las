@@ -158,6 +158,23 @@ export function recordDependency(entry) {
   return { recorded: true, replaced: position >= 0 };
 }
 
+/**
+ * Drop the entry with this product, required product and feature: the way an
+ * entry leaves when the dependency it describes is gone or another entry now
+ * says it. Answers whether such an entry existed; nothing else is touched.
+ */
+export function removeDependency({ product, requires, feature }) {
+  const file = path.join(HERE, "register.json");
+  const document = JSON.parse(fs.readFileSync(file, "utf8"));
+  const position = document.dependencies.findIndex((existing) =>
+    existing.product === product && existing.requires === requires && existing.feature === feature);
+  if (position < 0) return { removed: false };
+  document.dependencies.splice(position, 1);
+  validated(JSON.parse(JSON.stringify(document)));
+  fs.writeFileSync(file, JSON.stringify(document, null, 2) + "\n");
+  return { removed: true };
+}
+
 /** What the GUI shows: the register narrowed to the products this machine
  * does not have (all entries when none), every product it names, and the
  * evidence check, so a stale entry is visible beside it. */

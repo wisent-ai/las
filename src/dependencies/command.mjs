@@ -1,8 +1,9 @@
 // `las dependencies`: the register of what each Wisent product needs from
 // another one, printed for a person or as JSON; `las dependencies check`,
 // which reads every cited source line again and, with `--move-lines`,
-// follows quotes that only moved to another line; and `las dependencies
-// set`, which records one entry only when its citations hold.
+// follows quotes that only moved to another line; `las dependencies set`,
+// which records one entry only when its citations hold; and `las
+// dependencies remove`, which drops one entry.
 
 import {
   checkDependencyEvidence,
@@ -10,6 +11,7 @@ import {
   describeDependency,
   moveDependencyLines,
   recordDependency,
+  removeDependency,
   selectDependencies,
 } from "./register.mjs";
 
@@ -18,6 +20,7 @@ export const DEPENDENCIES_USAGE = [
   "las dependencies check [--move-lines] [--json]",
   "las dependencies set <product> <requires> --feature TEXT --how TEXT --when-absent OUTCOME --detail TEXT",
   "    [--alternative TEXT] --at <repository>/<file>:<line> --contains TEXT [--at … --contains …]",
+  "las dependencies remove <product> <requires> --feature TEXT",
 ].join("\n");
 
 class UsageError extends Error {}
@@ -72,6 +75,16 @@ function parseSet(args) {
   return { ...entry, evidence };
 }
 
+/** `remove <product> <requires> --feature TEXT`: the key of one entry. */
+function parseRemove(args) {
+  const [product, requires, flag, feature, ...rest] = args;
+  if (!product || !requires || product.startsWith("-") || requires.startsWith("-")
+    || flag !== "--feature" || feature === undefined || rest.length) {
+    throw new UsageError("dependencies remove needs <product> <requires> --feature TEXT");
+  }
+  return { product, requires, feature };
+}
+
 function printRecorded(result, json) {
   if (json) process.stdout.write(JSON.stringify(result, null, 2) + "\n");
   else if (result.recorded) process.stdout.write(`${result.replaced ? "replaced" : "added"} the entry\n`);
@@ -124,6 +137,15 @@ export async function cmdDependencies(args) {
         return;
       }
       printRecorded(result, args.includes("--json"));
+      return;
+    }
+    if (args[0] === "remove") {
+      const key = parseRemove(args.slice(1).filter((argument) => argument !== "--json"));
+      const result = removeDependency(key);
+      if (args.includes("--json")) process.stdout.write(JSON.stringify({ ...key, ...result }, null, 2) + "\n");
+      else if (result.removed) process.stdout.write("removed the entry\n");
+      else process.stderr.write(`las: no entry ${key.product} -> ${key.requires} with feature ${JSON.stringify(key.feature)}\n`);
+      if (!result.removed) process.exitCode = 1;
       return;
     }
     query = parse(args);
