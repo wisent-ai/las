@@ -335,12 +335,21 @@
       "requires": "skarbiec",
       "feature": "scoped account credentials",
       "how": "HTTP to WC_SKARBIEC_URL",
-      "whenAbsent": "refusal",
-      "detail": "stops with \"WC_SKARBIEC_URL is required from the Stado service directory\"",
+      "whenAbsent": "alternative",
+      "detail": "without Skarbiec and without WELES_CREDENTIALS_FILE a read stops with \"WC_SKARBIEC_URL is required from the Stado service directory; without Skarbiec set WELES_CREDENTIALS_FILE …\"",
+      "alternative": "WELES_CREDENTIALS_FILE names an owner-only JSON file (item -> field -> value); reads and writes of scoped and acquired credentials go there and Skarbiec is not asked; tenant reads still need Skarbiec",
       "evidence": [
         {
-          "at": "weles/src/secrets/scoped-service/transport.ts:63",
-          "contains": "WC_SKARBIEC_URL is required from the Stado service directory"
+          "at": "weles/src/secrets/scoped-service/transport.ts:245",
+          "contains": "if (local) return readLocalField(local, item, field, tenantId);"
+        },
+        {
+          "at": "weles/src/_shared/scoped-secrets.mjs:104",
+          "contains": "if (local) return readLocalField(local, service.item, field);"
+        },
+        {
+          "at": "weles/src/secrets/scoped-service/transport.ts:59",
+          "contains": "without Skarbiec set WELES_CREDENTIALS_FILE"
         }
       ]
     },
