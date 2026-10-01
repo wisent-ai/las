@@ -31,11 +31,13 @@ function validated(document) {
     if (!outcomes.includes(entry.whenAbsent)) throw invalid(index, `whenAbsent must be one of the register's outcomes: ${outcomes.join(", ")}`);
     if (entry.whenAbsent === "alternative") text(entry, index, "alternative");
     if (!Array.isArray(entry.evidence) || !entry.evidence.length) throw invalid(index, "evidence must cite at least one source line");
-    for (const cited of entry.evidence) {
-      if (!cited.repository || !cited.file || !Number.isInteger(cited.line) || !cited.contains) {
-        throw invalid(index, "each evidence item needs repository, file, line and contains");
-      }
-    }
+    entry.evidence = entry.evidence.map((cited) => {
+      // `at` is `<repository>/<file>:<line>`, the way the source is cited
+      // everywhere else; it is split once here for the readers below.
+      const located = /^([^/]+)\/(.+):([1-9]\d*)$/.exec(cited.at ?? "");
+      if (!located || !cited.contains) throw invalid(index, "each evidence item needs at (<repository>/<file>:<line>) and contains");
+      return { ...cited, repository: located[1], file: located[2], line: Number(located[3]) };
+    });
   });
   return document;
 }
