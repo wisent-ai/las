@@ -19,8 +19,8 @@ import { recordCatalogueAdopted, runOnboardingAction } from "./onboarding/journe
 
 const SEP = "__";
 
-function usage() {
-  process.stderr.write(
+function usage(stream = process.stderr) {
+  stream.write(
     [
       "usage: las <command> [arguments]",
       "  adopt [--replace] [config...]  adopt supported entries from standard mcpServers JSON",
@@ -173,6 +173,13 @@ async function cmdOnboarding(args) {
 async function main() {
   const argv = process.argv.slice(Number("2"));
   const [command, ...rest] = argv;
+  // `--help`, `-h` or `help` anywhere prints the usage to stdout and runs
+  // nothing: `las adopt --help` used to fail as an unknown adopt option and
+  // `las --help` exited 1.
+  if (argv.some((word) => word === "--help" || word === "-h") || command === "help") {
+    usage(process.stdout);
+    return;
+  }
   if (command === "adopt") {
     await cmdAdopt(rest);
   } else if (command === "gui") {
