@@ -34,7 +34,7 @@
       "argv": ["stado", "product", "deliver", "npm"],
       "required": true,
       "secret_env": {
-        "NPM_TOKEN": "npm-registry#token"
+        "NPM_TOKEN": "npm#token"
       }
     }
   ]
