@@ -7,7 +7,7 @@
   "hero": {
     "headline": "Las: one local catalogue for approved agent tools",
     "lede": "Las is a local, policy-preserving federation layer for Wisent agent tools. It adopts operator-approved MCP registrations through a CLI or packaged graphical importer, verifies signed release contracts, and exposes children through one stdio MCP server.",
-    "decidedBy": "Lukasz Bartoszcze (2026-08-27 user request)"
+    "decidedBy": "operator"
   },
   "primaryAction": {
     "label": "Read the quick start",

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "product": "Las",
-  "decidedBy": "Lukasz Bartoszcze (2026-08-27 user request)",
+  "decidedBy": "operator",
   "components": [
     {
       "id": "landing.header",
@@ -11,7 +11,7 @@
       "content": "site.product, site.nav, site.primaryAction",
       "status": "required",
       "reason": "carried from the page approved 2026-08-27",
-      "decidedBy": "Lukasz Bartoszcze (2026-08-27 user request)"
+      "decidedBy": "operator"
     },
     {
       "id": "landing.hero",
@@ -21,7 +21,7 @@
       "content": "plan.hero, site.primaryAction, site.secondaryAction, site.commitment",
       "status": "required",
       "reason": "carried from the page approved 2026-08-27",
-      "decidedBy": "Lukasz Bartoszcze (2026-08-27 user request)"
+      "decidedBy": "operator"
     },
     {
       "id": "landing.recognition",
@@ -31,7 +31,7 @@
       "content": "recognition section heading, lede, and 2-4 items",
       "status": "required",
       "reason": "carried from the page approved 2026-08-27",
-      "decidedBy": "Lukasz Bartoszcze (2026-08-27 user request)"
+      "decidedBy": "operator"
     },
     {
       "id": "landing.mechanism",
@@ -41,7 +41,7 @@
       "content": "mechanism section heading, lede, and numbered items",
       "status": "required",
       "reason": "carried from the page approved 2026-08-27",
-      "decidedBy": "Lukasz Bartoszcze (2026-08-27 user request)"
+      "decidedBy": "operator"
     },
     {
       "id": "landing.proof",
@@ -51,7 +51,7 @@
       "content": "proof section heading, lede, and artifact",
       "status": "required",
       "reason": "carried from the page approved 2026-08-27",
-      "decidedBy": "Lukasz Bartoszcze (2026-08-27 user request)"
+      "decidedBy": "operator"
     },
     {
       "id": "landing.objection",
@@ -61,7 +61,7 @@
       "content": "objection section heading and 3-5 question-answer items",
       "status": "required",
       "reason": "carried from the page approved 2026-08-27",
-      "decidedBy": "Lukasz Bartoszcze (2026-08-27 user request)"
+      "decidedBy": "operator"
     },
     {
       "id": "landing.decision",
@@ -71,7 +71,7 @@
       "content": "decision heading, lede, site.primaryAction, site.commitment",
       "status": "required",
       "reason": "carried from the page approved 2026-08-27",
-      "decidedBy": "Lukasz Bartoszcze (2026-08-27 user request)"
+      "decidedBy": "operator"
     },
     {
       "id": "landing.footer",
@@ -81,7 +81,7 @@
       "content": "site.product, site.description, site.footer",
       "status": "required",
       "reason": "carried from the page approved 2026-08-27",
-      "decidedBy": "Lukasz Bartoszcze (2026-08-27 user request)"
+      "decidedBy": "operator"
     }
   ]
 }
