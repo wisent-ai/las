@@ -162,13 +162,13 @@
       "product": "stado",
       "requires": "tama",
       "feature": "fleet build approvals",
-      "how": "runs `tama build approval …`",
-      "whenAbsent": "refusal",
-      "detail": "the build is refused with \"cannot verify recorded user build approval through Tama: …\"",
+      "how": "runs `tama build approval …` only when a build exceeds the day's budget",
+      "whenAbsent": "degraded",
+      "detail": "builds inside the daily budget go on without Tama; one past it is refused with the budget's refusal followed by \"cannot verify recorded user build approval through Tama: …\"",
       "evidence": [
         {
-          "at": "stado/stado-rs/src/scheduler/builds/approval.rs:15",
-          "contains": "Command::new(\"tama\")"
+          "at": "stado/stado-rs/src/scheduler/builds/charge.rs:72",
+          "contains": "let approved = if let Some(refusal) = budget.refusal(wanted, asked_by) {"
         },
         {
           "at": "stado/stado-rs/src/scheduler/builds/approval.rs:29",
