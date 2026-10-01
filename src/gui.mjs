@@ -12,6 +12,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { adoptMcpConfigurations, catalogPath, catalogRegistration } from "./catalog.mjs";
 import { recordCatalogueAdopted } from "./onboarding/journey.mjs";
+import { dependenciesWithout } from "./dependencies/register.mjs";
 import { SURFACES, activeSurfaces, surfaceConfigured } from "./registry.mjs";
 
 const LOOPBACK_HOST = "127.0.0.1";
@@ -104,7 +105,6 @@ function catalogReadback() {
     };
   }
 }
-
 
 function readRequestJson(request) {
   const declared = request.headers["content-length"];
@@ -235,6 +235,17 @@ export async function startLasGui({ port = 0 } = {}) {
         }
         const readback = catalogReadback();
         sendJson(response, readback.catalog ? HTTP_OK : HTTP_CONFLICT, readback);
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/dependencies") {
+        const refusal = authorized(request, authority, origin, token, false);
+        if (refusal) {
+          sendJson(response, HTTP_FORBIDDEN, { error: refusal });
+          return;
+        }
+        // The same register and query `las dependencies --without …` reads.
+        const without = (url.searchParams.get("without") || "").split(",").filter(Boolean);
+        sendJson(response, HTTP_OK, dependenciesWithout(without));
         return;
       }
       if (request.method === "POST" && url.pathname === "/api/adopt") {

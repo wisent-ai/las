@@ -10,9 +10,11 @@
 //   las list                 — every federated surface + its one-line summary
 //   las tools [surface...]    — advertised tools, spawning each child to ask
 //   las check [surface...]    — connectivity: spawn + initialize handshake
+//   las dependencies [...]    — what each product needs from another one
 // With no surface arguments, tools/check cover every active surface (honoring
 // the LAS_ONLY / LAS_SKIP environment filters).
 import { adoptMcpConfigurations, catalogRegistration } from "./catalog.mjs";
+import { cmdDependencies } from "./dependencies/command.mjs";
 import { startLasGui } from "./gui.mjs";
 import { SURFACES, activeSurfaces, authorizeTools, connect, handshake, surfaceConfigured } from "./registry.mjs";
 import { recordCatalogueAdopted, runOnboardingAction } from "./onboarding/journey.mjs";
@@ -29,6 +31,9 @@ function usage(stream = process.stderr) {
       "  tools [surface...]   list advertised tools (spawns each child)",
       "  check [surface...]   connectivity handshake against each child",
       "  onboarding [action]  first-use adoption journey (show, status, advance, skip, reset)",
+      "  dependencies [product...] [--requires P] [--without P,...] [--json]",
+      "                       what each Wisent product needs from another and what happens without it",
+      "  dependencies check [--json]  re-read every source line the register cites",
       "",
       "surfaces: " + SURFACES.map((s) => s.name).join(", "),
       "env: LAS_ONLY=a,b (allow-list)  LAS_SKIP=a,b (deny-list)",
@@ -193,6 +198,8 @@ async function main() {
     await cmdCheck(rest);
   } else if (command === "onboarding") {
     await cmdOnboarding(rest);
+  } else if (command === "dependencies") {
+    await cmdDependencies(rest);
   } else {
     // No or an unknown command is a wrong invocation: exit 2 (cli.md rule 10).
     if (command) process.stderr.write(`las: unknown command '${command}'\n`);

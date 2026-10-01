@@ -122,7 +122,8 @@ las onboarding [show|status|advance|skip|reset]
 las list
 las tools [surface...]
 las check [surface...]
-
+las dependencies [product...] [--requires PRODUCT] [--without PRODUCT[,PRODUCT...]] [--json]
+las dependencies check [--json]
 ```
 
 When installed from an approved source, `package.json` exposes `las` and
@@ -154,6 +155,39 @@ node src/mcp.mjs
 - After adoption, an unregistered surface is inactive even when a signed
   release exists; the registration never bypasses release or tool policy.
  
+
+### What each product needs from another
+
+A machine is not assumed to hold every Wisent product. `las dependencies`
+prints the register in `src/dependencies/register.json`: for each place one
+product calls another, what it is used for, how it is reached, and what a
+machine without the other product gets:
+
+- `alternative`: the product works without it through the path printed under
+  `alternative` (for example Stado's credential store as a file instead of
+  Skarbiec, or `brama serve --local-credentials-stdin`);
+- `refusal`: the feature stops; the entry quotes the error;
+- `degraded`: the feature goes on with less; the entry says what is lost.
+
+```bash
+las dependencies stado                 # everything Stado needs
+las dependencies --requires skarbiec   # everything that needs Skarbiec
+las dependencies --without brama,skarbiec   # what a machine without both gets
+las dependencies --json
+```
+
+Every entry cites the source lines it was read from.
+`las dependencies check` reads each cited line again and exits `1` when one no
+longer says what the register quotes, naming the file, the line, the quoted
+text and what the line says now (or that the file cannot be read). A product
+name the register does not hold, an unknown option, or `check` with a filter
+exits `2` with the usage.
+
+`las gui` shows the same register under *Dependencies*: tick the products the
+machine does not have and the table narrows to what needs them, with the
+evidence check above it. The page reads `GET /api/dependencies?without=a,b`
+with the session token, the same query as `--without`.
+
 ### First use and replay
 
 `las onboarding` starts the shipped first-use journey and `las onboarding

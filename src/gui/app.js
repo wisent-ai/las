@@ -22,6 +22,9 @@ const resultSummary = document.querySelector("#result-summary");
 const resultGroups = document.querySelector("#result-groups");
 const catalogPath = document.querySelector("#catalog-path");
 const catalogBody = document.querySelector("#catalog-body");
+const dependenciesEvidence = document.querySelector("#dependencies-evidence");
+const dependenciesWithout = document.querySelector("#dependencies-without");
+const dependenciesBody = document.querySelector("#dependencies-body");
 
 function selectedMode() {
   return form.elements.mode.value;
@@ -207,3 +210,59 @@ api("/api/catalog")
   .catch((error) => {
     setBusy(false, error instanceof Error ? error.message : String(error));
   });
+
+function cell(text, detail) {
+  const td = document.createElement("td");
+  td.textContent = text;
+  if (detail) {
+    const small = document.createElement("small");
+    small.textContent = detail;
+    td.append(small);
+  }
+  return td;
+}
+
+function renderDependencies(view) {
+  dependenciesEvidence.textContent = view.evidence.ok
+    ? `all ${view.evidence.checked} cited source lines still match`
+    : `${view.evidence.stale.length} of ${view.evidence.checked} cited source lines changed: ${view.evidence.stale.map((cited) => `${cited.repository}/${cited.file}:${cited.line} (${cited.observed})`).join("; ")}`;
+  if (!dependenciesWithout.querySelector("input")) {
+    for (const product of view.products) {
+      const label = document.createElement("label");
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.value = product;
+      box.addEventListener("change", loadDependencies);
+      label.append(box, ` ${product} `);
+      dependenciesWithout.append(label);
+    }
+  }
+  dependenciesBody.replaceChildren();
+  for (const entry of view.dependencies) {
+    const tr = document.createElement("tr");
+    const product = document.createElement("th");
+    product.scope = "row";
+    product.textContent = entry.product;
+    const outcome = document.createElement("td");
+    outcome.append(badge(entry.whenAbsent, entry.whenAbsent === "alternative"));
+    tr.append(
+      product,
+      cell(entry.requires, entry.feature),
+      outcome,
+      cell(entry.detail, entry.alternative ? `alternative: ${entry.alternative}` : ""),
+      cell(entry.evidence.map((cited) => `${cited.repository}/${cited.file}:${cited.line}`).join("\n")),
+    );
+    dependenciesBody.append(tr);
+  }
+}
+
+function loadDependencies() {
+  const without = [...dependenciesWithout.querySelectorAll("input:checked")].map((box) => box.value);
+  api(`/api/dependencies?without=${encodeURIComponent(without.join(","))}`)
+    .then(renderDependencies)
+    .catch((error) => {
+      dependenciesEvidence.textContent = `Dependency register refused: ${error instanceof Error ? error.message : String(error)}`;
+    });
+}
+
+loadDependencies();

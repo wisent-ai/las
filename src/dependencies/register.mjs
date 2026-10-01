@@ -1,0 +1,120 @@
+// What each Wisent product needs from another one, and what a machine
+// without that other product gets: the register in `register.json`, read
+// and queried here, and its evidence checked against the source it cites.
+
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+// las/src/dependencies -> las/src -> las -> the Wisent workspace root shared
+// by every sibling product repository.
+const WORKSPACE = path.resolve(HERE, "..", "..", "..");
+
+function invalid(index, reason) {
+  return new Error(`dependency register entry ${index}: ${reason}`);
+}
+
+function text(entry, index, field) {
+  if (typeof entry[field] !== "string" || !entry[field].trim()) throw invalid(index, `${field} must be a non-empty string`);
+}
+
+function validated(document) {
+  if (!Array.isArray(document.dependencies)) throw new Error("dependency register has no dependencies list");
+  const outcomes = Object.keys(document.outcomes ?? {});
+  document.dependencies.forEach((entry, index) => {
+    text(entry, index, "product");
+    text(entry, index, "requires");
+    text(entry, index, "feature");
+    text(entry, index, "how");
+    text(entry, index, "detail");
+    if (!outcomes.includes(entry.whenAbsent)) throw invalid(index, `whenAbsent must be one of the register's outcomes: ${outcomes.join(", ")}`);
+    if (entry.whenAbsent === "alternative") text(entry, index, "alternative");
+    if (!Array.isArray(entry.evidence) || !entry.evidence.length) throw invalid(index, "evidence must cite at least one source line");
+    for (const cited of entry.evidence) {
+      if (!cited.repository || !cited.file || !Number.isInteger(cited.line) || !cited.contains) {
+        throw invalid(index, "each evidence item needs repository, file, line and contains");
+      }
+    }
+  });
+  return document;
+}
+
+/** The register, validated. */
+export function dependencyRegister() {
+  return validated(JSON.parse(fs.readFileSync(path.join(HERE, "register.json"), "utf8")));
+}
+
+/** Every product the register names, on either side. */
+export function registeredProducts(register) {
+  return [...new Set(register.dependencies.flatMap((entry) => [entry.product, entry.requires]))].sort();
+}
+
+/**
+ * The entries a query selects: `products` the dependent products (all when
+ * empty), `requires` one required product or null, `without` the products
+ * this machine does not have — only entries that need one of them.
+ */
+export function selectDependencies(register, query) {
+  const known = new Set(registeredProducts(register));
+  const named = [...query.products, ...(query.requires ? [query.requires] : []), ...query.without];
+  for (const name of named) {
+    if (!known.has(name)) throw new Error(`no product '${name}' in the dependency register; known: ${[...known].join(", ")}`);
+  }
+  return register.dependencies.filter((entry) =>
+    (!query.products.length || query.products.includes(entry.product))
+    && (!query.requires || entry.requires === query.requires)
+    && (!query.without.length || query.without.includes(entry.requires)));
+}
+
+/** One cited line read again: whether it still says what the register quotes. */
+function verify(cited) {
+  const file = path.join(WORKSPACE, cited.repository, cited.file);
+  let lines;
+  try {
+    lines = fs.readFileSync(file, "utf8").split("\n");
+  } catch (error) {
+    return { ...cited, ok: false, observed: `the file cannot be read: ${error.message}` };
+  }
+  const observed = lines[cited.line - 1];
+  if (observed === undefined) return { ...cited, ok: false, observed: `the file has only ${lines.length} lines` };
+  return observed.includes(cited.contains) ? { ...cited, ok: true } : { ...cited, ok: false, observed: `the line reads ${JSON.stringify(observed.trim())}` };
+}
+
+/** Every cited line checked; `ok` is false when any one moved or changed. */
+export function checkDependencyEvidence(register) {
+  const stale = [];
+  let checked = 0;
+  for (const entry of register.dependencies) {
+    for (const cited of entry.evidence) {
+      checked += 1;
+      const result = verify(cited);
+      if (!result.ok) stale.push({ product: entry.product, requires: entry.requires, feature: entry.feature, ...result });
+    }
+  }
+  return { ok: stale.length === 0, workspace: WORKSPACE, checked, stale };
+}
+
+/** What the GUI shows: the register narrowed to the products this machine
+ * does not have (all entries when none), every product it names, and the
+ * evidence check, so a stale entry is visible beside it. */
+export function dependenciesWithout(without) {
+  const register = dependencyRegister();
+  return {
+    outcomes: register.outcomes,
+    products: registeredProducts(register),
+    dependencies: selectDependencies(register, { products: [], requires: null, without }),
+    evidence: checkDependencyEvidence(register),
+  };
+}
+
+/** One entry as the lines a person reads. */
+export function describeDependency(entry) {
+  return [
+    `${entry.product} -> ${entry.requires}: ${entry.feature}`,
+    `  how: ${entry.how}`,
+    `  without ${entry.requires}: ${entry.whenAbsent} — ${entry.detail}`,
+    ...(entry.alternative ? [`  alternative: ${entry.alternative}`] : []),
+    ...entry.evidence.map((cited) => `  source: ${cited.repository}/${cited.file}:${cited.line}`),
+  ].join("\n");
+}

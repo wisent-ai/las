@@ -112,6 +112,35 @@
       </div>
       <p class="catalog-note">Configured and active are read from the same canonical registry used by <code>las list</code>. This view does not connect to a child or prove availability.</p>
     </section>
+
+    <section class="catalogue" aria-labelledby="dependencies-title">
+      <div class="section-heading">
+        <div>
+          <p class="step">04 / Dependencies</p>
+          <h2 id="dependencies-title">What each product needs from another</h2>
+        </div>
+        <p id="dependencies-evidence" class="path-value"></p>
+      </div>
+      <fieldset id="dependencies-without" class="catalog-note">
+        <legend>Products this machine does not have</legend>
+      </fieldset>
+      <div class="table-wrap">
+        <table>
+          <caption class="visually-hidden">Registered dependencies between Wisent products and what happens without the required one</caption>
+          <thead>
+            <tr>
+              <th scope="col">Product</th>
+              <th scope="col">Needs</th>
+              <th scope="col">Without it</th>
+              <th scope="col">What happens</th>
+              <th scope="col">Source</th>
+            </tr>
+          </thead>
+          <tbody id="dependencies-body"></tbody>
+        </table>
+      </div>
+      <p class="catalog-note">The same register <code>las dependencies</code> prints. Each source line is read again on every load; a line that no longer says what the register quotes is listed above the table.</p>
+    </section>
   </main>
 
   <footer>
