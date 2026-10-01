@@ -51,7 +51,7 @@
       "feature": "the probierz tool",
       "how": "runs a Probierz source checkout (PROBIERZ_ROOT) or the `probierz` CLI",
       "whenAbsent": "refusal",
-      "detail": "stops with \"launch Probierz: …; set PROBIERZ_ROOT to a Probierz source checkout or install its CLI\"",
+      "detail": "`jeden probierz` is a launcher for Probierz itself, so without Probierz it stops with \"launch Probierz: …; set PROBIERZ_ROOT to a Probierz source checkout or install its CLI\"; nothing else in Jeden needs Probierz",
       "evidence": [
         {
           "at": "jeden/rust/cli/tooling/probierz.rs:39",
@@ -528,12 +528,21 @@
       "requires": "stado",
       "feature": "remote compute jobs",
       "how": "runs `stado machine submit|status …` (LEM_STADO_EXECUTABLE, default stado on PATH)",
-      "whenAbsent": "refusal",
-      "detail": "stops with \"Unable to find Stado executable <name>.\"",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without LEM_COMPUTE_SSH_HOST it stops with \"Unable to find Stado executable <name>. Without Stado set LEM_COMPUTE_SSH_HOST …\"",
+      "alternative": "LEM_COMPUTE_SSH_HOST names the user's CUDA machine; Lem copies the source there with scp and runs, watches, cancels and collects the job over ssh in /tmp/wc-<job id>",
       "evidence": [
         {
+          "at": "lem/Sources/LemBackend/Compute/LemSSHMachineAdapter.swift:16",
+          "contains": "static let hostVariable = \"LEM_COMPUTE_SSH_HOST\""
+        },
+        {
+          "at": "lem/Sources/LemBackend/Backend/LemBackend.swift:36",
+          "contains": "try computeMachineProvider()"
+        },
+        {
           "at": "lem/Sources/LemBackend/Stado/LemStadoProcessAdapter.swift:15",
-          "contains": "Unable to find Stado executable"
+          "contains": "Without Stado set LEM_COMPUTE_SSH_HOST"
         }
       ]
     },
