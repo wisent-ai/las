@@ -223,16 +223,17 @@
       "requires": "stado",
       "feature": "finding the shared database",
       "how": "runs `stado database resolve oko --consumer oko --json`",
-      "whenAbsent": "refusal",
-      "detail": "every command that needs the database fails until one resolve succeeded; the answer kept in ~/.oko/database.json is used afterwards",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without the environment pair every command that needs the database fails until one resolve succeeded; the answer kept in ~/.oko/database.json is used afterwards",
+      "alternative": "set OKO_DATABASE_URL and OKO_DATABASE_ANON_KEY; Oko then asks neither Stado nor Skarbiec",
       "evidence": [
         {
-          "at": "oko/rust/src/database/resolved.rs:36",
-          "contains": "stado::request(&[\"database\", \"resolve\""
+          "at": "oko/rust/src/database/resolved.rs:40",
+          "contains": "OKO_DATABASE_URL"
         },
         {
-          "at": "oko/rust/src/database/resolved.rs:54",
-          "contains": ".oko/database.json"
+          "at": "oko/rust/src/database/mod.rs:69",
+          "contains": "let configured = resolved::from_environment()?;"
         }
       ]
     },
@@ -241,12 +242,17 @@
       "requires": "skarbiec",
       "feature": "the shared database's address and key",
       "how": "reads the credential item Stado names, as consumer oko-database-client",
-      "whenAbsent": "refusal",
-      "detail": "as for Stado: no database until one resolve succeeded",
+      "whenAbsent": "alternative",
+      "detail": "as for Stado: without the environment pair no database until one resolve succeeded",
+      "alternative": "set OKO_DATABASE_URL and OKO_DATABASE_ANON_KEY; Oko then asks neither Stado nor Skarbiec",
       "evidence": [
         {
-          "at": "oko/rust/src/database/resolved.rs:39",
-          "contains": "secrets::read_field(&item, \"url\""
+          "at": "oko/rust/src/database/resolved.rs:41",
+          "contains": "OKO_DATABASE_ANON_KEY"
+        },
+        {
+          "at": "oko/rust/src/database/mod.rs:69",
+          "contains": "let configured = resolved::from_environment()?;"
         }
       ]
     },
