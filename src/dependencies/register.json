@@ -812,6 +812,25 @@
           "contains": "if !agentSecret.isEmpty {"
         }
       ]
+    },
+    {
+      "product": "most",
+      "requires": "skarbiec",
+      "feature": "the Most API bearer",
+      "how": "capability redemption through SKARBIEC_CAP_SOCKET at startup (WISENT_BACKEND_MOST_API_CAPABILITY_ID, MOST_AGENT_API_CAPABILITY_ID)",
+      "whenAbsent": "alternative",
+      "detail": "without Skarbiec and without a token file every API call answers 503 \"Most workload authorization is unavailable\"",
+      "alternative": "MOST_API_TOKEN_FILE names an owner-only file holding the bearer; the server compares against it and redeems nothing",
+      "evidence": [
+        {
+          "at": "most/most-rs/crates/most-server/src/auth/mod.rs:160",
+          "contains": "match &self.local_api {"
+        },
+        {
+          "at": "most/most-rs/crates/most-server/src/boot/guard.rs:26",
+          "contains": "Err(unavailable(\"Most workload authorization is unavailable\"))"
+        }
+      ]
     }
   ]
 }
