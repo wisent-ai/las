@@ -1422,6 +1422,121 @@
           "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
         }
       ]
+    },
+    {
+      "product": "wisent-ios",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and WISENT_IOS_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "wisent-ios/Wisent/Wisent/Sources/Flows/Authenticated User/Onboarding/WisentFirstUseJourney.swift:8",
+          "contains": "WISENT_IOS_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "wisent-ios/Wisent/Wisent/Sources/Flows/Authenticated User/Onboarding/WisentFirstUseJourney.swift:100",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "oko-ios",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and OKO_IOS_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "oko-ios/Sources/Core/Onboarding/OkoOnboarding.swift:53",
+          "contains": "OKO_IOS_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "oko-ios/Sources/Core/Onboarding/OkoOnboarding.swift:21",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "singularity-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and SINGULARITY_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "singularity-desktop/Sources/SingularityDesktop/Being/Onboarding/BeingOnboarding.swift:216",
+          "contains": "SINGULARITY_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "singularity-desktop/Sources/SingularityDesktop/Being/Onboarding/BeingOnboarding.swift:228",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "spis-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and SPIS_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "spis-desktop/Sources/SpisDesktop/Onboarding/SpisOnboarding.swift:218",
+          "contains": "SPIS_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "spis-desktop/Sources/SpisDesktop/Onboarding/SpisOnboarding.swift:230",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "ster-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and STER_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "ster-desktop/Sources/SterDesktop/Onboarding/Walkthrough.swift:33",
+          "contains": "STER_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "ster-desktop/Sources/SterDesktop/Onboarding/Journey.swift:80",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
     }
   ]
 }
