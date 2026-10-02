@@ -170,15 +170,27 @@
       "how": "runs the Oko CLI (`TAMA_OKO_CLI`, default `oko`) for the task and defect registers",
       "whenAbsent": "alternative",
       "detail": "an installed Oko that cannot be read still refuses every stop with \"… An unreadable task ledger is not an empty task ledger.\"",
-      "alternative": "with no Oko CLI installed (neither TAMA_OKO_CLI nor oko on PATH) the stop gate uses the session's own todo list as the only register and refuses only on its open items",
+      "alternative": "with no Oko CLI installed (neither TAMA_OKO_CLI nor oko on PATH) the stop gate uses the session own todo list as the only register; the text gate and the build gate refuse nothing; tama task scope set takes the identifier and repositories the session names and writes nothing back",
       "evidence": [
         {
           "at": "tama/rust/crates/tama-hook-tools/src/assignment/rules.rs:45",
-          "contains": "pub fn oko_installed()"
+          "contains": "pub fn oko_installed() -> bool {"
         },
         {
           "at": "tama/rust/crates/tama-hook-tools/src/programs/block/stop/block_stop_with_open_work.rs:72",
-          "contains": "if !rules::oko_installed()"
+          "contains": "if !rules::oko_installed() {"
+        },
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/programs/block/text/block_text_outside_tool_calls.rs:28",
+          "contains": "if !rules::oko_installed() {"
+        },
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/ports/block_off_task_work/registers.rs:19",
+          "contains": "if !oko_installed() {"
+        },
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/ports/block_one_off_repairs/mod.rs:125",
+          "contains": "if !crate::assignment::rules::oko_installed() {"
         },
         {
           "at": "tama/rust/crates/tama-hook-tools/src/programs/block/stop/block_stop_with_open_work.rs:163",
