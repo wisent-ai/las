@@ -389,16 +389,21 @@
       "requires": "skarbiec",
       "feature": "installing the Brama service with `stado product install`",
       "how": "Stado's product catalogue declares the dependency and installs it first",
-      "whenAbsent": "refusal",
-      "detail": "the service unit runs start-with-skarbiec, so --without skarbiec is refused with \"brama/service cannot be installed without skarbiec: the catalogue declares no alternative for it\"; outside the service, brama serve --local-credentials-stdin runs without Skarbiec",
+      "whenAbsent": "alternative",
+      "detail": "without --without skarbiec the install installs Skarbiec's service first; a BRAMA_LOCAL_CREDENTIALS_FILE that is not owner-only is refused with \"BRAMA_LOCAL_CREDENTIALS_FILE must be readable by its owner only\"",
+      "alternative": "--without skarbiec skips it; BRAMA_LOCAL_CREDENTIALS_FILE in ~/.config/brama/service.env names an owner-only provider-to-credential file and start-with-skarbiec starts the gateway in standalone mode without any Skarbiec stage",
       "evidence": [
         {
-          "at": "stado/catalog/products.yml:172",
-          "contains": "- product: skarbiec"
+          "at": "stado/catalog/products.yml:175",
+          "contains": "alternative: BRAMA_LOCAL_CREDENTIALS_FILE"
         },
         {
-          "at": "stado/stado-rs/product/src/install/mod.rs:103",
-          "contains": "cannot be installed without {dependency_id}"
+          "at": "brama/src/release/bin/start-with-skarbiec:48",
+          "contains": "if [ -n \"${BRAMA_LOCAL_CREDENTIALS_FILE:-}\" ]; then"
+        },
+        {
+          "at": "stado/stado-rs/product/src/install/mod.rs:100",
+          "contains": "if without.iter().any(|name| name == dependency_id) {"
         }
       ]
     },
@@ -412,7 +417,7 @@
       "alternative": "stado product install weles --surface service --without brama skips it; Weles then uses WELES_MODEL_ENDPOINT",
       "evidence": [
         {
-          "at": "stado/catalog/products.yml:249",
+          "at": "stado/catalog/products.yml:252",
           "contains": "alternative: WELES_MODEL_ENDPOINT and WELES_MODEL"
         },
         {
@@ -431,7 +436,7 @@
       "alternative": "--without skarbiec skips it; Weles then uses WELES_CREDENTIALS_FILE",
       "evidence": [
         {
-          "at": "stado/catalog/products.yml:254",
+          "at": "stado/catalog/products.yml:257",
           "contains": "alternative: WELES_CREDENTIALS_FILE"
         },
         {
@@ -450,7 +455,7 @@
       "alternative": "--without brama skips it; the failure intake needs no model, only probierz repair asks Brama",
       "evidence": [
         {
-          "at": "stado/catalog/products.yml:707",
+          "at": "stado/catalog/products.yml:710",
           "contains": "alternative: the failure intake needs no model"
         },
         {
@@ -469,7 +474,7 @@
       "alternative": "--without brama skips it; tasks are then recorded and closed by hand (oko transcripts tasks add / close, Close on Oko Desktop)",
       "evidence": [
         {
-          "at": "stado/catalog/products.yml:988",
+          "at": "stado/catalog/products.yml:991",
           "contains": "alternative: tasks are recorded with oko transcripts tasks add"
         },
         {
