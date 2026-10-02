@@ -869,6 +869,25 @@
           "contains": "pub const CREDENTIALS_FILE_ENV: &str = \"SKRZYNKA_CREDENTIALS_FILE\";"
         }
       ]
+    },
+    {
+      "product": "singularity",
+      "requires": "stado",
+      "feature": "the ecosystem store behind warsztat and finance",
+      "how": "stado-database resolves the fleet database singularity through Stado and Skarbiec",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without the environment pair the store fails naming the step (locate Stado, resolve database, …)",
+      "alternative": "SINGULARITY_DATABASE_URL and SINGULARITY_DATABASE_CA_FILE name the user's own Postgres or MySQL server; stado-database opens it and asks neither Stado nor Skarbiec",
+      "evidence": [
+        {
+          "at": "singularity/src/ecosystem/store/fleet.rs:139",
+          "contains": "stado_database::FleetDatabase::for_product(\"singularity\", STADO_HOME_VARIABLE)"
+        },
+        {
+          "at": "stado/stado-rs/database/src/resolve.rs:177",
+          "contains": "if let Some(found) = from_environment(database) {"
+        }
+      ]
     }
   ]
 }
