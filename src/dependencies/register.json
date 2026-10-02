@@ -1575,6 +1575,25 @@
           "contains": "Authorization: `Bearer ${requiredEnv(\"BRAMA_TOKEN\")}`"
         }
       ]
+    },
+    {
+      "product": "handtohuman",
+      "requires": "stado",
+      "feature": "Stripe payments: checkout, charges, payouts and transfers",
+      "how": "POST to wisent-integrations handtohuman/<action> at STADO_INTEGRATION_API_URL with the integration bearer",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without a key file every payment command stops naming STADO_INTEGRATION_API_URL and HANDTOHUMAN_STRIPE_KEY_FILE",
+      "alternative": "HANDTOHUMAN_STRIPE_KEY_FILE names an owner-only file holding the owner Stripe secret key; every action goes to Stripe directly, built as wisent-integrations builds it, and Stado is not asked",
+      "evidence": [
+        {
+          "at": "handtohuman/src/payments/core/client.rs:85",
+          "contains": "join(&format!(\"api/integration/handtohuman/{action}\"))"
+        },
+        {
+          "at": "handtohuman/src/payments/core/client.rs:19",
+          "contains": "if let Some(key) = direct::key_from_file()?"
+        }
+      ]
     }
   ]
 }
