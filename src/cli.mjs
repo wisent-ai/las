@@ -24,28 +24,58 @@ const SEP = "__";
 // Whether this invocation asked for `path: value` lines instead of JSON.
 let TEXT = false;
 
+// One table, two readers: the top-level usage is every row, and
+// `las <command> --help` is that command's rows (cli.md rule 11).
+const COMMANDS = [
+  { name: "adopt", usage: "adopt [--replace] [config...]", help: "adopt supported entries from standard mcpServers JSON" },
+  { name: "gui", usage: "gui [--port PORT]", help: "serve the loopback graphical catalogue importer" },
+  { name: "list", usage: "list", help: "list every federated surface" },
+  { name: "tools", usage: "tools [surface...]", help: "list advertised tools (spawns each child)" },
+  { name: "check", usage: "check [surface...]", help: "connectivity handshake against each child" },
+  { name: "onboarding", usage: "onboarding [action]", help: "first-use adoption journey (show, status, advance, skip, reset)" },
+  {
+    name: "dependencies",
+    usage: "dependencies [product...] [--requires P] [--without P,...] [--json]",
+    help: "what each Wisent product needs from another and what happens without it",
+  },
+  { name: "dependencies", usage: "dependencies check [--move-lines] [--json]", help: "re-read every source line the register cites" },
+  {
+    name: "dependencies",
+    usage: "dependencies set <product> <requires> --feature … --how … --when-absent … --detail … --at … --contains …",
+    help: "record one entry; refused unless every cited line says what it quotes",
+  },
+  { name: "dependencies", usage: "dependencies remove <product> <requires> --feature …", help: "drop one entry" },
+];
+
+const WIDTH = 22;
+
+function rows(commands) {
+  return commands.map((command) =>
+    command.usage.length < WIDTH
+      ? `  ${command.usage.padEnd(WIDTH)} ${command.help}`
+      : `  ${command.usage}\n  ${"".padEnd(WIDTH)} ${command.help}`,
+  );
+}
+
 function usage(stream = process.stderr) {
   stream.write(
     [
       "usage: las [--text] <command> [arguments]",
-      "  adopt [--replace] [config...]  adopt supported entries from standard mcpServers JSON",
-      "  gui [--port PORT]    serve the loopback graphical catalogue importer",
-      "  list                 list every federated surface",
-      "  tools [surface...]   list advertised tools (spawns each child)",
-      "  check [surface...]   connectivity handshake against each child",
-      "  onboarding [action]  first-use adoption journey (show, status, advance, skip, reset)",
-      "  dependencies [product...] [--requires P] [--without P,...] [--json]",
-      "                       what each Wisent product needs from another and what happens without it",
-      "  dependencies check [--move-lines] [--json]  re-read every source line the register cites",
-      "  dependencies set <product> <requires> --feature … --how … --when-absent … --detail … --at … --contains …",
-      "                       record one entry; refused unless every cited line says what it quotes",
-      "  dependencies remove <product> <requires> --feature …  drop one entry",
+      ...rows(COMMANDS),
       "",
       "--text prints any answer as path: value lines for a person instead of JSON",
       "surfaces: " + SURFACES.map((s) => s.name).join(", "),
       "env: LAS_ONLY=a,b (allow-list)  LAS_SKIP=a,b (deny-list)",
     ].join("\n") + "\n",
   );
+}
+
+// `las <command> --help`: the command's own rows, or the whole usage when
+// the word before --help is not a command.
+function commandHelp(command, stream) {
+  const own = COMMANDS.filter((row) => row.name === command);
+  if (own.length === 0) return usage(stream);
+  stream.write(["usage: las [--text] " + own[0].usage, ...rows(own), "", "--text prints the answer as path: value lines for a person instead of JSON"].join("\n") + "\n");
 }
 
 // Resolve the surfaces a command should act on: explicit names (validated
@@ -197,8 +227,13 @@ async function main() {
   // `--help`, `-h` or `help` anywhere prints the usage to stdout and runs
   // nothing: `las adopt --help` used to fail as an unknown adopt option and
   // `las --help` exited 1.
-  if (argv.some((word) => word === "--help" || word === "-h") || command === "help") {
-    usage(process.stdout);
+  if (argv.some((word) => word === "--help" || word === "-h")) {
+    commandHelp(command, process.stdout);
+    return;
+  }
+  if (command === "help") {
+    if (rest[0]) commandHelp(rest[0], process.stdout);
+    else usage(process.stdout);
     return;
   }
   if (command === "adopt") {
