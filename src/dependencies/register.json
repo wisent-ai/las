@@ -983,6 +983,25 @@
           "contains": ".header(\"x-agent-id\", agent_id)"
         }
       ]
+    },
+    {
+      "product": "ster",
+      "requires": "brama",
+      "feature": "writing contrastive pairs with a hosted model (generator brama)",
+      "how": "one POST to BRAMA_URL/v1/chat/completions with BRAMA_BEARER",
+      "whenAbsent": "alternative",
+      "detail": "without BRAMA_URL and BRAMA_BEARER the brama generator stops naming the missing variable",
+      "alternative": "BRAMA_URL and BRAMA_BEARER name any OpenAI-compatible provider and its key, sent as a plain bearer; the local generator writes pairs on this machine and asks no gateway",
+      "evidence": [
+        {
+          "at": "ster/src/brama.rs:114",
+          "contains": ".post(&format!(\"{}/v1/chat/completions\", self.base))"
+        },
+        {
+          "at": "ster/src/cli/pairs/mod.rs:285",
+          "contains": "expected local or brama"
+        }
+      ]
     }
   ]
 }
