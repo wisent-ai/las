@@ -261,12 +261,16 @@
       "feature": "reading what each operator message is",
       "how": "one typed decision on Brama's decision route per message",
       "whenAbsent": "alternative",
-      "detail": "without Brama a message stays unread; Tama's stop gate holds the turn on unread messages",
-      "alternative": "`oko transcripts tasks add <session> <number> --by …` records the message as the task it is, without a model",
+      "detail": "without Brama and without a declared service a message stays unread; Tama's stop gate holds the turn on unread messages",
+      "alternative": "oko tasks judge-provider set declares an OpenAI-compatible service; each message is then read by its model in one chat completion. Without any model service, `oko transcripts tasks add <session> <number> --by …` records the message as the task it is",
       "evidence": [
         {
-          "at": "oko/rust/src/tasks/reading/mod.rs:5",
-          "contains": "Brama's decision route"
+          "at": "oko/rust/src/tasks/reading/mod.rs:197",
+          "contains": "return chat::ask(&client, &model, said).map(Some);"
+        },
+        {
+          "at": "oko/rust/src/tasks/reading/chat.rs:41",
+          "contains": "pub(super) fn ask(client: &Client, model: &str, said: &str) -> Outcome<Answer> {"
         }
       ]
     },
@@ -402,7 +406,7 @@
           "contains": "if [ -n \"${BRAMA_LOCAL_CREDENTIALS_FILE:-}\" ]; then"
         },
         {
-          "at": "stado/stado-rs/product/src/install/mod.rs:100",
+          "at": "stado/stado-rs/product/src/install/mod.rs:105",
           "contains": "if without.iter().any(|name| name == dependency_id) {"
         }
       ]
@@ -421,7 +425,7 @@
           "contains": "alternative: WELES_MODEL_ENDPOINT and WELES_MODEL"
         },
         {
-          "at": "stado/stado-rs/product/src/install/mod.rs:100",
+          "at": "stado/stado-rs/product/src/install/mod.rs:105",
           "contains": "if without.iter().any(|name| name == dependency_id) {"
         }
       ]
@@ -440,7 +444,7 @@
           "contains": "alternative: WELES_CREDENTIALS_FILE"
         },
         {
-          "at": "stado/stado-rs/product/src/install/mod.rs:100",
+          "at": "stado/stado-rs/product/src/install/mod.rs:105",
           "contains": "if without.iter().any(|name| name == dependency_id) {"
         }
       ]
@@ -459,7 +463,7 @@
           "contains": "alternative: the failure intake needs no model"
         },
         {
-          "at": "stado/stado-rs/product/src/install/mod.rs:100",
+          "at": "stado/stado-rs/product/src/install/mod.rs:105",
           "contains": "if without.iter().any(|name| name == dependency_id) {"
         }
       ]
@@ -478,7 +482,7 @@
           "contains": "alternative: tasks are recorded with oko transcripts tasks add"
         },
         {
-          "at": "stado/stado-rs/product/src/install/mod.rs:100",
+          "at": "stado/stado-rs/product/src/install/mod.rs:105",
           "contains": "if without.iter().any(|name| name == dependency_id) {"
         }
       ]
