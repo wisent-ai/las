@@ -751,6 +751,29 @@
           "contains": "cannot be read by consumer"
         }
       ]
+    },
+    {
+      "product": "probierz",
+      "requires": "brama",
+      "feature": "model calls for local authoring, figure evaluation and SEO evaluation",
+      "how": "signed chat completions to STADO_MODEL_ROUTER_URL (Brama) with STADO_MODEL_ROUTER_TOKEN and the Probierz agent identity",
+      "whenAbsent": "alternative",
+      "detail": "without a router URL each command stops with \"STADO_MODEL_ROUTER_URL is required\"",
+      "alternative": "STADO_MODEL_ROUTER_URL and STADO_MODEL_ROUTER_TOKEN name any OpenAI-compatible provider and its key; with PROBIERZ_MODEL_AGENT_ID and PROBIERZ_MODEL_AGENT_SECRET unset the requests go unsigned and Brama is not asked",
+      "evidence": [
+        {
+          "at": "probierz/probierz-rs/src/authoring/router.rs:40",
+          "contains": "STADO_MODEL_ROUTER_URL is required"
+        },
+        {
+          "at": "probierz/probierz-rs/src/authoring/router.rs:139",
+          "contains": "if !agent_id.trim().is_empty() || !agent_secret.trim().is_empty() {"
+        },
+        {
+          "at": "probierz/probierz-rs/src/authoring/seo/evaluate/inputs.rs:200",
+          "contains": "if agent_id.is_empty() != agent_secret.is_empty() {"
+        }
+      ]
     }
   ]
 }
