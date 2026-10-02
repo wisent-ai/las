@@ -850,6 +850,24 @@
           "contains": "if let Some(found) = from_environment(database) {"
         }
       ]
+    },
+    {
+      "product": "skrzynka",
+      "requires": "skarbiec",
+      "feature": "mailbox credentials (Gmail OAuth tokens and app passwords)",
+      "how": "runs the Skarbiec CLI named by --skarbiec-bin to read, write and list credential items",
+      "whenAbsent": "refusal",
+      "detail": "without Skarbiec every mailbox read and connect fails with \"Skarbiec could not be started from the configured path\" (SKARBIEC_UNAVAILABLE)",
+      "evidence": [
+        {
+          "at": "skrzynka/src/skarbiec/cli.rs:29",
+          "contains": "Skarbiec could not be started from the configured path"
+        },
+        {
+          "at": "skrzynka/src/cli/mod.rs:44",
+          "contains": "let resolver = SkarbiecResolver::new(cli.skarbiec_bin);"
+        }
+      ]
     }
   ]
 }
