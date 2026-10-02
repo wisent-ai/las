@@ -1059,6 +1059,44 @@
           "contains": "const credentialsFile = process.env.KRONIKA_CREDENTIALS_FILE"
         }
       ]
+    },
+    {
+      "product": "film",
+      "requires": "skarbiec",
+      "feature": "the caller secret of film start and film status",
+      "how": "runs `skarbiec get <item> --field <field>` for FILM_SECRET_REF (SKARBIEC_BIN, default skarbiec)",
+      "whenAbsent": "alternative",
+      "detail": "without Skarbiec and without a credentials file film start and film status stop with \"FILM_SECRET_REF: skarbiec could not be run: …; without Skarbiec set FILM_CREDENTIALS_FILE …\"",
+      "alternative": "FILM_CREDENTIALS_FILE names an owner-only JSON file of item -> field -> value; FILM_SECRET_REF is answered from it and Skarbiec is not asked",
+      "evidence": [
+        {
+          "at": "film/src/main.rs:185",
+          "contains": ".args([\"get\", item, \"--field\", field])"
+        },
+        {
+          "at": "film/src/main.rs:179",
+          "contains": "var_os(\"FILM_CREDENTIALS_FILE\")"
+        }
+      ]
+    },
+    {
+      "product": "obraz",
+      "requires": "skarbiec",
+      "feature": "the caller secret of obraz render",
+      "how": "runs `skarbiec get <item> --field <field>` for OBRAZ_SECRET_REF (SKARBIEC_BIN, default skarbiec)",
+      "whenAbsent": "alternative",
+      "detail": "without Skarbiec and without a credentials file obraz render stops with \"OBRAZ_SECRET_REF: skarbiec could not be run: …; without Skarbiec set OBRAZ_CREDENTIALS_FILE …\"",
+      "alternative": "OBRAZ_CREDENTIALS_FILE names an owner-only JSON file of item -> field -> value; OBRAZ_SECRET_REF is answered from it and Skarbiec is not asked",
+      "evidence": [
+        {
+          "at": "obraz/src/main.rs:115",
+          "contains": ".args([\"get\", item, \"--field\", field])"
+        },
+        {
+          "at": "obraz/src/main.rs:109",
+          "contains": "var_os(\"OBRAZ_CREDENTIALS_FILE\")"
+        }
+      ]
     }
   ]
 }
