@@ -926,6 +926,63 @@
           "contains": "return completer(cfg, fetch_, 'brama', sign)"
         }
       ]
+    },
+    {
+      "product": "skryba",
+      "requires": "stado",
+      "feature": "the profile and history store",
+      "how": "stado-database resolves the fleet database skryba through Stado and Skarbiec",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without the environment pair every store read fails naming the step that failed (locate Stado, resolve database, …)",
+      "alternative": "SKRYBA_DATABASE_URL and SKRYBA_DATABASE_CA_FILE name the user own Postgres or MySQL server; stado-database opens it and asks neither Stado nor Skarbiec",
+      "evidence": [
+        {
+          "at": "skryba/src/app/fleet/mod.rs:67",
+          "contains": "FleetDatabase::for_product(DATABASE"
+        },
+        {
+          "at": "stado/stado-rs/database/src/resolve.rs:146",
+          "contains": "let url_variable = format!"
+        }
+      ]
+    },
+    {
+      "product": "skryba",
+      "requires": "skarbiec",
+      "feature": "the model client token and agent secret behind BRAMA_TOKEN_REF and SKRYBA_AGENT_AUTH_SECRET_REF",
+      "how": "runs `skarbiec get <item> --field <field>` (SKARBIEC_BIN, default skarbiec)",
+      "whenAbsent": "alternative",
+      "detail": "without Skarbiec and without a credentials file rewrite, train and benchmark stop with \"BRAMA_TOKEN_REF: skarbiec could not be run; without Skarbiec set SKRYBA_CREDENTIALS_FILE …\"",
+      "alternative": "SKRYBA_CREDENTIALS_FILE names an owner-only JSON file of item -> field -> value; every ITEM#FIELD reference is answered from it and Skarbiec is not asked",
+      "evidence": [
+        {
+          "at": "skryba/src/app/brama.rs:46",
+          "contains": ".args([\"get\", item, \"--field\", field])"
+        },
+        {
+          "at": "skryba/src/app/brama.rs:41",
+          "contains": "env::var_os(\"SKRYBA_CREDENTIALS_FILE\")"
+        }
+      ]
+    },
+    {
+      "product": "skryba",
+      "requires": "brama",
+      "feature": "generation and the quality judge of rewrite, train and benchmark",
+      "how": "chat completions to BRAMA_URL with the client token, signed when SKRYBA_AGENT_ID is set",
+      "whenAbsent": "alternative",
+      "detail": "without a model URL rewrite, train and benchmark exit 2 naming --brama-url (or BRAMA_URL)",
+      "alternative": "BRAMA_URL names any OpenAI-compatible provider and BRAMA_TOKEN_REF its key; with SKRYBA_AGENT_ID unset the requests go unsigned and Brama is not asked; --generator local generates on this machine",
+      "evidence": [
+        {
+          "at": "skryba/src/app/brama.rs:179",
+          "contains": ".bearer_auth(&self.config.token)"
+        },
+        {
+          "at": "skryba/src/app/brama.rs:184",
+          "contains": ".header(\"x-agent-id\", agent_id)"
+        }
+      ]
     }
   ]
 }
