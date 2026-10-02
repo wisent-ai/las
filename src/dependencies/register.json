@@ -1154,6 +1154,44 @@
           "contains": "let url_variable = format!"
         }
       ]
+    },
+    {
+      "product": "echo-web",
+      "requires": "stado",
+      "feature": "object storage for generated media, uploads and run manifests",
+      "how": "HTTP to Stado object API at STADO_API_URL with ECHO_STADO_OBJECT_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without a local directory every object read and write fails naming STADO_API_URL or ECHO_STADO_OBJECT_TOKEN",
+      "alternative": "ECHO_OBJECT_DIR names a directory on this machine; put, get, stat, delete and list are answered from it with the object API own HTTP shapes and Stado is not asked",
+      "evidence": [
+        {
+          "at": "echo-web/src/lib/storage/stado.ts:32",
+          "contains": "token: requiredEnv('ECHO_STADO_OBJECT_TOKEN')"
+        },
+        {
+          "at": "echo-web/src/lib/storage/local-objects.ts:16",
+          "contains": "const directory = process.env.ECHO_OBJECT_DIR"
+        }
+      ]
+    },
+    {
+      "product": "echo-web",
+      "requires": "brama",
+      "feature": "text, vision and embedding model calls",
+      "how": "chat completions and embeddings to STADO_MODEL_ROUTER_URL with ECHO_STADO_MODEL_ROUTER_TOKEN; subscription routes are also signed with the Echo agent identity",
+      "whenAbsent": "alternative",
+      "detail": "without a router URL every model call fails naming STADO_MODEL_ROUTER_URL",
+      "alternative": "STADO_MODEL_ROUTER_URL names any OpenAI-compatible provider that takes provider/model ids, with ECHO_STADO_MODEL_ROUTER_TOKEN its key; provider/model routes go unsigned and Brama is not asked",
+      "evidence": [
+        {
+          "at": "echo-web/src/lib/api/stado-model-router.ts:106",
+          "contains": "function modelRouterEndpoint"
+        },
+        {
+          "at": "echo-web/src/lib/api/stado-model-router.ts:131",
+          "contains": "if (!subscriptionRoute(model)) return headers"
+        }
+      ]
     }
   ]
 }
