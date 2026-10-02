@@ -150,8 +150,9 @@
       "requires": "tama",
       "feature": "fleet build approvals",
       "how": "runs `tama build approval …` only when a build exceeds the day's budget",
-      "whenAbsent": "degraded",
+      "whenAbsent": "alternative",
       "detail": "builds inside the daily budget go on without Tama; one past it is refused with the budget's refusal followed by \"cannot verify recorded user build approval through Tama: …\"",
+      "alternative": "`stado queue budget --limit <N>` declares the day's ceiling in the fleet registry; builds within it need no Tama approval",
       "evidence": [
         {
           "at": "stado/stado-rs/src/scheduler/builds/charge.rs:72",
@@ -160,6 +161,10 @@
         {
           "at": "stado/stado-rs/src/scheduler/builds/approval.rs:29",
           "contains": "cannot verify recorded user build approval through Tama"
+        },
+        {
+          "at": "stado/stado-rs/src/cli/work/queue.rs:180",
+          "contains": "current.with_limit(&mut document, limit);"
         }
       ]
     },
