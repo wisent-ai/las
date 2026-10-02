@@ -1192,6 +1192,29 @@
           "contains": "if (!subscriptionRoute(model)) return headers"
         }
       ]
+    },
+    {
+      "product": "glina",
+      "requires": "weles",
+      "feature": "glina create: logging into the text-to-3D studio and downloading its model",
+      "how": "drives the studio through the Weles MCP server (weles-mcp over stdio)",
+      "whenAbsent": "alternative",
+      "detail": "without Weles, glina create stops when weles-mcp cannot be started; nothing else in Glina opens a browser",
+      "alternative": "glina sculpt builds the asset in Blender with a model, and glina import takes a GLB made anywhere; neither asks Weles",
+      "evidence": [
+        {
+          "at": "glina/pipeline/host/weles.js:153",
+          "contains": "command: options.command ?? 'weles-mcp'"
+        },
+        {
+          "at": "glina/pipeline/cli.js:81",
+          "contains": "case 'import':"
+        },
+        {
+          "at": "glina/pipeline/cli.js:169",
+          "contains": "case 'sculpt':"
+        }
+      ]
     }
   ]
 }
