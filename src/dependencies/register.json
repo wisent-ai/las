@@ -308,7 +308,7 @@
           "contains": "Capability redemption through the local Skarbiec broker"
         },
         {
-          "at": "brama/src/cli/serving.rs:17",
+          "at": "brama/src/cli/serving.rs:18",
           "contains": "local_credentials_stdin: bool"
         }
       ]
@@ -403,7 +403,7 @@
       "alternative": "--without skarbiec skips it; BRAMA_LOCAL_CREDENTIALS_FILE in ~/.config/brama/service.env names an owner-only provider-to-credential file and start-with-skarbiec starts the gateway in standalone mode without any Skarbiec stage",
       "evidence": [
         {
-          "at": "stado/catalog/products.yml:175",
+          "at": "stado/catalog/products.yml:177",
           "contains": "alternative: BRAMA_LOCAL_CREDENTIALS_FILE"
         },
         {
@@ -426,7 +426,7 @@
       "alternative": "stado product install weles --surface service --without brama skips it; Weles then uses WELES_MODEL_ENDPOINT",
       "evidence": [
         {
-          "at": "stado/catalog/products.yml:252",
+          "at": "stado/catalog/products.yml:254",
           "contains": "alternative: WELES_MODEL_ENDPOINT and WELES_MODEL"
         },
         {
@@ -445,7 +445,7 @@
       "alternative": "--without skarbiec skips it; Weles then uses WELES_CREDENTIALS_FILE",
       "evidence": [
         {
-          "at": "stado/catalog/products.yml:257",
+          "at": "stado/catalog/products.yml:259",
           "contains": "alternative: WELES_CREDENTIALS_FILE"
         },
         {
@@ -464,7 +464,7 @@
       "alternative": "--without brama skips it; the failure intake needs no model, only probierz repair asks Brama",
       "evidence": [
         {
-          "at": "stado/catalog/products.yml:710",
+          "at": "stado/catalog/products.yml:712",
           "contains": "alternative: the failure intake needs no model"
         },
         {
@@ -483,7 +483,7 @@
       "alternative": "--without brama skips it; tasks are then recorded and closed by hand (oko transcripts tasks add / close, Close on Oko Desktop)",
       "evidence": [
         {
-          "at": "stado/catalog/products.yml:993",
+          "at": "stado/catalog/products.yml:995",
           "contains": "alternative: tasks are recorded with oko transcripts tasks add"
         },
         {
@@ -1213,6 +1213,213 @@
         {
           "at": "glina/pipeline/cli.js:169",
           "contains": "case 'sculpt':"
+        }
+      ]
+    },
+    {
+      "product": "skryba-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and SKRYBA_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "skryba-desktop/Sources/SkrybaDesktop/Onboarding/SkrybaJourney.swift:98",
+          "contains": "SKRYBA_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "skryba-desktop/Sources/SkrybaDesktop/Onboarding/SkrybaJourney.swift:110",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "weles-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and WELES_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "weles-desktop/Sources/Weles/Onboarding/WelesOnboarding.swift:123",
+          "contains": "WELES_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "weles-desktop/Sources/Weles/Onboarding/WelesOnboarding.swift:139",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "most-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and MOST_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "most-desktop/Sources/MostDesktop/Onboarding/MostOnboarding.swift:212",
+          "contains": "MOST_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "most-desktop/Sources/MostDesktop/Onboarding/MostOnboarding.swift:224",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "lem-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and LEM_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "lem-desktop/Sources/Lem/Onboarding/LemOnboarding.swift:107",
+          "contains": "LEM_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "lem-desktop/Sources/Lem/Onboarding/LemOnboarding.swift:119",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "jeden-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and JEDEN_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition the build installs, and onboarding never blocks the product",
+      "evidence": [
+        {
+          "at": "jeden-desktop/Sources/Jeden/Onboarding/FirstUseJourney.swift:82",
+          "contains": "JEDEN_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "jeden-desktop/Sources/Jeden/Onboarding/FirstUseJourney.swift:85",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "skarbiec-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and SKARBIEC_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "skarbiec-desktop/Sources/SkarbiecDesktop/Skarbiec/SkarbiecOnboarding.swift:32",
+          "contains": "SKARBIEC_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "skarbiec-desktop/Sources/SkarbiecDesktop/Skarbiec/SkarbiecOnboarding.swift:240",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "probierz-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and PROBIERZ_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "probierz-desktop/Sources/ProbierzDesktop/Onboarding/ProbierzJourneyTransport.swift:12",
+          "contains": "PROBIERZ_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "probierz-desktop/Sources/ProbierzDesktop/Onboarding/ProbierzOnboarding.swift:68",
+          "contains": "fallback: bundled"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "tama-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and TAMA_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "tama-desktop/Sources/TamaDesktop/Tama/First/TamaFirstUseJourney.swift:106",
+          "contains": "TAMA_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "tama-desktop/Sources/TamaDesktop/Tama/First/TamaFirstUseJourney.swift:109",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "oko-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and OKO_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "oko-desktop/Sources/Oko/Shell/Onboarding/OkoOnboarding.swift:41",
+          "contains": "OKO_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "oko-desktop/Sources/Oko/Shell/Onboarding/OkoOnboardingController+Bootstrap.swift:28",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
         }
       ]
     }
