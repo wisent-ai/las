@@ -691,6 +691,52 @@
           "contains": "pub(crate) const DIRECT_URL: &str = \"JEDEN_MODEL_ENDPOINT\";"
         }
       ]
+    },
+    {
+      "product": "tama",
+      "requires": "brama",
+      "feature": "model-judged guards",
+      "how": "asks `oko proxy-call --prompt`, which Brama answers by default",
+      "whenAbsent": "alternative",
+      "detail": "with neither Brama nor a declared service the guard gets no judgement, logs \"the model service refused the call: …\" and lets the turn through",
+      "alternative": "oko tasks judge-provider set --origin URL --model M (key on stdin) declares any OpenAI-compatible service; oko proxy-call and every Oko completion then ask it instead of Brama",
+      "evidence": [
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/mod.rs:173",
+          "contains": "the model service refused the call"
+        },
+        {
+          "at": "oko/rust/src/proxy/mod.rs:182",
+          "contains": "None => crate::tasks::judge::provider::declared_service()?,"
+        },
+        {
+          "at": "oko/rust/src/brama/mod.rs:158",
+          "contains": "crate::tasks::judge::provider::declared_service()?"
+        }
+      ]
+    },
+    {
+      "product": "oko",
+      "requires": "brama",
+      "feature": "model calls for the judge, assignments, advice, evals and suggestions",
+      "how": "signed chat completions to Brama as Oko",
+      "whenAbsent": "alternative",
+      "detail": "without Brama and without a declared service each call is refused with the step that failed, e.g. \"oko-model-router#token cannot be read by consumer oko-model-router-client: …\"",
+      "alternative": "oko tasks judge-provider set --origin URL --model M (key on stdin) declares any OpenAI-compatible service; the judge, brama::complete and oko proxy-call ask it with the declared model",
+      "evidence": [
+        {
+          "at": "oko/rust/src/tasks/judge/provider.rs:61",
+          "contains": "pub(crate) fn declared_service()"
+        },
+        {
+          "at": "oko/rust/src/brama/mod.rs:158",
+          "contains": "crate::tasks::judge::provider::declared_service()?"
+        },
+        {
+          "at": "oko/rust/src/brama/mod.rs:94",
+          "contains": "cannot be read by consumer"
+        }
+      ]
     }
   ]
 }
