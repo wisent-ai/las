@@ -544,7 +544,7 @@
           "contains": "let Some(url) = std::env::var(\"MOST_DATABASE_URL\")"
         },
         {
-          "at": "most/most-rs/crates/most-server/src/boot/composition/store.rs:26",
+          "at": "most/most-rs/crates/most-server/src/boot/composition/store.rs:52",
           "contains": "PostgresStorage::connect().await"
         }
       ]
@@ -577,15 +577,20 @@
       "requires": "stado",
       "feature": "SMS through Twilio",
       "how": "HTTP to Stado's integration API (STADO_INTEGRATION_API_URL) with MOST_STADO_INTEGRATION_TOKEN",
-      "whenAbsent": "degraded",
-      "detail": "without the token the prod composition registers no Twilio backend and goes on with the mac relay and direct Apple backends; a dev composition that asks for Twilio logs \"STADO_INTEGRATION_API_URL is required for wisent-integrations\"",
+      "whenAbsent": "alternative",
+      "detail": "with neither the Stado token nor a Twilio account the prod composition registers no Twilio backend and goes on with the mac relay and direct Apple backends; a dev composition that asks for Twilio logs \"STADO_INTEGRATION_API_URL is required for wisent-integrations\"",
+      "alternative": "MOST_TWILIO_ACCOUNT_SID and MOST_TWILIO_AUTH_TOKEN with MOST_TWILIO_MESSAGING_SERVICE_SID or MOST_TWILIO_FROM: Most posts to Twilio's Messages API itself and asks Stado nothing",
       "evidence": [
         {
           "at": "most/most-rs/crates/most-server/src/boot/composition/select.rs:68",
-          "contains": "MOST_STADO_INTEGRATION_TOKEN"
+          "contains": "if twilio_declared() {"
         },
         {
-          "at": "most/most-rs/crates/most-backend-twilio/src/transport.rs:37",
+          "at": "most/most-rs/crates/most-server/src/boot/composition/store.rs:13",
+          "contains": "|| std::env::var(\"MOST_TWILIO_ACCOUNT_SID\").is_ok()"
+        },
+        {
+          "at": "most/most-rs/crates/most-backend-twilio/src/transport.rs:41",
           "contains": "STADO_INTEGRATION_API_URL is required for wisent-integrations"
         }
       ]
