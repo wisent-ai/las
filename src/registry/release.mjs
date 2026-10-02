@@ -63,16 +63,24 @@ function financeConfigured(surface) {
   });
 }
 
-export function surfaceConfigured(surface) {
+/// Why `surface` is not configured, in the words of the step that refused,
+/// or null when it is configured.
+export function surfaceUnconfiguredReason(surface) {
   try {
     const registration = catalogRegistration(surface);
-    if (registration.managed && !registration.valid) return false;
-    if (surface.name === FINANCE) return financeConfigured(surface);
+    if (registration.managed && !registration.valid) return `${surface.name}: its catalogue registration is invalid`;
+    if (surface.name === FINANCE) {
+      return financeConfigured(surface) ? null : `${FINANCE}: needs every one of ${FINANCE_CONFIGURATION.join(", ")}`;
+    }
     releaseFor(surface);
-    return true;
-  } catch {
-    return false;
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
   }
+}
+
+export function surfaceConfigured(surface) {
+  return surfaceUnconfiguredReason(surface) === null;
 }
 
 // Both operator filters can only subtract from configured, signed surfaces.

@@ -99,8 +99,13 @@ node src/cli.mjs list
 
 Expected result: adoption reports imported or unchanged canonical surfaces, and
 `list` returns each known surface with `registration`, `configured`, and
-`active`. A missing/invalid signed manifest still makes ordinary signed
-surfaces unconfigured rather than trusting current files.
+`active`; an unconfigured surface also carries `unconfigured`, the refusal of
+the step that failed, for example `las manifest: LAS_RELEASE_MANIFEST_FILE must
+name an absolute path`. A missing/invalid signed manifest still makes ordinary
+signed surfaces unconfigured rather than trusting current files. `tools` and
+`check` on a named surface refuse with `las: surface '<name>' is not
+configured: <reason>` or `las: surface '<name>' is excluded by LAS_ONLY or
+LAS_SKIP` (exit `1`).
 
 Check a selected subset:
 

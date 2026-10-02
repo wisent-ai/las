@@ -19,7 +19,7 @@ import {
 import { releaseFor } from "./registry/release.mjs";
 
 export { SURFACES } from "./registry/surfaces.mjs";
-export { activeSurfaces, surfaceConfigured } from "./registry/release.mjs";
+export { activeSurfaces, surfaceConfigured, surfaceUnconfiguredReason } from "./registry/release.mjs";
 export { buildChildEnvironment, requiredSkarbiecAgentIdentity };
 
 const FINANCE_POLICY_DOCUMENT = JSON.stringify({

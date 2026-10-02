@@ -16,7 +16,7 @@
 import { adoptMcpConfigurations, catalogRegistration } from "./catalog.mjs";
 import { cmdDependencies } from "./dependencies/command.mjs";
 import { startLasGui } from "./gui.mjs";
-import { SURFACES, activeSurfaces, authorizeTools, connect, handshake, surfaceConfigured } from "./registry.mjs";
+import { SURFACES, activeSurfaces, authorizeTools, connect, handshake, surfaceUnconfiguredReason } from "./registry.mjs";
 import { recordCatalogueAdopted, runOnboardingAction } from "./onboarding/journey.mjs";
 
 const SEP = "__";
@@ -59,8 +59,14 @@ function pick(names) {
       process.exitCode = 2;
       return null;
     }
-    if (!surfaceConfigured(s) || !active.has(s)) {
-      process.stderr.write(`las: surface '${n}' is not active under the signed release and operator filters\n`);
+    const unconfigured = surfaceUnconfiguredReason(s);
+    if (unconfigured !== null) {
+      process.stderr.write(`las: surface '${n}' is not configured: ${unconfigured}\n`);
+      process.exitCode = 1;
+      return null;
+    }
+    if (!active.has(s)) {
+      process.stderr.write(`las: surface '${n}' is excluded by LAS_ONLY or LAS_SKIP\n`);
       process.exitCode = 1;
       return null;
     }
@@ -73,6 +79,7 @@ async function cmdList() {
   const active = new Set(activeSurfaces());
   const rows = SURFACES.map((s) => {
     const registration = catalogRegistration(s);
+    const unconfigured = surfaceUnconfiguredReason(s);
     return {
       surface: s.name,
       summary: s.summary,
@@ -81,7 +88,8 @@ async function cmdList() {
         source: registration.registration.sourcePath,
         sourceEntry: registration.registration.sourceKey,
       } : {}),
-      configured: surfaceConfigured(s),
+      configured: unconfigured === null,
+      ...(unconfigured === null ? {} : { unconfigured }),
       active: active.has(s),
     };
   });
