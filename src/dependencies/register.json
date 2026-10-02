@@ -1040,6 +1040,25 @@
           "contains": "const credentialsFile = process.env.PREFERENCES_CREDENTIALS_FILE"
         }
       ]
+    },
+    {
+      "product": "kronika",
+      "requires": "skarbiec",
+      "feature": "the model bearer and signing secret behind BRAMA_API_KEY_REF and WISENT_APP_AGENT_AUTH_SECRET_REF",
+      "how": "runs `skarbiec get <item> --field <field>` (SKARBIEC_BIN, default skarbiec)",
+      "whenAbsent": "alternative",
+      "detail": "without Skarbiec and without a credentials file write, check and sync stop with \"BRAMA_API_KEY_REF: skarbiec get … failed: skarbiec cannot be started; without Skarbiec set KRONIKA_CREDENTIALS_FILE …\"; init and onboarding need no credential",
+      "alternative": "KRONIKA_CREDENTIALS_FILE names an owner-only JSON file of item -> field -> value; every ITEM#FIELD reference is answered from it and Skarbiec is not asked",
+      "evidence": [
+        {
+          "at": "kronika/src/cli/skarbiec.ts:32",
+          "contains": "value = execFileSync(binary, [\"get\", item, \"--field\", field]"
+        },
+        {
+          "at": "kronika/src/cli/skarbiec.ts:27",
+          "contains": "const credentialsFile = process.env.KRONIKA_CREDENTIALS_FILE"
+        }
+      ]
     }
   ]
 }

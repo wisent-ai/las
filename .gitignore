@@ -7,3 +7,8 @@ node_modules/
 # SwiftPM build output from desktop/LasNativeApps.
 .build/
 .swiftpm/
+
+# A dependency register change in progress: its lock and the next document
+# before the rename.
+src/dependencies/register.json.lock
+src/dependencies/register.json.*.next

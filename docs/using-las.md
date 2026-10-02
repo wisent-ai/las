@@ -203,6 +203,13 @@ contains the `--contains` text that follows it; otherwise nothing is written
 and each failing citation is printed with what the line says now (exit `1`),
 or the invalid field is named (exit `2`).
 
+`set`, `remove` and `check --move-lines` change the register one at a time:
+each holds `src/dependencies/register.json.lock` (its pid) while it reads,
+changes and renames the new file into place. A second change while the first
+runs is refused with `las: the dependency register is being changed by process
+<pid> (…); run this change after it ends` (exit `1`) and writes nothing; a lock
+whose process has exited is taken over.
+
 `las dependencies remove <product> <requires> --feature TEXT` drops the entry
 with that key, for a dependency that is gone or now described by another
 entry, and prints `removed the entry`. A key the register does not hold is

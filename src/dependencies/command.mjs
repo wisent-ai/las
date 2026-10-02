@@ -6,6 +6,7 @@
 // dependencies remove`, which drops one entry.
 
 import {
+  RegisterBusy,
   checkDependencyEvidence,
   dependencyRegister,
   describeDependency,
@@ -124,6 +125,16 @@ function printCheck(report, json) {
 }
 
 export async function cmdDependencies(args) {
+  try {
+    await dependencies(args);
+  } catch (error) {
+    if (!(error instanceof RegisterBusy)) throw error;
+    process.stderr.write(`las: ${error.message}\n`);
+    process.exitCode = 1;
+  }
+}
+
+async function dependencies(args) {
   let query;
   try {
     if (args[0] === "set") {
@@ -132,6 +143,7 @@ export async function cmdDependencies(args) {
       try {
         result = recordDependency(entry);
       } catch (error) {
+        if (error instanceof RegisterBusy) throw error;
         process.stderr.write(`las: ${error.message}\n`);
         process.exitCode = 2;
         return;

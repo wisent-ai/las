@@ -11,6 +11,9 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 // by every sibling product repository.
 const WORKSPACE = path.resolve(HERE, "..", "..", "..");
 
+/** Another process is changing the register right now. */
+export class RegisterBusy extends Error {}
+
 function invalid(index, reason) {
   return new Error(`dependency register entry ${index}: ${reason}`);
 }
@@ -113,26 +116,25 @@ export function checkDependencyEvidence(register) {
  * changed: a changed quote means the behaviour may have changed.
  */
 export function moveDependencyLines() {
-  const file = path.join(HERE, "register.json");
-  const document = JSON.parse(fs.readFileSync(file, "utf8"));
-  const register = validated(JSON.parse(JSON.stringify(document)));
-  const moved = [];
-  const remaining = [];
-  register.dependencies.forEach((entry, entryIndex) => {
-    entry.evidence.forEach((cited, citedIndex) => {
-      const result = verify(cited);
-      if (result.ok) return;
-      if (result.movedTo) {
-        const at = `${cited.repository}/${cited.file}:${result.movedTo}`;
-        document.dependencies[entryIndex].evidence[citedIndex].at = at;
-        moved.push({ from: `${cited.repository}/${cited.file}:${cited.line}`, to: at, contains: cited.contains });
-      } else {
-        remaining.push({ product: entry.product, requires: entry.requires, feature: entry.feature, ...result });
-      }
+  return changeRegister((document) => {
+    const register = validated(JSON.parse(JSON.stringify(document)));
+    const moved = [];
+    const remaining = [];
+    register.dependencies.forEach((entry, entryIndex) => {
+      entry.evidence.forEach((cited, citedIndex) => {
+        const result = verify(cited);
+        if (result.ok) return;
+        if (result.movedTo) {
+          const at = `${cited.repository}/${cited.file}:${result.movedTo}`;
+          document.dependencies[entryIndex].evidence[citedIndex].at = at;
+          moved.push({ from: `${cited.repository}/${cited.file}:${cited.line}`, to: at, contains: cited.contains });
+        } else {
+          remaining.push({ product: entry.product, requires: entry.requires, feature: entry.feature, ...result });
+        }
+      });
     });
+    return { write: moved.length > 0, answer: { moved, remaining } };
   });
-  if (moved.length) fs.writeFileSync(file, JSON.stringify(document, null, 2) + "\n");
-  return { moved, remaining };
 }
 
 /**
@@ -143,19 +145,17 @@ export function moveDependencyLines() {
  * it replaced or added, or the citations that refused it.
  */
 export function recordDependency(entry) {
-  const file = path.join(HERE, "register.json");
-  const document = JSON.parse(fs.readFileSync(file, "utf8"));
-  const position = document.dependencies.findIndex((existing) =>
-    existing.product === entry.product && existing.requires === entry.requires && existing.feature === entry.feature);
-  const candidate = JSON.parse(JSON.stringify(document));
-  if (position >= 0) candidate.dependencies[position] = entry;
-  else candidate.dependencies.push(entry);
-  const checked = validated(JSON.parse(JSON.stringify(candidate)));
-  const recorded = checked.dependencies[position >= 0 ? position : checked.dependencies.length - 1];
-  const refused = recorded.evidence.map(verify).filter((cited) => !cited.ok);
-  if (refused.length) return { recorded: false, refused };
-  fs.writeFileSync(file, JSON.stringify(candidate, null, 2) + "\n");
-  return { recorded: true, replaced: position >= 0 };
+  return changeRegister((document) => {
+    const position = document.dependencies.findIndex((existing) =>
+      existing.product === entry.product && existing.requires === entry.requires && existing.feature === entry.feature);
+    if (position >= 0) document.dependencies[position] = entry;
+    else document.dependencies.push(entry);
+    const checked = validated(JSON.parse(JSON.stringify(document)));
+    const recorded = checked.dependencies[position >= 0 ? position : checked.dependencies.length - 1];
+    const refused = recorded.evidence.map(verify).filter((cited) => !cited.ok);
+    if (refused.length) return { write: false, answer: { recorded: false, refused } };
+    return { write: true, answer: { recorded: true, replaced: position >= 0 } };
+  });
 }
 
 /**
@@ -164,15 +164,69 @@ export function recordDependency(entry) {
  * says it. Answers whether such an entry existed; nothing else is touched.
  */
 export function removeDependency({ product, requires, feature }) {
+  return changeRegister((document) => {
+    const position = document.dependencies.findIndex((existing) =>
+      existing.product === product && existing.requires === requires && existing.feature === feature);
+    if (position < 0) return { write: false, answer: { removed: false } };
+    document.dependencies.splice(position, 1);
+    validated(JSON.parse(JSON.stringify(document)));
+    return { write: true, answer: { removed: true } };
+  });
+}
+
+/**
+ * Read, change and write the register as one step no other writer can
+ * interleave with. Two `dependencies set` runs that each read the file and
+ * wrote their own copy back used to keep only the last one's entry; now the
+ * second finds the first's lock and is refused with the holder's pid instead
+ * of overwriting it. A lock whose process has exited is taken over, since
+ * nothing can release it any more. The new document replaces the old one by
+ * rename, so a reader never sees half a file.
+ */
+function changeRegister(change) {
   const file = path.join(HERE, "register.json");
-  const document = JSON.parse(fs.readFileSync(file, "utf8"));
-  const position = document.dependencies.findIndex((existing) =>
-    existing.product === product && existing.requires === requires && existing.feature === feature);
-  if (position < 0) return { removed: false };
-  document.dependencies.splice(position, 1);
-  validated(JSON.parse(JSON.stringify(document)));
-  fs.writeFileSync(file, JSON.stringify(document, null, 2) + "\n");
-  return { removed: true };
+  const lock = `${file}.lock`;
+  const held = takeLock(lock);
+  try {
+    const document = JSON.parse(fs.readFileSync(file, "utf8"));
+    const { write, answer } = change(document);
+    if (write) {
+      const next = `${file}.${process.pid}.next`;
+      fs.writeFileSync(next, JSON.stringify(document, null, 2) + "\n");
+      fs.renameSync(next, file);
+    }
+    return answer;
+  } finally {
+    fs.closeSync(held);
+    fs.rmSync(lock, { force: true });
+  }
+}
+
+function takeLock(lock) {
+  try {
+    const held = fs.openSync(lock, "wx");
+    fs.writeSync(held, `${process.pid}\n`);
+    return held;
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+  }
+  const holder = Number.parseInt(fs.readFileSync(lock, "utf8"), 10);
+  if (Number.isInteger(holder) && processRuns(holder)) {
+    throw new RegisterBusy(`the dependency register is being changed by process ${holder} (${lock}); run this change after it ends`);
+  }
+  fs.rmSync(lock, { force: true });
+  const held = fs.openSync(lock, "wx");
+  fs.writeSync(held, `${process.pid}\n`);
+  return held;
+}
+
+function processRuns(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === "EPERM";
+  }
 }
 
 /** What the GUI shows: the register narrowed to the products this machine
