@@ -1097,6 +1097,63 @@
           "contains": "var_os(\"OBRAZ_CREDENTIALS_FILE\")"
         }
       ]
+    },
+    {
+      "product": "transcript-lake",
+      "requires": "stado",
+      "feature": "the goal model system prompt of lake goal",
+      "how": "reads the prompt Stado keeps under ~/.stado/local-storage/ecosystem/releases/jeden-desktop/models/goal-qwen3-4b, digest-checked",
+      "whenAbsent": "alternative",
+      "detail": "without that Stado copy the prompt is read from the Lake data directory, and fetched there once when it is absent; a download failure stops with \"model artifact download failed with status …\"",
+      "alternative": "the digest-pinned prompt and model are downloaded once from the pinned Hugging Face revision into the Lake data directory (TRANSCRIPT_LAKE_GOAL_MODEL names a model file directly); Stado is not asked",
+      "evidence": [
+        {
+          "at": "transcript-lake/src/commands/goal/model.rs:70",
+          "contains": ".join(\".stado/local-storage/ecosystem/releases/jeden-desktop/models/goal-qwen3-4b\")"
+        },
+        {
+          "at": "transcript-lake/src/commands/goal/model.rs:81",
+          "contains": "resolve/{MODEL_REVISION}/{PROMPT_NAME}"
+        }
+      ]
+    },
+    {
+      "product": "handtohuman",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and HANDTOHUMAN_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado the walkthrough runs offline",
+      "alternative": "without the endpoint and token the walkthrough runs from the offline transport on this machine and sends no events",
+      "evidence": [
+        {
+          "at": "handtohuman/src/onboarding.rs:79",
+          "contains": "env::var(\"STADO_INTEGRATION_API_URL\")"
+        },
+        {
+          "at": "handtohuman/src/onboarding.rs:86",
+          "contains": "Box::new(OfflineTransport)"
+        }
+      ]
+    },
+    {
+      "product": "handtohuman",
+      "requires": "stado",
+      "feature": "the marketplace ledger",
+      "how": "stado-database resolves the fleet database handtohuman through Stado and Skarbiec",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without the environment pair the marketplace fails naming the step that failed (locate Stado, resolve database, …)",
+      "alternative": "HANDTOHUMAN_DATABASE_URL and HANDTOHUMAN_DATABASE_CA_FILE name the user own Postgres or MySQL server; stado-database opens it and asks neither Stado nor Skarbiec",
+      "evidence": [
+        {
+          "at": "handtohuman/src/marketplace/core/open.rs:14",
+          "contains": "FleetDatabase::for_product(Self::DATABASE"
+        },
+        {
+          "at": "stado/stado-rs/database/src/resolve.rs:146",
+          "contains": "let url_variable = format!"
+        }
+      ]
     }
   ]
 }
