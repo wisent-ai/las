@@ -132,7 +132,7 @@
           "contains": "Backend::File { path } => Ok(Store::File(path))"
         },
         {
-          "at": "stado/stado-rs/product/src/common/mod.rs:84",
+          "at": "stado/stado-rs/product/src/common/mod.rs:85",
           "contains": "\"credentials\", \"get\", item"
         },
         {
@@ -411,7 +411,7 @@
           "contains": "if [ -n \"${BRAMA_LOCAL_CREDENTIALS_FILE:-}\" ]; then"
         },
         {
-          "at": "stado/stado-rs/product/src/install/mod.rs:105",
+          "at": "stado/stado-rs/product/src/install/mod.rs:119",
           "contains": "if without.iter().any(|name| name == dependency_id) {"
         }
       ]
@@ -430,7 +430,7 @@
           "contains": "alternative: WELES_MODEL_ENDPOINT and WELES_MODEL"
         },
         {
-          "at": "stado/stado-rs/product/src/install/mod.rs:105",
+          "at": "stado/stado-rs/product/src/install/mod.rs:119",
           "contains": "if without.iter().any(|name| name == dependency_id) {"
         }
       ]
@@ -449,7 +449,7 @@
           "contains": "alternative: WELES_CREDENTIALS_FILE"
         },
         {
-          "at": "stado/stado-rs/product/src/install/mod.rs:105",
+          "at": "stado/stado-rs/product/src/install/mod.rs:119",
           "contains": "if without.iter().any(|name| name == dependency_id) {"
         }
       ]
@@ -468,7 +468,7 @@
           "contains": "alternative: the failure intake needs no model"
         },
         {
-          "at": "stado/stado-rs/product/src/install/mod.rs:105",
+          "at": "stado/stado-rs/product/src/install/mod.rs:119",
           "contains": "if without.iter().any(|name| name == dependency_id) {"
         }
       ]
@@ -483,11 +483,11 @@
       "alternative": "--without brama skips it; tasks are then recorded and closed by hand (oko transcripts tasks add / close, Close on Oko Desktop)",
       "evidence": [
         {
-          "at": "stado/catalog/products.yml:991",
+          "at": "stado/catalog/products.yml:993",
           "contains": "alternative: tasks are recorded with oko transcripts tasks add"
         },
         {
-          "at": "stado/stado-rs/product/src/install/mod.rs:105",
+          "at": "stado/stado-rs/product/src/install/mod.rs:119",
           "contains": "if without.iter().any(|name| name == dependency_id) {"
         }
       ]
@@ -829,6 +829,25 @@
         {
           "at": "most/most-rs/crates/most-server/src/boot/guard.rs:26",
           "contains": "Err(unavailable(\"Most workload authorization is unavailable\"))"
+        }
+      ]
+    },
+    {
+      "product": "skrzynka",
+      "requires": "stado",
+      "feature": "the mailbox database",
+      "how": "stado-database resolves the fleet database skrzynka through stado database resolve and the credential item in Skarbiec",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without the environment pair every database read fails with \"the fleet database could not be reached at step `resolve database`: …\"",
+      "alternative": "SKRZYNKA_DATABASE_URL and SKRZYNKA_DATABASE_CA_FILE name the user's own Postgres or MySQL server; stado-database opens it and asks neither Stado nor Skarbiec",
+      "evidence": [
+        {
+          "at": "skrzynka/src/db/sql/mod.rs:22",
+          "contains": "stado_database::FleetDatabase::for_product(DATABASE_NAME, \"SKRZYNKA_FLEET_HOME\")"
+        },
+        {
+          "at": "stado/stado-rs/database/src/resolve.rs:177",
+          "contains": "if let Some(found) = from_environment(database) {"
         }
       ]
     }
