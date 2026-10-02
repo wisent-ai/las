@@ -1002,6 +1002,25 @@
           "contains": "expected local or brama"
         }
       ]
+    },
+    {
+      "product": "kronika",
+      "requires": "brama",
+      "feature": "writing and auditing documentation (write, check, sync)",
+      "how": "chat completions to BRAMA_URL (or MODEL_ROUTER_URL) with the bearer, signed when WISENT_APP_AGENT_ID is set",
+      "whenAbsent": "alternative",
+      "detail": "without a model URL write, check and sync stop with \"BRAMA_URL or MODEL_ROUTER_URL is required\"; init, sources and onboarding call no model",
+      "alternative": "BRAMA_URL names any OpenAI-compatible provider and BRAMA_API_KEY_REF its key; with WISENT_APP_AGENT_ID unset the requests go unsigned and Brama is not asked",
+      "evidence": [
+        {
+          "at": "kronika/src/cli.ts:100",
+          "contains": "const bramaUrl = process.env.BRAMA_URL || process.env.MODEL_ROUTER_URL"
+        },
+        {
+          "at": "kronika/src/docs/model/brama.ts:83",
+          "contains": "if (Boolean(options.agentId) !== Boolean(options.authSecret))"
+        }
+      ]
     }
   ]
 }
