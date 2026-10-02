@@ -1537,6 +1537,44 @@
           "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
         }
       ]
+    },
+    {
+      "product": "ai-text-detector-web",
+      "requires": "brama",
+      "feature": "scoring a draft",
+      "how": "one chat completion to BRAMA_URL/v1/chat/completions with BRAMA_TOKEN and BRAMA_MODEL",
+      "whenAbsent": "alternative",
+      "detail": "without the three variables a score fails naming the missing one, e.g. \"BRAMA_URL is required\"",
+      "alternative": "BRAMA_URL names any OpenAI-compatible HTTPS origin, BRAMA_TOKEN its key and BRAMA_MODEL its model; the request is a plain bearer call and Brama is not asked",
+      "evidence": [
+        {
+          "at": "ai-text-detector-web/src/lib/brama.ts:21",
+          "contains": "return `${url.origin}/v1/chat/completions`"
+        },
+        {
+          "at": "ai-text-detector-web/src/lib/brama.ts:34",
+          "contains": "Authorization: `Bearer ${requiredEnv(\"BRAMA_TOKEN\")}`"
+        }
+      ]
+    },
+    {
+      "product": "ai-text-generator-web",
+      "requires": "brama",
+      "feature": "rewriting a draft",
+      "how": "one chat completion to BRAMA_URL/v1/chat/completions with BRAMA_TOKEN and BRAMA_MODEL",
+      "whenAbsent": "alternative",
+      "detail": "without the three variables a rewrite fails naming the missing one, e.g. \"BRAMA_URL is required\"",
+      "alternative": "BRAMA_URL names any OpenAI-compatible HTTPS origin, BRAMA_TOKEN its key and BRAMA_MODEL its model; the request is a plain bearer call and Brama is not asked",
+      "evidence": [
+        {
+          "at": "ai-text-generator-web/src/lib/brama.ts:15",
+          "contains": "return `${url.origin}/v1/chat/completions`"
+        },
+        {
+          "at": "ai-text-generator-web/src/lib/brama.ts:22",
+          "contains": "Authorization: `Bearer ${requiredEnv(\"BRAMA_TOKEN\")}`"
+        }
+      ]
     }
   ]
 }
