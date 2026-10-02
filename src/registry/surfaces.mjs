@@ -54,9 +54,9 @@ export const SURFACES = [
   },
   {
     name: "tama",
-    command: process.execPath,
-    args: [path.join(ROOT, "hooks-rotator", "src", "mcp-server.mjs")],
-    cwd: path.join(ROOT, "hooks-rotator"),
+    command: path.join(ROOT, "tama", "rust", "target", "debug", "tama"),
+    args: ["mcp"],
+    cwd: path.join(ROOT, "tama"),
     summary: "Adaptive hook enforcement. Catalog, source inspection, validation, and documentation; runtime policy remains fail-safe.",
     allowTools: [
       "list_hooks",
@@ -94,23 +94,23 @@ export const SURFACES = [
   {
     name: "echo",
     command: process.execPath,
-    args: [path.join(ROOT, "echo", "agent", "mcp.mjs")],
+    args: [path.join(ROOT, "echo", "mcp", "server.mjs")],
     cwd: path.join(ROOT, "echo"),
     summary: "Growth/content dashboard. Read-only Supabase reads.",
     envAllowlist: ["NEXT_PUBLIC_SUPABASE_URL"],
   },
   {
     name: "most",
-    command: "/usr/bin/python3",
-    args: [path.join(ROOT, "most", "most_agent", "mcp_server.py")],
+    command: path.join(ROOT, "most", "most-rs", "target", "debug", "most-mcp"),
+    args: [],
     cwd: path.join(ROOT, "most"),
     summary: "iMessage/RCS/SMS bridge. Read-only health + diagnostics.",
     envAllowlist: ["MOST_BASE_URL"],
   },
   {
     name: "probierz",
-    command: process.execPath,
-    args: [path.join(ROOT, "probierz", "agent", "mcp.mjs")],
+    command: path.join(ROOT, "probierz", "probierz-rs", "target", "debug", "probierz-mcp"),
+    args: [],
     cwd: path.join(ROOT, "probierz"),
     summary: "Cross-platform test toolkit. Discovery (surfaces/specs) + toolchain check/setup + change-driven ci: select targets a change affects, run the ready ones (recording video/trace/screenshots), analyze the verdict.",
     envAllowlist: [
