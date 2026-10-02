@@ -888,6 +888,44 @@
           "contains": "if let Some(found) = from_environment(database) {"
         }
       ]
+    },
+    {
+      "product": "glina",
+      "requires": "skarbiec",
+      "feature": "credentials behind skarbiec:// references in the pipeline config",
+      "how": "runs `skarbiec get <item>` (SKARBIEC_BIN, default skarbiec) for each reference",
+      "whenAbsent": "alternative",
+      "detail": "without Skarbiec and without a credentials file every command that loads the config stops with \"skarbiec CLI failed: … cannot be started …; without Skarbiec set GLINA_CREDENTIALS_FILE …\"",
+      "alternative": "GLINA_CREDENTIALS_FILE names an owner-only JSON file of item -> field -> value; every reference is answered from it and Skarbiec is not asked",
+      "evidence": [
+        {
+          "at": "glina/pipeline/host/skarbiec.js:43",
+          "contains": "execFile(bin, args"
+        },
+        {
+          "at": "glina/pipeline/host/skarbiec.js:69",
+          "contains": "nonSecretEnv('GLINA_CREDENTIALS_FILE')"
+        }
+      ]
+    },
+    {
+      "product": "glina",
+      "requires": "brama",
+      "feature": "model calls of glina sculpt",
+      "how": "signed chat completions to models.brama (url, key, bearer, agent_id)",
+      "whenAbsent": "alternative",
+      "detail": "without Brama and without another backend sculpt stops with \"no model backend is configured: declare models.brama, or models.openai_compatible …\"",
+      "alternative": "models.openai_compatible names any OpenAI-compatible provider (url, bearer, model); the same calls go there unsigned and Brama is not asked",
+      "evidence": [
+        {
+          "at": "glina/pipeline/sculpt/llm.js:46",
+          "contains": "if (models.openai_compatible)"
+        },
+        {
+          "at": "glina/pipeline/sculpt/llm.js:64",
+          "contains": "return completer(cfg, fetch_, 'brama', sign)"
+        }
+      ]
     }
   ]
 }
