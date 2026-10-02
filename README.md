@@ -23,7 +23,7 @@ Includes:
 - Brama (Keep All Your Models Accessible Through One Endpoint)
 - Echo (AI GTM — Manage B2B Outreach, UGC, Meta Ads, and Google Ads from One Harness)
 - Byk (Make Money with AI Trading)
-- Warsztat (Repository Proposal Workflow)
+- Warsztat (Canonical Main Repository Operations)
 - Finance (Financial Reference and Proposals)
 
 **Las is the local catalogue and policy-preserving federation layer for Wisent
@@ -34,6 +34,11 @@ one CLI, and an on-demand loopback graphical importer.**
 Las does not implement the child tools, broaden their permissions, broker raw
 secrets, or make an unavailable child look healthy. A child remains responsible
 for its own authorization and product behavior.
+
+The `warsztat` surface claims the existing canonical `main` checkout, seals allowed changes
+and publishes an exact commit without force. It does not create worktrees or pull requests.
+`JEDEN_REPO_POLICY_FILE` and `JEDEN_REPO_STATE_DIR` belong in the signed child environment.
+A changed registry or tool set needs a new signed release; old authority is not widened.
 
 [Product documentation](https://las.wisent.com/docs) · [Quick start](#quick-start) · [Federated surfaces](#federated-surfaces) ·
 [Signed release boundary](#signed-release-boundary) · [Canonical repository](https://github.com/wisent-ai/las)
@@ -142,7 +147,9 @@ server enforcement determine the callable surface.
 - **Actor:** a local operator.
 - **Initial state:** Las can evaluate its signed release/configuration files.
 - **Outcome:** JSON reports every known surface with its registration source,
-  static summary, and `configured` and `active` booleans.
+  static summary, and `configured` and `active` booleans; the global `--text`
+  flag prints the same report as one `path: value` line per field for a person
+  (`las --text list`), as it does for `tools`, `check` and `adopt`.
 - **Boundary:** `las list` does not spawn children, write state, or prove connectivity.
 
 

@@ -18,13 +18,16 @@ import { cmdDependencies } from "./dependencies/command.mjs";
 import { startLasGui } from "./gui.mjs";
 import { SURFACES, activeSurfaces, authorizeTools, connect, handshake, surfaceUnconfiguredReason } from "./registry.mjs";
 import { recordCatalogueAdopted, runOnboardingAction } from "./onboarding/journey.mjs";
+import { printAnswer, takeTextSwitch } from "./output/answer.mjs";
 
 const SEP = "__";
+// Whether this invocation asked for `path: value` lines instead of JSON.
+let TEXT = false;
 
 function usage(stream = process.stderr) {
   stream.write(
     [
-      "usage: las <command> [arguments]",
+      "usage: las [--text] <command> [arguments]",
       "  adopt [--replace] [config...]  adopt supported entries from standard mcpServers JSON",
       "  gui [--port PORT]    serve the loopback graphical catalogue importer",
       "  list                 list every federated surface",
@@ -38,6 +41,7 @@ function usage(stream = process.stderr) {
       "                       record one entry; refused unless every cited line says what it quotes",
       "  dependencies remove <product> <requires> --feature …  drop one entry",
       "",
+      "--text prints any answer as path: value lines for a person instead of JSON",
       "surfaces: " + SURFACES.map((s) => s.name).join(", "),
       "env: LAS_ONLY=a,b (allow-list)  LAS_SKIP=a,b (deny-list)",
     ].join("\n") + "\n",
@@ -93,8 +97,7 @@ async function cmdList() {
       active: active.has(s),
     };
   });
-  process.stdout.write(JSON.stringify(rows, null, 2) + "\n");
-
+  printAnswer(rows, TEXT);
 }
 
 async function withChild(surface, fn) {
@@ -119,7 +122,7 @@ async function cmdTools(names) {
       out[surface.name] = { error: err.message };
     }
   }
-  process.stdout.write(JSON.stringify(out, null, 2) + "\n");
+  printAnswer(out, TEXT);
 }
 
 async function cmdCheck(names) {
@@ -136,7 +139,7 @@ async function cmdCheck(names) {
       anyDown = true;
     }
   }
-  process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+  printAnswer(report, TEXT);
   if (anyDown) process.exitCode = 1;
 }
 async function cmdAdopt(args) {
@@ -145,7 +148,7 @@ async function cmdAdopt(args) {
   const unknown = sources.find((argument) => argument.startsWith("-"));
   if (unknown) throw new Error(`unknown adopt option '${unknown}'`);
   const result = adoptMcpConfigurations(SURFACES, { sources, replace });
-  process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+  printAnswer(result, TEXT);
   if (result.status === "imported" || result.status === "unchanged") {
     await recordCatalogueAdopted({
       client: "cli",
@@ -188,7 +191,8 @@ async function cmdOnboarding(args) {
 }
 
 async function main() {
-  const argv = process.argv.slice(2);
+  const { text, rest: argv } = takeTextSwitch(process.argv.slice(2));
+  TEXT = text;
   const [command, ...rest] = argv;
   // `--help`, `-h` or `help` anywhere prints the usage to stdout and runs
   // nothing: `las adopt --help` used to fail as an unknown adopt option and
