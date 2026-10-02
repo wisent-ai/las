@@ -14,7 +14,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { parseSource as readSource } from "./catalog/source.mjs";
 
-const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 1;
 // One MCP configuration file larger than 4 MiB is not one an editor wrote.
 const MAX_CONFIG_BYTES = 4 * 1024 * 1024;
 // The catalogue directory and file are owner-only.
@@ -98,7 +98,7 @@ function validateStoredCatalog(candidate, source) {
   return candidate;
 }
 
-function loadCatalog() {
+export function loadCatalog() {
   const target = catalogPath();
   if (cachedCatalogPath === target && cachedCatalog !== undefined) return cachedCatalog;
   cachedCatalog = undefined;
@@ -131,7 +131,7 @@ function fingerprint(registration) {
   })).digest("hex");
 }
 
-function writeCatalog(catalog) {
+export function writeCatalog(catalog) {
   const target = catalogPath();
   const directory = path.dirname(target);
   if (existsSync(directory)) {

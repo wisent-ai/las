@@ -14,6 +14,7 @@
 // With no surface arguments, tools/check cover every active surface (honoring
 // the LAS_ONLY / LAS_SKIP environment filters).
 import { adoptMcpConfigurations, catalogRegistration } from "./catalog.mjs";
+import { forgetRegistrations } from "./catalog/forget.mjs";
 import { cmdDependencies } from "./dependencies/command.mjs";
 import { startLasGui } from "./gui.mjs";
 import { SURFACES, activeSurfaces, authorizeTools, connect, handshake, surfaceUnconfiguredReason } from "./registry.mjs";
@@ -28,6 +29,7 @@ let TEXT = false;
 // `las <command> --help` is that command's rows (cli.md rule 11).
 const COMMANDS = [
   { name: "adopt", usage: "adopt [--replace] [config...]", help: "adopt supported entries from standard mcpServers JSON" },
+  { name: "forget", usage: "forget <surface...>", help: "drop adopted registrations, so those surfaces launch from the signed registry again" },
   { name: "gui", usage: "gui [--port PORT]", help: "serve the loopback graphical catalogue importer" },
   { name: "list", usage: "list", help: "list every federated surface" },
   { name: "tools", usage: "tools [surface...]", help: "list advertised tools (spawns each child)" },
@@ -189,6 +191,13 @@ async function cmdAdopt(args) {
     process.exitCode = 1;
   }
 }
+async function cmdForget(args) {
+  const unknown = args.find((argument) => argument.startsWith("-"));
+  if (unknown) throw new Error(`unknown forget option '${unknown}'`);
+  const result = forgetRegistrations(args);
+  printAnswer(result, TEXT);
+  if (result.status !== "forgotten") process.exitCode = 1;
+}
 async function cmdGui(args) {
   let port = 0;
   if (args.length) {
@@ -238,6 +247,8 @@ async function main() {
   }
   if (command === "adopt") {
     await cmdAdopt(rest);
+  } else if (command === "forget") {
+    await cmdForget(rest);
   } else if (command === "gui") {
     await cmdGui(rest);
   } else if (command === "list") {
