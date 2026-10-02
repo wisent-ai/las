@@ -774,6 +774,44 @@
           "contains": "if agent_id.is_empty() != agent_secret.is_empty() {"
         }
       ]
+    },
+    {
+      "product": "lem",
+      "requires": "skarbiec",
+      "feature": "the gateway bearer, agent signing secret and Semantic Scholar key",
+      "how": "Skarbiec workload acquisition signed with ~/.lem/workload-ed25519.pem",
+      "whenAbsent": "alternative",
+      "detail": "without Skarbiec and without a local credentials file every acquisition fails with \"cannot reach the Skarbiec broker at …\"",
+      "alternative": "LEM_CREDENTIALS_FILE or ~/.lem/credentials.json, owner-only JSON of item -> field -> value; Lem reads it and asks Skarbiec nothing",
+      "evidence": [
+        {
+          "at": "lem/Sources/LemCore/Skarbiec/LemSkarbiec.swift:55",
+          "contains": "if let local = LemLocalCredentials.configuredURL() {"
+        },
+        {
+          "at": "lem/Sources/LemCore/Skarbiec/LemLocalCredentials.swift:48",
+          "contains": "must be readable by its owner only (chmod 600)"
+        }
+      ]
+    },
+    {
+      "product": "lem",
+      "requires": "brama",
+      "feature": "model calls for citation reading and the figure quality loop",
+      "how": "signed chat completions to the gateway in ~/.lem/brama.json or Stado's directory entry for Brama",
+      "whenAbsent": "alternative",
+      "detail": "without a gateway the figure loop stops with \"Brama has no route in the Stado service directory\"",
+      "alternative": "url in ~/.lem/brama.json names any OpenAI-compatible provider; an empty lem-agent-auth.agent_auth_secret in the local credentials file sends the requests unsigned",
+      "evidence": [
+        {
+          "at": "lem/Sources/LemCore/FigureQualityEvaluator/LemFigureQualityEvaluator.swift:88",
+          "contains": "Brama has no route in the Stado service directory"
+        },
+        {
+          "at": "lem/Sources/LemCore/CitationHarvest/LemCitationHarvest+Complete.swift:29",
+          "contains": "if !agentSecret.isEmpty {"
+        }
+      ]
     }
   ]
 }
