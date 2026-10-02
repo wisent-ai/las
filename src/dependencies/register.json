@@ -856,16 +856,17 @@
       "requires": "skarbiec",
       "feature": "mailbox credentials (Gmail OAuth tokens and app passwords)",
       "how": "runs the Skarbiec CLI named by --skarbiec-bin to read, write and list credential items",
-      "whenAbsent": "refusal",
-      "detail": "without Skarbiec every mailbox read and connect fails with \"Skarbiec could not be started from the configured path\" (SKARBIEC_UNAVAILABLE)",
+      "whenAbsent": "alternative",
+      "detail": "without Skarbiec and without a credentials file every mailbox read and connect fails with \"Skarbiec could not be started from the configured path\" (SKARBIEC_UNAVAILABLE)",
+      "alternative": "SKRZYNKA_CREDENTIALS_FILE names an owner-only JSON file of item id -> item that answers get, list, set-json and retag in Skarbiec's place",
       "evidence": [
         {
-          "at": "skrzynka/src/skarbiec/cli.rs:29",
-          "contains": "Skarbiec could not be started from the configured path"
+          "at": "skrzynka/src/skarbiec/cli.rs:95",
+          "contains": "if let Some(path) = &self.local {"
         },
         {
-          "at": "skrzynka/src/cli/mod.rs:44",
-          "contains": "let resolver = SkarbiecResolver::new(cli.skarbiec_bin);"
+          "at": "skrzynka/src/skarbiec/local/mod.rs:17",
+          "contains": "pub const CREDENTIALS_FILE_ENV: &str = \"SKRZYNKA_CREDENTIALS_FILE\";"
         }
       ]
     }
