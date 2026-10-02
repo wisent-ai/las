@@ -1021,6 +1021,25 @@
           "contains": "if (Boolean(options.agentId) !== Boolean(options.authSecret))"
         }
       ]
+    },
+    {
+      "product": "preferences",
+      "requires": "skarbiec",
+      "feature": "the operator bearer and account token of the preferences CLI",
+      "how": "runs `skarbiec get <item> --field <field>` (SKARBIEC_BIN, default skarbiec) for PREFERENCES_TOKEN_REF and PREFERENCES_ACCOUNT_TOKEN_REF",
+      "whenAbsent": "alternative",
+      "detail": "without Skarbiec and without a credentials file an operator or account command stops with \"PREFERENCES_TOKEN_REF: skarbiec get … failed: … cannot be started; without Skarbiec set PREFERENCES_CREDENTIALS_FILE …\"; anonymous voting needs no credential",
+      "alternative": "PREFERENCES_CREDENTIALS_FILE names an owner-only JSON file of item -> field -> value; both references are answered from it and Skarbiec is not asked",
+      "evidence": [
+        {
+          "at": "preferences/src/cli/client.mjs:55",
+          "contains": "value = execFileSync(binary, [\"get\", item, \"--field\", field]"
+        },
+        {
+          "at": "preferences/src/cli/client.mjs:50",
+          "contains": "const credentialsFile = process.env.PREFERENCES_CREDENTIALS_FILE"
+        }
+      ]
     }
   ]
 }
