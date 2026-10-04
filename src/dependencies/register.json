@@ -891,19 +891,19 @@
     },
     {
       "product": "glina",
-      "requires": "skarbiec",
-      "feature": "credentials behind skarbiec:// references in the pipeline config",
-      "how": "runs `skarbiec get <item>` (SKARBIEC_BIN, default skarbiec) for each reference",
+      "requires": "stado",
+      "feature": "credentials behind role:// references in the pipeline config",
+      "how": "runs `stado credentials get --role ROLE --field FIELD` (STADO_BIN, default stado) for each reference",
       "whenAbsent": "alternative",
-      "detail": "without Skarbiec and without a credentials file every command that loads the config stops with \"skarbiec CLI failed: … cannot be started …; without Skarbiec set GLINA_CREDENTIALS_FILE …\"",
-      "alternative": "GLINA_CREDENTIALS_FILE names an owner-only JSON file of item -> field -> value; every reference is answered from it and Skarbiec is not asked",
+      "detail": "without Stado and without a credentials file every command that loads the config stops with \"stado … cannot be started …; without Stado set GLINA_CREDENTIALS_FILE …\"",
+      "alternative": "GLINA_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; every reference is answered from it and Stado is not asked",
       "evidence": [
         {
-          "at": "glina/pipeline/host/skarbiec.js:43",
+          "at": "glina/pipeline/host/credentials.js:43",
           "contains": "execFile(bin, args"
         },
         {
-          "at": "glina/pipeline/host/skarbiec.js:69",
+          "at": "glina/pipeline/host/credentials.js:69",
           "contains": "nonSecretEnv('GLINA_CREDENTIALS_FILE')"
         }
       ]
