@@ -267,10 +267,10 @@
       "how": "one typed decision on Brama's decision route per message",
       "whenAbsent": "alternative",
       "detail": "without Brama and without a declared service a message stays unread; Tama's stop gate holds the turn on unread messages",
-      "alternative": "oko tasks judge-provider set declares an OpenAI-compatible service; each message is then read by its model in one chat completion. Without any model service, `oko transcripts tasks add <session> <number> --by …` records the message as the task it is",
+      "alternative": "oko tasks judge-provider set declares an OpenAI-compatible service; each message is then read by its model in one chat completion. Without any model service, `oko transcripts tasks kind <session> <number> <KIND> --by …` records what the message is: a task of its own, a detail of the open task, a question or another declared kind",
       "evidence": [
         {
-          "at": "oko/rust/src/tasks/reading/mod.rs:197",
+          "at": "oko/rust/src/tasks/reading/mod.rs:228",
           "contains": "return chat::ask(&client, &model, said).map(Some);"
         },
         {
@@ -480,11 +480,11 @@
       "how": "Stado's product catalogue declares the dependency and installs it first",
       "whenAbsent": "alternative",
       "detail": "without --without brama the install installs Brama's service first",
-      "alternative": "--without brama skips it; tasks are then recorded and closed by hand (oko transcripts tasks add / close, Close on Oko Desktop)",
+      "alternative": "--without brama skips it; what each message is is then recorded by hand and tasks closed by hand (oko transcripts tasks kind / close, Read a message and Close on Oko Desktop)",
       "evidence": [
         {
-          "at": "stado/catalog/products.yml:995",
-          "contains": "alternative: tasks are recorded with oko transcripts tasks add"
+          "at": "stado/catalog/products.yml:908",
+          "contains": "alternative: what each message is, is recorded with oko transcripts tasks kind"
         },
         {
           "at": "stado/stado-rs/product/src/install/mod.rs:119",
