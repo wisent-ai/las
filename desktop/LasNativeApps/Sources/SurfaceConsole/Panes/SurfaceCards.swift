@@ -137,7 +137,7 @@ struct AggregateCard: View {
                 Image(systemName: "list.number")
                     .font(.title2)
                     .foregroundStyle(SurfaceTheme.accent(accent))
-                Text(aggregate.count.map { aggregate.isTruncated ? "\($0)+" : $0.formatted() } ?? "Unavailable")
+                Text(aggregate.count.map { $0.formatted() } ?? "Unavailable")
                     .font(.title.weight(.semibold).monospacedDigit())
                 Text(aggregate.title)
                     .font(.headline)

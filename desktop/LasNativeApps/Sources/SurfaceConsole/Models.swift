@@ -108,7 +108,6 @@ public struct SafeAggregate: Identifiable, Sendable {
     public let title: String
     public let detail: String
     public let count: Int?
-    public let isTruncated: Bool
 }
 
 public struct SurfaceSnapshot: Sendable {

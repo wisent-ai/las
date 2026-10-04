@@ -4,8 +4,6 @@ struct SurfaceLoader: Sendable {
     let workspaceRoot: URL
     let definition: SurfaceDefinition
 
-    private let maximumEntries = 10_000
-
     func load() -> SurfaceSnapshot {
         let repositoryRoot = workspaceRoot
             .appendingPathComponent(definition.repositoryPath, isDirectory: true)
@@ -75,8 +73,7 @@ struct SurfaceLoader: Sendable {
                 id: spec.id,
                 title: spec.title,
                 detail: spec.detail,
-                count: nil,
-                isTruncated: false
+                count: nil
             )
         }
 
@@ -88,7 +85,6 @@ struct SurfaceLoader: Sendable {
                 options: [.skipsHiddenFiles]
             )) ?? []
             var count = 0
-            var truncated = false
             for entry in entries {
                 guard let values = try? entry.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey]),
                       values.isSymbolicLink != true else { continue }
@@ -97,17 +93,12 @@ struct SurfaceLoader: Sendable {
                     : values.isDirectory == true
                 guard matchesKind, extensionAllowed(entry, spec: spec) else { continue }
                 count += 1
-                if count >= maximumEntries {
-                    truncated = true
-                    break
-                }
             }
             return SafeAggregate(
                 id: spec.id,
                 title: spec.title,
                 detail: spec.detail,
-                count: count,
-                isTruncated: truncated
+                count: count
             )
 
         case .recursiveFiles:
@@ -116,10 +107,9 @@ struct SurfaceLoader: Sendable {
                 includingPropertiesForKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey],
                 options: [.skipsHiddenFiles, .skipsPackageDescendants]
             ) else {
-                return SafeAggregate(id: spec.id, title: spec.title, detail: spec.detail, count: nil, isTruncated: false)
+                return SafeAggregate(id: spec.id, title: spec.title, detail: spec.detail, count: nil)
             }
             var count = 0
-            var truncated = false
             while let entry = enumerator.nextObject() as? URL {
                 guard let values = try? entry.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey]) else {
                     continue
@@ -130,17 +120,12 @@ struct SurfaceLoader: Sendable {
                 }
                 guard values.isRegularFile == true, extensionAllowed(entry, spec: spec) else { continue }
                 count += 1
-                if count >= maximumEntries {
-                    truncated = true
-                    break
-                }
             }
             return SafeAggregate(
                 id: spec.id,
                 title: spec.title,
                 detail: spec.detail,
-                count: count,
-                isTruncated: truncated
+                count: count
             )
         }
     }
