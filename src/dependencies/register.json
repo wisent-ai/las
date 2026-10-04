@@ -1010,10 +1010,10 @@
       "how": "chat completions to BRAMA_URL (or MODEL_ROUTER_URL) with the bearer, signed when WISENT_APP_AGENT_ID is set",
       "whenAbsent": "alternative",
       "detail": "without a model URL write, check and sync stop with \"BRAMA_URL or MODEL_ROUTER_URL is required\"; init, sources and onboarding call no model",
-      "alternative": "BRAMA_URL names any OpenAI-compatible provider and BRAMA_API_KEY_REF its key; with WISENT_APP_AGENT_ID unset the requests go unsigned and Brama is not asked",
+      "alternative": "BRAMA_URL names any OpenAI-compatible provider and BRAMA_API_KEY_ROLE its key; with WISENT_APP_AGENT_ID unset the requests go unsigned and Brama is not asked",
       "evidence": [
         {
-          "at": "kronika/src/cli.ts:100",
+          "at": "kronika/src/cli.ts:103",
           "contains": "const bramaUrl = process.env.BRAMA_URL || process.env.MODEL_ROUTER_URL"
         },
         {
@@ -1043,19 +1043,19 @@
     },
     {
       "product": "kronika",
-      "requires": "skarbiec",
-      "feature": "the model bearer and signing secret behind BRAMA_API_KEY_REF and WISENT_APP_AGENT_AUTH_SECRET_REF",
-      "how": "runs `skarbiec get <item> --field <field>` (SKARBIEC_BIN, default skarbiec)",
+      "requires": "stado",
+      "feature": "the model bearer and signing secret behind BRAMA_API_KEY_ROLE and WISENT_APP_AGENT_AUTH_SECRET_ROLE",
+      "how": "runs `stado credentials get --role <role> --field <field>` (STADO_BIN, default stado), so no vault item is named",
       "whenAbsent": "alternative",
-      "detail": "without Skarbiec and without a credentials file write, check and sync stop with \"BRAMA_API_KEY_REF: skarbiec get … failed: skarbiec cannot be started; without Skarbiec set KRONIKA_CREDENTIALS_FILE …\"; init and onboarding need no credential",
-      "alternative": "KRONIKA_CREDENTIALS_FILE names an owner-only JSON file of item -> field -> value; every ITEM#FIELD reference is answered from it and Skarbiec is not asked",
+      "detail": "without Stado and without a credentials file write, check and sync stop with \"BRAMA_API_KEY_ROLE: stado credentials get --role … failed: stado cannot be started; without Stado set KRONIKA_CREDENTIALS_FILE …\"; init and onboarding need no credential",
+      "alternative": "KRONIKA_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; every ROLE#FIELD reference is answered from it and Stado is not asked",
       "evidence": [
         {
-          "at": "kronika/src/cli/skarbiec.ts:32",
-          "contains": "value = execFileSync(binary, [\"get\", item, \"--field\", field]"
+          "at": "kronika/src/cli/skarbiec.ts:34",
+          "contains": "value = execFileSync(binary, [\"credentials\", \"get\", \"--role\", role, \"--field\", field]"
         },
         {
-          "at": "kronika/src/cli/skarbiec.ts:27",
+          "at": "kronika/src/cli/skarbiec.ts:29",
           "contains": "const credentialsFile = process.env.KRONIKA_CREDENTIALS_FILE"
         }
       ]
