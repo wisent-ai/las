@@ -948,19 +948,19 @@
     },
     {
       "product": "skryba",
-      "requires": "skarbiec",
-      "feature": "the model client token and agent secret behind BRAMA_TOKEN_REF and SKRYBA_AGENT_AUTH_SECRET_REF",
-      "how": "runs `skarbiec get <item> --field <field>` (SKARBIEC_BIN, default skarbiec)",
+      "requires": "stado",
+      "feature": "the model client token and agent secret behind BRAMA_TOKEN_ROLE and SKRYBA_AGENT_AUTH_SECRET_ROLE",
+      "how": "runs `stado credentials get --role <role> --field <field>` (STADO_BIN, default stado), so no vault item is named",
       "whenAbsent": "alternative",
-      "detail": "without Skarbiec and without a credentials file rewrite, train and benchmark stop with \"BRAMA_TOKEN_REF: skarbiec could not be run; without Skarbiec set SKRYBA_CREDENTIALS_FILE …\"",
-      "alternative": "SKRYBA_CREDENTIALS_FILE names an owner-only JSON file of item -> field -> value; every ITEM#FIELD reference is answered from it and Skarbiec is not asked",
+      "detail": "without Stado and without a credentials file rewrite, train and benchmark stop with \"BRAMA_TOKEN_ROLE: stado could not be run; without Stado set SKRYBA_CREDENTIALS_FILE …\"",
+      "alternative": "SKRYBA_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; every ROLE#FIELD reference is answered from it and Stado is not asked",
       "evidence": [
         {
-          "at": "skryba/src/app/brama.rs:46",
-          "contains": ".args([\"get\", item, \"--field\", field])"
+          "at": "skryba/src/app/brama.rs:47",
+          "contains": ".args([\"credentials\", \"get\", \"--role\", role, \"--field\", field])"
         },
         {
-          "at": "skryba/src/app/brama.rs:41",
+          "at": "skryba/src/app/brama.rs:42",
           "contains": "env::var_os(\"SKRYBA_CREDENTIALS_FILE\")"
         }
       ]
