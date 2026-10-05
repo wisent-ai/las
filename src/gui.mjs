@@ -16,13 +16,9 @@ import { dependenciesWithout } from "./dependencies/register.mjs";
 import { SURFACES, activeSurfaces, surfaceConfigured } from "./registry.mjs";
 
 const LOOPBACK_HOST = "127.0.0.1";
-// One adoption request carries at most 8 MiB and names at most 32 source files; a file name is
-// at most 256 characters and is stored under a 120-character base; a path is at most 4096.
+// One adoption request carries at most 8 MiB. How many sources it names and how long a name or
+// path may be are the filesystem's to say: it refuses a name or path it cannot hold, by name.
 const MAX_REQUEST_BYTES = 8 * 1024 * 1024;
-const MAX_SOURCES = 32;
-const MAX_UPLOAD_NAME_CHARS = 256;
-const STORED_NAME_CHARS = 120;
-const MAX_PATH_CHARS = 4096;
 const UPLOAD_INDEX_DIGITS = 2;
 // Import storage is owner-only; the session token is 32 random bytes; the largest TCP port.
 const OWNER_ONLY_DIRECTORY = 0o700;
@@ -158,14 +154,14 @@ function stageUploads(uploads, sessionId) {
   if (!uploads.length) return [];
   for (const [index, upload] of uploads.entries()) {
     if (!isRecord(upload) || Object.keys(upload).some((key) => key !== "name" && key !== "content")
-      || typeof upload.name !== "string" || upload.name.length === 0 || upload.name.length > MAX_UPLOAD_NAME_CHARS
+      || typeof upload.name !== "string" || upload.name.length === 0
       || typeof upload.content !== "string") {
       throw new Error(`upload ${index + 1} must contain only a file name and text content`);
     }
   }
   const directory = guiImportDirectory(sessionId);
   return uploads.map((upload, index) => {
-    const base = path.basename(upload.name).replaceAll(/[^A-Za-z0-9._-]/g, "_").slice(0, STORED_NAME_CHARS) || "mcp.json";
+    const base = path.basename(upload.name).replaceAll(/[^A-Za-z0-9._-]/g, "_") || "mcp.json";
     const target = path.join(directory, `${String(index + 1).padStart(UPLOAD_INDEX_DIGITS, "0")}-${randomUUID()}-${base}`);
     writeFileSync(target, upload.content, { encoding: "utf8", flag: "wx", mode: OWNER_ONLY_FILE });
     return target;
@@ -179,9 +175,8 @@ function adoptionSources(body, sessionId) {
   if (!["discover", "paths", "uploads"].includes(body.mode)) throw new Error("mode must be discover, paths, or uploads");
   if (typeof body.replace !== "boolean") throw new Error("replace must be boolean");
   if (!Array.isArray(body.paths) || !Array.isArray(body.uploads)) throw new Error("paths and uploads must be arrays");
-  if (body.paths.length + body.uploads.length > MAX_SOURCES) throw new Error(`at most ${MAX_SOURCES} source files may be selected`);
-  if (body.paths.some((source) => typeof source !== "string" || source.length === 0 || source.length > MAX_PATH_CHARS)) {
-    throw new Error(`every source path must be a non-empty path of at most ${MAX_PATH_CHARS} characters`);
+  if (body.paths.some((source) => typeof source !== "string" || source.length === 0)) {
+    throw new Error("every source path must be a non-empty path");
   }
   if (body.mode === "discover") {
     if (body.paths.length || body.uploads.length) throw new Error("discovery mode does not accept explicit sources");

@@ -12,7 +12,6 @@ import {
   JOURNEY_ID,
   JOURNEY_VERSION,
   JOURNEY_VERSION_ID,
-  MAX_JOURNEY_SCREENS,
   PRODUCT_ID,
 } from "./contract.mjs";
 import { LOCAL_SCREENS } from "./screens.mjs";
@@ -73,7 +72,7 @@ function validateBundle(bundle) {
     || sha256(bundle.canonical_definition) !== bundle.content_sha256) {
     throw new Error("onboarding bundle integrity is invalid");
   }
-  if (!Array.isArray(definition.screens) || definition.screens.length === 0 || definition.screens.length > MAX_JOURNEY_SCREENS) {
+  if (!Array.isArray(definition.screens) || definition.screens.length === 0) {
     throw new Error("onboarding screen graph is invalid");
   }
   const ids = new Set();

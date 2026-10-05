@@ -74,9 +74,6 @@ const SKARBIEC_HEALTH_FIELDS = new Set([
   "active_capabilities",
   "anomaly_count",
 ]);
-const SKARBIEC_MAX_TTL_SECONDS = 60;
-const SKARBIEC_MAX_USES = 1;
-const SKARBIEC_MAX_DELEGATION_DEPTH = 0;
 const SKARBIEC_CAPABILITY_TAXONOMY = new Map([
   ["weles.browser.fill", { target: "weles", prefixes: ["origin:"] }],
   ["weles.captcha.solve", { target: "weles", prefixes: ["provider:"] }],
@@ -189,13 +186,14 @@ function validateSkarbiecArguments(remoteName, args) {
     }
   }
   validateCapabilityTaxonomy(args);
-  if (!Number.isSafeInteger(args.ttl_seconds) || args.ttl_seconds < 1 || args.ttl_seconds > SKARBIEC_MAX_TTL_SECONDS
-    || !Number.isSafeInteger(args.max_uses) || args.max_uses < 1 || args.max_uses > SKARBIEC_MAX_USES) {
-    throw new Error("skarbiec: capability request exceeds the local least-privilege ceiling");
+  // How long, how often and how deep a capability may be used is Skarbiec's policy: it holds the
+  // ceilings and refuses a request beyond them with its reason. Las only checks the shape.
+  if (!Number.isSafeInteger(args.ttl_seconds) || args.ttl_seconds < 1
+    || !Number.isSafeInteger(args.max_uses) || args.max_uses < 1) {
+    throw new Error("skarbiec: ttl_seconds and max_uses must be positive whole numbers");
   }
-  if (Object.prototype.hasOwnProperty.call(args, "delegation_depth")
-    && (!nonNegativeInteger(args.delegation_depth) || args.delegation_depth > SKARBIEC_MAX_DELEGATION_DEPTH)) {
-    throw new Error("skarbiec: capability request exceeds the local least-privilege ceiling");
+  if (Object.prototype.hasOwnProperty.call(args, "delegation_depth") && !nonNegativeInteger(args.delegation_depth)) {
+    throw new Error("skarbiec: delegation_depth must be a whole number of at least zero");
   }
 }
 

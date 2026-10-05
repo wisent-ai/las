@@ -13,8 +13,7 @@ export const JOURNEY_VERSION = "2026-09-05.1";
 export const JOURNEY_VERSION_ID = "ca4c84fd-3de9-47ce-948d-cce351298e6c";
 export const FIRST_SUCCESS_FACT = "catalogue_adopted";
 export const STATE_PATH = join(process.env.XDG_STATE_HOME || join(homedir(), ".local", "state"), "las", "onboarding.json");
-// A journey graph has at most 128 screens; the state file and its directory are owner-only.
-export const MAX_JOURNEY_SCREENS = 128;
+// The state file and its directory are owner-only.
 export const OWNER_ONLY_DIRECTORY = 0o700;
 export const OWNER_ONLY_FILE = 0o600;
 export const JSON_INDENT = 2;
