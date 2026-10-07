@@ -27,79 +27,96 @@ const CLIENT_VERSION = "0.1.0";
  * speaks the protocol and decides nothing about authority.
  */
 export function connect(surface, admit) {
-  const env = admit(surface);
-  const child = spawn(surface.command, surface.args, {
-    cwd: surface.cwd,
-    stdio: ["pipe", "pipe", "pipe"],
-    env,
-  });
+	const env = admit(surface);
+	const child = spawn(surface.command, surface.args, {
+		cwd: surface.cwd,
+		stdio: ["pipe", "pipe", "pipe"],
+		env,
+	});
 
-  const pending = new Map();
-  let fatal = null;
+	const pending = new Map();
+	let fatal = null;
 
-  function failAll(err) {
-    fatal = err;
-    for (const entry of pending.values()) entry.reject(err);
-    pending.clear();
-  }
+	function failAll(err) {
+		fatal = err;
+		for (const entry of pending.values()) entry.reject(err);
+		pending.clear();
+	}
 
-  child.on("error", (err) => failAll(err));
-  child.on("exit", (codeVal) => {
-    if (pending.size) failAll(new Error(`${surface.name} exited (${codeVal})`));
-  });
-  // Child diagnostics belong on its own stderr; las does not forward them to
-  // its stdout, which must stay a clean protocol stream.
-  child.stderr.on("data", () => {});
+	child.on("error", (err) => failAll(err));
+	child.on("exit", (codeVal) => {
+		if (pending.size) failAll(new Error(`${surface.name} exited (${codeVal})`));
+	});
+	// Child diagnostics belong on its own stderr; las does not forward them to
+	// its stdout, which must stay a clean protocol stream.
+	child.stderr.on("data", () => {});
 
-  const rl = readline.createInterface({ input: child.stdout });
-  rl.on("line", (line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-    let msg;
-    try {
-      msg = JSON.parse(trimmed);
-    } catch {
-      return;
-    }
-    const rid = msg && msg.id;
-    if (rid === undefined || rid === null) return;
-    const entry = pending.get(rid);
-    if (!entry) return;
-    pending.delete(rid);
-    if (msg.error) entry.reject(new Error(msg.error.message || "child error"));
-    else entry.resolve(msg.result);
-  });
+	const rl = readline.createInterface({ input: child.stdout });
+	rl.on("line", (line) => {
+		const trimmed = line.trim();
+		if (!trimmed) return;
+		let msg;
+		try {
+			msg = JSON.parse(trimmed);
+		} catch {
+			return;
+		}
+		const rid = msg && msg.id;
+		if (rid === undefined || rid === null) return;
+		const entry = pending.get(rid);
+		if (!entry) return;
+		pending.delete(rid);
+		if (msg.error) entry.reject(new Error(msg.error.message || "child error"));
+		else entry.resolve(msg.result);
+	});
 
-  function request(method, params) {
-    return new Promise((resolve, reject) => {
-      if (fatal) {
-        reject(fatal);
-        return;
-      }
-      const id = randomUUID();
-      pending.set(id, { resolve, reject });
-      const payload = JSON.stringify({ jsonrpc: JSONRPC_VERSION, id, method, params: params || {} });
-      child.stdin.write(payload + "\n");
-    });
-  }
+	function request(method, params) {
+		return new Promise((resolve, reject) => {
+			if (fatal) {
+				reject(fatal);
+				return;
+			}
+			const id = randomUUID();
+			pending.set(id, { resolve, reject });
+			const payload = JSON.stringify({
+				jsonrpc: JSONRPC_VERSION,
+				id,
+				method,
+				params: params || {},
+			});
+			child.stdin.write(payload + "\n");
+		});
+	}
 
-  function close() {
-    try { rl.close(); } catch { /* already closed */ }
-    try { child.stdin.end(); } catch { /* already ended */ }
-    try { child.kill(); } catch { /* already gone */ }
-  }
+	function close() {
+		try {
+			rl.close();
+		} catch {
+			/* already closed */
+		}
+		try {
+			child.stdin.end();
+		} catch {
+			/* already ended */
+		}
+		try {
+			child.kill();
+		} catch {
+			/* already gone */
+		}
+	}
 
-  return { surface, request, close };
+	return { surface, request, close };
 }
 
 // Standard MCP handshake against a connected child: initialize, then list its
 // tools. Returns the child's tool array (possibly empty).
 export async function handshake(client) {
-  await client.request("initialize", {
-    protocolVersion: PROTOCOL_VERSION,
-    capabilities: {},
-    clientInfo: { name: CLIENT_NAME, version: CLIENT_VERSION },
-  });
-  const result = await client.request("tools/list", {});
-  return (result && result.tools) || [];
+	await client.request("initialize", {
+		protocolVersion: PROTOCOL_VERSION,
+		capabilities: {},
+		clientInfo: { name: CLIENT_NAME, version: CLIENT_VERSION },
+	});
+	const result = await client.request("tools/list", {});
+	return (result && result.tools) || [];
 }

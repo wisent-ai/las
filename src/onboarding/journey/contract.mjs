@@ -12,7 +12,11 @@ export const JOURNEY_ID = "first-use";
 export const JOURNEY_VERSION = "2026-09-05.1";
 export const JOURNEY_VERSION_ID = "ca4c84fd-3de9-47ce-948d-cce351298e6c";
 export const FIRST_SUCCESS_FACT = "catalogue_adopted";
-export const STATE_PATH = join(process.env.XDG_STATE_HOME || join(homedir(), ".local", "state"), "las", "onboarding.json");
+export const STATE_PATH = join(
+	process.env.XDG_STATE_HOME || join(homedir(), ".local", "state"),
+	"las",
+	"onboarding.json",
+);
 // The state file and its directory are owner-only.
 export const OWNER_ONLY_DIRECTORY = 0o700;
 export const OWNER_ONLY_FILE = 0o600;
