@@ -10,7 +10,7 @@
   "platforms": {
     "npm-package": {
       "runner_platform": "linux-amd64",
-      "quality": [],
+      "quality": [{"name": "fmt", "argv": ["bash", "release/fmt.sh", "--check"]}],
       "build": {
         "argv": ["stado", "product", "npm", "pack"]
       },
