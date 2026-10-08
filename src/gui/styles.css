@@ -2,8 +2,8 @@
    typography, the workspace where a catalogue is submitted, and the results
    and catalogue table below it.
 
-   It was one 316-line file until 2026-09-21, past the three-hundred-line
-   limit every file in this workshop lives under. */
+   It is split so that no part passes the file length limit every file in
+   this workshop lives under. */
 
 @import url("/styles/base.css");
 @import url("/styles/workspace.css");
