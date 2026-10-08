@@ -104,10 +104,13 @@ export function selectDependencies(register, query) {
 }
 
 /**
- * One cited line read again: whether it still says what the register quotes.
- * A quote no longer at its line but on exactly one other line of the same
- * file is reported with `movedTo`, the line it is on now; only that case can
- * be repaired without reading the code again.
+ * One cited line read again: whether the file still says what the register
+ * quotes. A quote no longer at its line but on exactly one other line of the
+ * same file still holds — the code says the same thing, only lower or higher
+ * — and is answered with `movedTo`, the line it is on now, so readers and
+ * `--move-lines` use that line. A quote that changed, vanished or now stands
+ * on several lines does not hold: only a person reading the code can say
+ * whether the dependency still behaves as recorded.
  */
 function verify(cited) {
 	const file = path.join(WORKSPACE, cited.repository, cited.file);
@@ -130,7 +133,7 @@ function verify(cited) {
 	if (found.length === 1)
 		return {
 			...cited,
-			ok: false,
+			ok: true,
 			movedTo: found[0],
 			observed: `the quote moved to line ${found[0]}`,
 		};
@@ -150,24 +153,29 @@ function verify(cited) {
 	};
 }
 
-/** Every cited line checked; `ok` is false when any one moved or changed. */
+/**
+ * Every cited line checked; `ok` is false when any quote changed. Quotes that
+ * only moved hold and are listed under `moved` with the line they are on now.
+ */
 export function checkDependencyEvidence(register) {
 	const stale = [];
+	const moved = [];
 	let checked = 0;
 	for (const entry of register.dependencies) {
 		for (const cited of entry.evidence) {
 			checked += 1;
 			const result = verify(cited);
-			if (!result.ok)
-				stale.push({
-					product: entry.product,
-					requires: entry.requires,
-					feature: entry.feature,
-					...result,
-				});
+			const located = {
+				product: entry.product,
+				requires: entry.requires,
+				feature: entry.feature,
+				...result,
+			};
+			if (!result.ok) stale.push(located);
+			else if (result.movedTo) moved.push(located);
 		}
 	}
-	return { ok: stale.length === 0, workspace: WORKSPACE, checked, stale };
+	return { ok: stale.length === 0, workspace: WORKSPACE, checked, stale, moved };
 }
 
 /**
@@ -184,7 +192,6 @@ export function moveDependencyLines() {
 		register.dependencies.forEach((entry, entryIndex) => {
 			entry.evidence.forEach((cited, citedIndex) => {
 				const result = verify(cited);
-				if (result.ok) return;
 				if (result.movedTo) {
 					const at = `${cited.repository}/${cited.file}:${result.movedTo}`;
 					document.dependencies[entryIndex].evidence[citedIndex].at = at;
@@ -193,7 +200,7 @@ export function moveDependencyLines() {
 						to: at,
 						contains: cited.contains,
 					});
-				} else {
+				} else if (!result.ok) {
 					remaining.push({
 						product: entry.product,
 						requires: entry.requires,
@@ -229,7 +236,10 @@ export function recordDependency(entry) {
 			checked.dependencies[
 				position >= 0 ? position : checked.dependencies.length - 1
 			];
-		const refused = recorded.evidence.map(verify).filter((cited) => !cited.ok);
+		// A citation recorded now must name the line its quote is on.
+		const refused = recorded.evidence
+			.map(verify)
+			.filter((cited) => !cited.ok || cited.movedTo);
 		if (refused.length)
 			return { write: false, answer: { recorded: false, refused } };
 		return { write: true, answer: { recorded: true, replaced: position >= 0 } };

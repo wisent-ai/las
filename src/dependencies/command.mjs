@@ -168,6 +168,10 @@ function printCheck(report, json) {
 		process.stdout.write(
 			`all ${report.checked} cited source lines still say what the register quotes (workspace ${report.workspace})\n`,
 		);
+		for (const cited of report.moved)
+			process.stdout.write(
+				`  moved: ${cited.repository}/${cited.file}:${cited.line} is now line ${cited.movedTo} (${JSON.stringify(cited.contains)}); --move-lines rewrites it\n`,
+			);
 	} else {
 		process.stdout.write(
 			`${report.stale.length} of ${report.checked} cited source lines no longer say what the register quotes:\n`,

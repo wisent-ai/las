@@ -181,13 +181,16 @@ las dependencies --json
 
 Every entry cites the source lines it was read from, as
 `<repository>/<file>:<line>` with the text that line contains.
-`las dependencies check` reads each cited line again and exits `1` when one no
-longer says what the register quotes, naming the file, the line, the quoted
-text and what the line says now (or that the file cannot be read). When the
-quote only moved to exactly one other line of the same file, the report says
-which line; `las dependencies check --move-lines` rewrites those line numbers
-in the register and lists every citation whose quote changed or vanished, which
-needs a person to read the code again (exit `1`). A product name the register
+`las dependencies check` reads each cited file again and exits `1` when a
+quote changed, vanished or now stands on several lines, naming the file, the
+line, the quoted text and what the line says now (or that the file cannot be
+read). A quote that only moved to exactly one other line of the same file
+still holds: the code says the same thing, so the check passes and lists it as
+`moved: <file>:<line> is now line <n>`, and `las dependencies check
+--move-lines` rewrites those line numbers in the register and lists every
+citation whose quote changed or vanished, which needs a person to read the
+code again (exit `1`). A citation recorded with `set` must name the line its
+quote is on now. A product name the register
 does not hold, an unknown option, `check` with a filter, or `--move-lines`
 without `check` exits `2` with the usage.
 
