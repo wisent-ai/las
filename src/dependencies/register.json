@@ -1,1599 +1,1599 @@
 {
-	"schema": "las.dependencies.v1",
-	"why": "Which Wisent product calls which other Wisent product, and what a person who does not have the other product gets: an alternative, a refusal that names what is missing, or a degraded answer. A machine is not assumed to hold every product. Every entry cites the source lines it was read from as `<repository>/<file>:<line>`; `las dependencies check` re-reads them, so an entry whose code moved or changed is reported instead of trusted.",
-	"outcomes": {
-		"alternative": "the product works without the other one through the path named in `alternative`",
-		"refusal": "the feature stops with an error; `detail` says what the error says",
-		"degraded": "the feature goes on with less; `detail` says what is lost and whether it is said"
-	},
-	"dependencies": [
-		{
-			"product": "jeden",
-			"requires": "stado",
-			"feature": "reading its own Brama credentials",
-			"how": "runs `stado credentials get <item> --field <field>`",
-			"whenAbsent": "alternative",
-			"detail": "without Stado the read fails with \"the Stado CLI could not be started … Install Stado, or carry … and BRAMA_URL in this process's environment\"",
-			"alternative": "set the Brama secret and BRAMA_URL in the environment, or name an OpenAI-compatible provider with JEDEN_MODEL_ENDPOINT; in both cases Stado is not asked",
-			"evidence": [
-				{
-					"at": "jeden/rust/agent/credential/mod.rs:97",
-					"contains": "Command::new(\"stado\")"
-				},
-				{
-					"at": "jeden/rust/agent/credential/mod.rs:163",
-					"contains": "if direct_provider().is_some() {"
-				}
-			]
-		},
-		{
-			"product": "jeden",
-			"requires": "stado",
-			"feature": "rebuilding itself on macOS",
-			"how": "runs `stado product signing inspect` and `stado product signing sign`",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without JEDEN_CODESIGN_IDENTITY the rebuild stops with \"cannot inspect the running code identity through Stado: …; without Stado set JEDEN_CODESIGN_IDENTITY …\"",
-			"alternative": "JEDEN_CODESIGN_IDENTITY (a codesign identity, or - for ad-hoc) signs the new build with /usr/bin/codesign and asks Stado nothing",
-			"evidence": [
-				{
-					"at": "jeden/rust/cli/run/self_rebuild.rs:50",
-					"contains": "let own_identity = std::env::var(\"JEDEN_CODESIGN_IDENTITY\")"
-				},
-				{
-					"at": "jeden/rust/cli/run/self_rebuild.rs:102",
-					"contains": "Command::new(\"/usr/bin/codesign\")"
-				}
-			]
-		},
-		{
-			"product": "jeden",
-			"requires": "probierz",
-			"feature": "the probierz tool",
-			"how": "runs a Probierz source checkout (PROBIERZ_ROOT) or the `probierz` CLI",
-			"whenAbsent": "refusal",
-			"detail": "`jeden probierz` is a launcher for Probierz itself, so without Probierz it stops with \"launch Probierz: …; set PROBIERZ_ROOT to a Probierz source checkout or install its CLI\"; nothing else in Jeden needs Probierz",
-			"evidence": [
-				{
-					"at": "jeden/rust/cli/tooling/probierz.rs:39",
-					"contains": "Command::new(\"probierz\")"
-				},
-				{
-					"at": "jeden/rust/cli/tooling/probierz.rs:51",
-					"contains": "set PROBIERZ_ROOT"
-				}
-			]
-		},
-		{
-			"product": "probierz",
-			"requires": "stado",
-			"feature": "listing registry hosts (`probierz hosts`, `--host stado:<target>`)",
-			"how": "runs `stado registry pull`",
-			"whenAbsent": "degraded",
-			"detail": "says \"the Stado registry is unreadable, so no registry host is listed\" on stderr and lists only the placement selectors and `local`",
-			"evidence": [
-				{
-					"at": "probierz/probierz-rs/src/discovery/commands.rs:76",
-					"contains": "Command::new(\"stado\")"
-				},
-				{
-					"at": "probierz/probierz-rs/src/discovery/commands.rs:89",
-					"contains": "the Stado registry is unreadable"
-				}
-			]
-		},
-		{
-			"product": "probierz",
-			"requires": "tama",
-			"feature": "violations per repository in the fleet overview",
-			"how": "runs `tama find-violations --repo <root> --json`",
-			"whenAbsent": "degraded",
-			"detail": "the repository's row carries \"tama find-violations cannot be run: <error>\" and the overview goes on with the other repositories",
-			"evidence": [
-				{
-					"at": "probierz/probierz-rs/src/status/fleet/overview.rs:6",
-					"contains": "Command::new(\"tama\")"
-				},
-				{
-					"at": "probierz/probierz-rs/src/status/fleet/overview.rs:12",
-					"contains": "tama find-violations cannot be run"
-				}
-			]
-		},
-		{
-			"product": "stado",
-			"requires": "skarbiec",
-			"feature": "the credential store behind fleet and service credentials",
-			"how": "the selected store; Skarbiec when nothing is configured",
-			"whenAbsent": "alternative",
-			"detail": "with no store configured Stado talks to Skarbiec and fails when it is not there",
-			"alternative": "configure the store as an absolute file path (`file:///path` or `/path`); reads, writes, removals and listings then use that file",
-			"evidence": [
-				{
-					"at": "stado/stado-rs/src/credential_store/mod.rs:138",
-					"contains": "Backend::Skarbiec { url: None }"
-				},
-				{
-					"at": "stado/stado-rs/src/credential_store/mod.rs:145",
-					"contains": "strip_prefix(\"file://\")"
-				}
-			]
-		},
-		{
-			"product": "stado",
-			"requires": "skarbiec",
-			"feature": "`stado credentials get|put|ls|rm`, build secrets of `stado product` builds and signing credentials of `stado product signing`",
-			"how": "the selected credential store; build and signing secrets are read through `stado credentials get`",
-			"whenAbsent": "alternative",
-			"detail": "with Skarbiec selected and absent these fail on the connection; a build reports each missing secret as \"build secret unavailable: …\" and goes on, signing stops",
-			"alternative": "select a file store (`file:///path`); these commands then read and write that file and need no Skarbiec",
-			"evidence": [
-				{
-					"at": "stado/stado-rs/src/cli/secrets/store/items.rs:32",
-					"contains": "Backend::File { path } => Ok(Store::File(path))"
-				},
-				{
-					"at": "stado/stado-rs/product/src/common/mod.rs:85",
-					"contains": "\"credentials\", \"get\", item"
-				},
-				{
-					"at": "stado/stado-rs/product/src/install/recipes/build/manifest.rs:100",
-					"contains": "crate::common::credential_field"
-				},
-				{
-					"at": "stado/stado-rs/product/src/signing/credentials.rs:23",
-					"contains": "crate::common::credential_field"
-				}
-			]
-		},
-		{
-			"product": "stado",
-			"requires": "tama",
-			"feature": "fleet build approvals",
-			"how": "runs `tama build approval …` only when a build exceeds the day's budget",
-			"whenAbsent": "alternative",
-			"detail": "builds inside the daily budget go on without Tama; one past it is refused with the budget's refusal followed by \"cannot verify recorded user build approval through Tama: …\"",
-			"alternative": "`stado queue budget --limit <N>` declares the day's ceiling in the fleet registry; builds within it need no Tama approval",
-			"evidence": [
-				{
-					"at": "stado/stado-rs/src/scheduler/builds/charge.rs:72",
-					"contains": "let approved = if let Some(refusal) = budget.refusal(wanted, asked_by) {"
-				},
-				{
-					"at": "stado/stado-rs/src/scheduler/builds/approval.rs:29",
-					"contains": "cannot verify recorded user build approval through Tama"
-				},
-				{
-					"at": "stado/stado-rs/src/cli/work/queue.rs:180",
-					"contains": "current.with_limit(&mut document, limit);"
-				}
-			]
-		},
-		{
-			"product": "tama",
-			"requires": "oko",
-			"feature": "the stop gate and task assignment",
-			"how": "runs the Oko CLI (`TAMA_OKO_CLI`, default `oko`) for the task and defect registers",
-			"whenAbsent": "alternative",
-			"detail": "an installed Oko that cannot be read still refuses every stop with \"… An unreadable task ledger is not an empty task ledger.\"",
-			"alternative": "with no Oko CLI installed (neither TAMA_OKO_CLI nor oko on PATH) the stop gate uses the session own todo list as the only register; the text gate and the build gate refuse nothing; tama task scope set takes the identifier and repositories the session names and writes nothing back",
-			"evidence": [
-				{
-					"at": "tama/rust/crates/tama-hook-tools/src/assignment/rules.rs:45",
-					"contains": "pub fn oko_installed() -> bool {"
-				},
-				{
-					"at": "tama/rust/crates/tama-hook-tools/src/programs/block/stop/block_stop_with_open_work.rs:72",
-					"contains": "if !rules::oko_installed() {"
-				},
-				{
-					"at": "tama/rust/crates/tama-hook-tools/src/programs/block/text/block_text_outside_tool_calls.rs:28",
-					"contains": "if !rules::oko_installed() {"
-				},
-				{
-					"at": "tama/rust/crates/tama-hook-tools/src/ports/block_off_task_work/registers.rs:19",
-					"contains": "if !oko_installed() {"
-				},
-				{
-					"at": "tama/rust/crates/tama-hook-tools/src/ports/block_one_off_repairs/mod.rs:125",
-					"contains": "if !crate::assignment::rules::oko_installed() {"
-				},
-				{
-					"at": "tama/rust/crates/tama-hook-tools/src/programs/block/stop/block_stop_with_open_work.rs:163",
-					"contains": "An unreadable task ledger is not an empty task ledger."
-				}
-			]
-		},
-		{
-			"product": "tama",
-			"requires": "stado",
-			"feature": "the vault listing the internal-names guard reads",
-			"how": "runs `stado credentials ls --json`",
-			"whenAbsent": "alternative",
-			"detail": "a failed read is recorded and the last kept listing is used",
-			"alternative": "a listing file named by the guard's listing variable, or the listing kept from the last successful read",
-			"evidence": [
-				{
-					"at": "tama/rust/crates/tama-hook-tools/src/ports/block_internal_names/names.rs:132",
-					"contains": "std::env::var(VAULT_LISTING_ENV)"
-				},
-				{
-					"at": "tama/rust/crates/tama-hook-tools/src/ports/block_internal_names/names.rs:140",
-					"contains": "Command::new(\"stado\")"
-				}
-			]
-		},
-		{
-			"product": "oko",
-			"requires": "stado",
-			"feature": "finding the shared database",
-			"how": "runs `stado database resolve oko --consumer oko --json`",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without the environment pair every command that needs the database fails until one resolve succeeded; the answer kept in ~/.oko/database.json is used afterwards",
-			"alternative": "set OKO_DATABASE_URL and OKO_DATABASE_ANON_KEY; Oko then asks neither Stado nor Skarbiec",
-			"evidence": [
-				{
-					"at": "oko/rust/src/database/resolved.rs:40",
-					"contains": "OKO_DATABASE_URL"
-				},
-				{
-					"at": "oko/rust/src/database/mod.rs:69",
-					"contains": "let configured = resolved::from_environment()?;"
-				}
-			]
-		},
-		{
-			"product": "oko",
-			"requires": "skarbiec",
-			"feature": "the shared database's address and key",
-			"how": "reads the credential item Stado names, as consumer oko-database-client",
-			"whenAbsent": "alternative",
-			"detail": "as for Stado: without the environment pair no database until one resolve succeeded",
-			"alternative": "set OKO_DATABASE_URL and OKO_DATABASE_ANON_KEY; Oko then asks neither Stado nor Skarbiec",
-			"evidence": [
-				{
-					"at": "oko/rust/src/database/resolved.rs:41",
-					"contains": "OKO_DATABASE_ANON_KEY"
-				},
-				{
-					"at": "oko/rust/src/database/mod.rs:69",
-					"contains": "let configured = resolved::from_environment()?;"
-				}
-			]
-		},
-		{
-			"product": "oko",
-			"requires": "brama",
-			"feature": "reading what each operator message is",
-			"how": "one typed decision on Brama's decision route per message",
-			"whenAbsent": "alternative",
-			"detail": "without Brama and without a declared service a message stays unread; Tama's stop gate holds the turn on unread messages",
-			"alternative": "oko tasks judge-provider set declares an OpenAI-compatible service; each message is then read by its model in one chat completion. Without any model service, `oko transcripts tasks kind <session> <number> <KIND> --by …` records what the message is: a task of its own, a detail of the open task, a question or another declared kind",
-			"evidence": [
-				{
-					"at": "oko/rust/src/tasks/reading/mod.rs:228",
-					"contains": "return chat::ask(&client, &model, said).map(Some);"
-				},
-				{
-					"at": "oko/rust/src/tasks/reading/chat.rs:41",
-					"contains": "pub(super) fn ask(client: &Client, model: &str, said: &str) -> Outcome<Answer> {"
-				}
-			]
-		},
-		{
-			"product": "oko",
-			"requires": "brama",
-			"feature": "closing a task",
-			"how": "the independent judge, asked through Brama",
-			"whenAbsent": "alternative",
-			"detail": "without the judge no verdict is recorded",
-			"alternative": "the operator closes the task himself with `oko transcripts tasks close <task> --reason TEXT` or Close on Oko Desktop's Tasks screen",
-			"evidence": [
-				{
-					"at": "oko/rust/src/tasks/record/verdict.rs:71",
-					"contains": "pub fn close("
-				}
-			]
-		},
-		{
-			"product": "brama",
-			"requires": "skarbiec",
-			"feature": "provider credentials",
-			"how": "capability redemption through the local Skarbiec broker",
-			"whenAbsent": "alternative",
-			"detail": "a managed installation without Skarbiec has no provider credential and refuses the request",
-			"alternative": "`brama serve --local-credentials-stdin` takes a provider-to-credential JSON object on stdin and keeps it in memory for the server's lifetime",
-			"evidence": [
-				{
-					"at": "brama/src/gateway/broker.rs:3",
-					"contains": "Capability redemption through the local Skarbiec broker"
-				},
-				{
-					"at": "brama/src/cli/serving.rs:18",
-					"contains": "local_credentials_stdin: bool"
-				}
-			]
-		},
-		{
-			"product": "skarbiec",
-			"requires": "stado",
-			"feature": "where the vault file is",
-			"how": "reads the vault Stado's configuration declares, when there is one",
-			"whenAbsent": "alternative",
-			"detail": "with no Stado configuration Skarbiec uses its own default",
-			"alternative": "SKARBIEC_VAULT_FILE, else ~/.local/share/skarbiec/skarbiec.vault.json",
-			"evidence": [
-				{
-					"at": "skarbiec/src/core/mod.rs:44",
-					"contains": "std::env::var(\"SKARBIEC_VAULT_FILE\")"
-				},
-				{
-					"at": "skarbiec/src/core/mod.rs:56",
-					"contains": ".local/share/skarbiec/skarbiec.vault.json"
-				}
-			]
-		},
-		{
-			"product": "weles",
-			"requires": "stado",
-			"feature": "placing a browser session",
-			"how": "runs the Stado binary (STADO_BIN or the installed one)",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without WELES_STANDALONE it stops with \"BLOCKED: … cannot verify Weles placement through Stado: …. On a machine without Stado set WELES_STANDALONE=1.\"",
-			"alternative": "WELES_STANDALONE=1 runs Weles as the only host and skips the placement check, saying so on stderr",
-			"evidence": [
-				{
-					"at": "weles/src/session/placement/service-placement.ts:64",
-					"contains": "process.env.WELES_STANDALONE === '1'"
-				},
-				{
-					"at": "weles/src/session/placement/service-placement.ts:85",
-					"contains": "On a machine without Stado set WELES_STANDALONE=1."
-				}
-			]
-		},
-		{
-			"product": "weles",
-			"requires": "skarbiec",
-			"feature": "scoped account credentials",
-			"how": "HTTP to WC_SKARBIEC_URL",
-			"whenAbsent": "alternative",
-			"detail": "without Skarbiec and without WELES_CREDENTIALS_FILE a read stops with \"WC_SKARBIEC_URL is required from the Stado service directory; without Skarbiec set WELES_CREDENTIALS_FILE …\"",
-			"alternative": "WELES_CREDENTIALS_FILE names an owner-only JSON file (item -> field -> value); reads and writes of scoped and acquired credentials go there and Skarbiec is not asked; tenant reads still need Skarbiec",
-			"evidence": [
-				{
-					"at": "weles/src/secrets/scoped-service/transport.ts:245",
-					"contains": "if (local) return readLocalField(local, item, field, tenantId);"
-				},
-				{
-					"at": "weles/src/_shared/scoped-secrets.mjs:104",
-					"contains": "if (local) return readLocalField(local, service.item, field);"
-				},
-				{
-					"at": "weles/src/secrets/scoped-service/transport.ts:59",
-					"contains": "without Skarbiec set WELES_CREDENTIALS_FILE"
-				}
-			]
-		},
-		{
-			"product": "weles",
-			"requires": "brama",
-			"feature": "model reasoning inside a browser workflow",
-			"how": "HTTP to STADO_MODEL_ROUTER_URL with Weles' Brama identity",
-			"whenAbsent": "alternative",
-			"detail": "without Brama and without WELES_MODEL_ENDPOINT it stops with \"missing required STADO_MODEL_ROUTER_URL; without Brama set WELES_MODEL_ENDPOINT and WELES_MODEL …\"",
-			"alternative": "WELES_MODEL_ENDPOINT, WELES_MODEL (and WELES_MODEL_KEY) send the same unsigned calls to an OpenAI-compatible provider; native Jeden tasks get JEDEN_MODEL_ENDPOINT",
-			"evidence": [
-				{
-					"at": "weles/src/agent/jeden.ts:98",
-					"contains": "const directUrl = nonEmpty(process.env.WELES_MODEL_ENDPOINT);"
-				},
-				{
-					"at": "weles/src/agent/jeden.ts:120",
-					"contains": "without Brama set WELES_MODEL_ENDPOINT and WELES_MODEL"
-				}
-			]
-		},
-		{
-			"product": "brama",
-			"requires": "skarbiec",
-			"feature": "installing the Brama service with `stado product install`",
-			"how": "Stado's product catalogue declares the dependency and installs it first",
-			"whenAbsent": "alternative",
-			"detail": "without --without skarbiec the install installs Skarbiec's service first; a BRAMA_LOCAL_CREDENTIALS_FILE that is not owner-only is refused with \"BRAMA_LOCAL_CREDENTIALS_FILE must be readable by its owner only\"",
-			"alternative": "--without skarbiec skips it; BRAMA_LOCAL_CREDENTIALS_FILE in ~/.config/brama/service.env names an owner-only provider-to-credential file and start-with-skarbiec starts the gateway in standalone mode without any Skarbiec stage",
-			"evidence": [
-				{
-					"at": "stado/catalog/products.yml:177",
-					"contains": "alternative: BRAMA_LOCAL_CREDENTIALS_FILE"
-				},
-				{
-					"at": "brama/src/release/bin/start-with-skarbiec:48",
-					"contains": "if [ -n \"${BRAMA_LOCAL_CREDENTIALS_FILE:-}\" ]; then"
-				},
-				{
-					"at": "stado/stado-rs/product/src/install/mod.rs:119",
-					"contains": "if without.iter().any(|name| name == dependency_id) {"
-				}
-			]
-		},
-		{
-			"product": "weles",
-			"requires": "brama",
-			"feature": "installing the Weles service with `stado product install`",
-			"how": "Stado's product catalogue declares the dependency and installs it first",
-			"whenAbsent": "alternative",
-			"detail": "without --without brama the install installs Brama's service first",
-			"alternative": "stado product install weles --surface service --without brama skips it; Weles then uses WELES_MODEL_ENDPOINT",
-			"evidence": [
-				{
-					"at": "stado/catalog/products.yml:254",
-					"contains": "alternative: WELES_MODEL_ENDPOINT and WELES_MODEL"
-				},
-				{
-					"at": "stado/stado-rs/product/src/install/mod.rs:119",
-					"contains": "if without.iter().any(|name| name == dependency_id) {"
-				}
-			]
-		},
-		{
-			"product": "weles",
-			"requires": "skarbiec",
-			"feature": "installing the Weles service with `stado product install`",
-			"how": "Stado's product catalogue declares the dependency and installs it first",
-			"whenAbsent": "alternative",
-			"detail": "without --without skarbiec the install installs Skarbiec's service first",
-			"alternative": "--without skarbiec skips it; Weles then uses WELES_CREDENTIALS_FILE",
-			"evidence": [
-				{
-					"at": "stado/catalog/products.yml:259",
-					"contains": "alternative: WELES_CREDENTIALS_FILE"
-				},
-				{
-					"at": "stado/stado-rs/product/src/install/mod.rs:119",
-					"contains": "if without.iter().any(|name| name == dependency_id) {"
-				}
-			]
-		},
-		{
-			"product": "probierz",
-			"requires": "brama",
-			"feature": "installing the Probierz service with `stado product install`",
-			"how": "Stado's product catalogue declares the dependency and installs it first",
-			"whenAbsent": "alternative",
-			"detail": "without --without brama the install installs Brama's service first",
-			"alternative": "--without brama skips it; the failure intake needs no model, only probierz repair asks Brama",
-			"evidence": [
-				{
-					"at": "stado/catalog/products.yml:712",
-					"contains": "alternative: the failure intake needs no model"
-				},
-				{
-					"at": "stado/stado-rs/product/src/install/mod.rs:119",
-					"contains": "if without.iter().any(|name| name == dependency_id) {"
-				}
-			]
-		},
-		{
-			"product": "oko",
-			"requires": "brama",
-			"feature": "installing the Oko service with `stado product install`",
-			"how": "Stado's product catalogue declares the dependency and installs it first",
-			"whenAbsent": "alternative",
-			"detail": "without --without brama the install installs Brama's service first",
-			"alternative": "--without brama skips it; what each message is is then recorded by hand and tasks closed by hand (oko transcripts tasks kind / close, Read a message and Close on Oko Desktop)",
-			"evidence": [
-				{
-					"at": "stado/catalog/products.yml:908",
-					"contains": "alternative: what each message is, is recorded with oko transcripts tasks kind"
-				},
-				{
-					"at": "stado/stado-rs/product/src/install/mod.rs:119",
-					"contains": "if without.iter().any(|name| name == dependency_id) {"
-				}
-			]
-		},
-		{
-			"product": "echo",
-			"requires": "stado",
-			"feature": "the Echo database address and key",
-			"how": "runs `stado credentials get --field value <item>` (ECHO_STADO_BIN, default ~/.stado/bin/stado) as consumer jeden-echo-reader",
-			"whenAbsent": "alternative",
-			"detail": "without Stado it stops with \"Skarbiec refused <item> for consumer …\"",
-			"alternative": "set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in the environment; Stado is asked only for a value the environment does not carry",
-			"evidence": [
-				{
-					"at": "echo/lib/env/credential.mjs:15",
-					"contains": "execFileSync(stadoBin, [\"credentials\", \"get\""
-				},
-				{
-					"at": "echo/lib/env/credential.mjs:33",
-					"contains": "process.env.NEXT_PUBLIC_SUPABASE_URL ||="
-				}
-			]
-		},
-		{
-			"product": "lem",
-			"requires": "stado",
-			"feature": "finding Brama's address",
-			"how": "runs `stado service directory connect brama --consumer <consumer> --json`",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without a configured url the gateway address is empty and no model call is made",
-			"alternative": "set `url` in Lem's Brama configuration; the directory is then only reported beside it",
-			"evidence": [
-				{
-					"at": "lem/Sources/LemCore/Brama/LemBramaConfig.swift:124",
-					"contains": "LemStado.service(service, consumer: skarbiec.consumer)"
-				},
-				{
-					"at": "lem/Sources/LemCore/Brama/LemBramaConfig.swift:125",
-					"contains": "if !explicit.isEmpty { return (explicit, entry) }"
-				}
-			]
-		},
-		{
-			"product": "most",
-			"requires": "stado",
-			"feature": "production message storage",
-			"how": "the fleet database Stado places for the product (stado_database FleetDatabase for most)",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without MOST_DATABASE_URL, MOST_COMPOSITION=prod stops with \"prod database initialization failed: …\"",
-			"alternative": "MOST_DATABASE_URL names the user's own Postgres; the server and most-migrate open it and ask Stado nothing",
-			"evidence": [
-				{
-					"at": "most/most-rs/crates/most-core/src/storage/pg/mod.rs:107",
-					"contains": "let Some(url) = std::env::var(\"MOST_DATABASE_URL\")"
-				},
-				{
-					"at": "most/most-rs/crates/most-server/src/boot/composition/store.rs:52",
-					"contains": "PostgresStorage::connect().await"
-				}
-			]
-		},
-		{
-			"product": "lem",
-			"requires": "stado",
-			"feature": "remote compute jobs",
-			"how": "runs `stado machine submit|status …` (LEM_STADO_EXECUTABLE, default stado on PATH)",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without LEM_COMPUTE_SSH_HOST it stops with \"Unable to find Stado executable <name>. Without Stado set LEM_COMPUTE_SSH_HOST …\"",
-			"alternative": "LEM_COMPUTE_SSH_HOST names the user's CUDA machine; Lem copies the source there with scp and runs, watches, cancels and collects the job over ssh in /tmp/wc-<job id>",
-			"evidence": [
-				{
-					"at": "lem/Sources/LemBackend/Compute/LemSSHMachineAdapter.swift:16",
-					"contains": "static let hostVariable = \"LEM_COMPUTE_SSH_HOST\""
-				},
-				{
-					"at": "lem/Sources/LemBackend/Backend/LemBackend.swift:36",
-					"contains": "try computeMachineProvider()"
-				},
-				{
-					"at": "lem/Sources/LemBackend/Stado/LemStadoProcessAdapter.swift:15",
-					"contains": "Without Stado set LEM_COMPUTE_SSH_HOST"
-				}
-			]
-		},
-		{
-			"product": "most",
-			"requires": "stado",
-			"feature": "SMS through Twilio",
-			"how": "HTTP to Stado's integration API (STADO_INTEGRATION_API_URL) with MOST_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "with neither the Stado token nor a Twilio account the prod composition registers no Twilio backend and goes on with the mac relay and direct Apple backends; a dev composition that asks for Twilio logs \"STADO_INTEGRATION_API_URL is required for wisent-integrations\"",
-			"alternative": "MOST_TWILIO_ACCOUNT_SID and MOST_TWILIO_AUTH_TOKEN with MOST_TWILIO_MESSAGING_SERVICE_SID or MOST_TWILIO_FROM: Most posts to Twilio's Messages API itself and asks Stado nothing",
-			"evidence": [
-				{
-					"at": "most/most-rs/crates/most-server/src/boot/composition/select.rs:68",
-					"contains": "if twilio_declared() {"
-				},
-				{
-					"at": "most/most-rs/crates/most-server/src/boot/composition/store.rs:13",
-					"contains": "|| std::env::var(\"MOST_TWILIO_ACCOUNT_SID\").is_ok()"
-				},
-				{
-					"at": "most/most-rs/crates/most-backend-twilio/src/transport.rs:41",
-					"contains": "STADO_INTEGRATION_API_URL is required for wisent-integrations"
-				}
-			]
-		},
-		{
-			"product": "byk-desktop",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado's integration API with STADO_INTEGRATION_API_URL and BYK_DESKTOP_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued in UserDefaults until Stado answers",
-			"evidence": [
-				{
-					"at": "byk-desktop/Sources/BykDesktop/Onboarding/Controller.swift:34",
-					"contains": "BYK_DESKTOP_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "byk-desktop/Sources/BykDesktop/Onboarding/Controller.swift:196",
-					"contains": "let fallback = try Self.loadFallback()"
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "brama-desktop",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado's integration API with STADO_INTEGRATION_API_URL and BRAMA_DESKTOP_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued in UserDefaults until Stado answers",
-			"evidence": [
-				{
-					"at": "brama-desktop/Sources/BramaDesktop/Brama/Onboarding/BramaOnboarding.swift:25",
-					"contains": "BRAMA_DESKTOP_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "brama-desktop/Sources/BramaDesktop/Brama/Onboarding/BramaOnboarding.swift:178",
-					"contains": "let fallback = try Self.loadFallback()"
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "byk-ios",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado's integration API with STADO_INTEGRATION_API_URL and BYK_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued in UserDefaults until Stado answers",
-			"evidence": [
-				{
-					"at": "byk-ios/Sources/Features/BykFirstUseJourney.swift:123",
-					"contains": "BYK_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "byk-ios/Sources/Features/BykFirstUseJourney.swift:113",
-					"contains": "let fallback = try JourneyRouter.makeBundle("
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "echo-desktop",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado's integration API with STADO_INTEGRATION_API_URL and ECHO_DESKTOP_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued in UserDefaults until Stado answers",
-			"evidence": [
-				{
-					"at": "echo-desktop/Sources/EchoDesktop/Onboarding/Controller.swift:238",
-					"contains": "ECHO_DESKTOP_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "echo-desktop/Sources/EchoDesktop/Onboarding/Controller.swift:227",
-					"contains": "let fallback = try Self.loadFallback()"
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "jeden",
-			"requires": "brama",
-			"feature": "model calls",
-			"how": "BRAMA_URL serves /v1/models and /v1/chat/completions, signed with WISENT_APP_AGENT_AUTH_SECRET",
-			"whenAbsent": "alternative",
-			"detail": "without Brama and without JEDEN_MODEL_ENDPOINT a run stops with \"BRAMA_URL is required; … or set JEDEN_MODEL_ENDPOINT to an OpenAI-compatible provider to run without Brama\"",
-			"alternative": "JEDEN_MODEL_ENDPOINT (bearer JEDEN_MODEL_KEY) sends the same calls to any OpenAI-compatible provider, unsigned, without asking Stado for Brama credentials",
-			"evidence": [
-				{
-					"at": "jeden/rust/agent/runtime/routing/mod.rs:46",
-					"contains": "let direct = crate::agent::credential::direct_provider();"
-				},
-				{
-					"at": "jeden/rust/agent/credential/mod.rs:32",
-					"contains": "pub(crate) const DIRECT_URL: &str = \"JEDEN_MODEL_ENDPOINT\";"
-				}
-			]
-		},
-		{
-			"product": "tama",
-			"requires": "brama",
-			"feature": "model-judged guards",
-			"how": "asks `oko proxy-call --prompt`, which Brama answers by default",
-			"whenAbsent": "alternative",
-			"detail": "with neither Brama nor a declared service the guard gets no judgement, logs \"the model service refused the call: …\" and lets the turn through",
-			"alternative": "oko tasks judge-provider set --origin URL --model M (key on stdin) declares any OpenAI-compatible service; oko proxy-call and every Oko completion then ask it instead of Brama",
-			"evidence": [
-				{
-					"at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/mod.rs:173",
-					"contains": "the model service refused the call"
-				},
-				{
-					"at": "oko/rust/src/proxy/mod.rs:182",
-					"contains": "None => crate::tasks::judge::provider::declared_service()?,"
-				},
-				{
-					"at": "oko/rust/src/brama/mod.rs:158",
-					"contains": "crate::tasks::judge::provider::declared_service()?"
-				}
-			]
-		},
-		{
-			"product": "oko",
-			"requires": "brama",
-			"feature": "model calls for the judge, assignments, advice, evals and suggestions",
-			"how": "signed chat completions to Brama as Oko",
-			"whenAbsent": "alternative",
-			"detail": "without Brama and without a declared service each call is refused with the step that failed, e.g. \"oko-model-router#token cannot be read by consumer oko-model-router-client: …\"",
-			"alternative": "oko tasks judge-provider set --origin URL --model M (key on stdin) declares any OpenAI-compatible service; the judge, brama::complete and oko proxy-call ask it with the declared model",
-			"evidence": [
-				{
-					"at": "oko/rust/src/tasks/judge/provider.rs:61",
-					"contains": "pub(crate) fn declared_service()"
-				},
-				{
-					"at": "oko/rust/src/brama/mod.rs:158",
-					"contains": "crate::tasks::judge::provider::declared_service()?"
-				},
-				{
-					"at": "oko/rust/src/brama/mod.rs:94",
-					"contains": "cannot be read by consumer"
-				}
-			]
-		},
-		{
-			"product": "probierz",
-			"requires": "brama",
-			"feature": "model calls for local authoring, figure evaluation and SEO evaluation",
-			"how": "signed chat completions to STADO_MODEL_ROUTER_URL (Brama) with STADO_MODEL_ROUTER_TOKEN and the Probierz agent identity",
-			"whenAbsent": "alternative",
-			"detail": "without a router URL each command stops with \"STADO_MODEL_ROUTER_URL is required\"",
-			"alternative": "STADO_MODEL_ROUTER_URL and STADO_MODEL_ROUTER_TOKEN name any OpenAI-compatible provider and its key; with PROBIERZ_MODEL_AGENT_ID and PROBIERZ_MODEL_AGENT_SECRET unset the requests go unsigned and Brama is not asked",
-			"evidence": [
-				{
-					"at": "probierz/probierz-rs/src/authoring/router.rs:40",
-					"contains": "STADO_MODEL_ROUTER_URL is required"
-				},
-				{
-					"at": "probierz/probierz-rs/src/authoring/router.rs:139",
-					"contains": "if !agent_id.trim().is_empty() || !agent_secret.trim().is_empty() {"
-				},
-				{
-					"at": "probierz/probierz-rs/src/authoring/seo/evaluate/inputs.rs:200",
-					"contains": "if agent_id.is_empty() != agent_secret.is_empty() {"
-				}
-			]
-		},
-		{
-			"product": "lem",
-			"requires": "skarbiec",
-			"feature": "the gateway bearer, agent signing secret and Semantic Scholar key",
-			"how": "Skarbiec workload acquisition signed with ~/.lem/workload-ed25519.pem",
-			"whenAbsent": "alternative",
-			"detail": "without Skarbiec and without a local credentials file every acquisition fails with \"cannot reach the Skarbiec broker at …\"",
-			"alternative": "LEM_CREDENTIALS_FILE or ~/.lem/credentials.json, owner-only JSON of item -> field -> value; Lem reads it and asks Skarbiec nothing",
-			"evidence": [
-				{
-					"at": "lem/Sources/LemCore/Skarbiec/LemSkarbiec.swift:55",
-					"contains": "if let local = LemLocalCredentials.configuredURL() {"
-				},
-				{
-					"at": "lem/Sources/LemCore/Skarbiec/LemLocalCredentials.swift:48",
-					"contains": "must be readable by its owner only (chmod 600)"
-				}
-			]
-		},
-		{
-			"product": "lem",
-			"requires": "brama",
-			"feature": "model calls for citation reading and the figure quality loop",
-			"how": "signed chat completions to the gateway in ~/.lem/brama.json or Stado's directory entry for Brama",
-			"whenAbsent": "alternative",
-			"detail": "without a gateway the figure loop stops with \"Brama has no route in the Stado service directory\"",
-			"alternative": "url in ~/.lem/brama.json names any OpenAI-compatible provider; an empty lem-agent-auth.agent_auth_secret in the local credentials file sends the requests unsigned",
-			"evidence": [
-				{
-					"at": "lem/Sources/LemCore/FigureQualityEvaluator/LemFigureQualityEvaluator.swift:88",
-					"contains": "Brama has no route in the Stado service directory"
-				},
-				{
-					"at": "lem/Sources/LemCore/CitationHarvest/LemCitationHarvest+Complete.swift:29",
-					"contains": "if !agentSecret.isEmpty {"
-				}
-			]
-		},
-		{
-			"product": "most",
-			"requires": "skarbiec",
-			"feature": "the Most API bearer",
-			"how": "capability redemption through SKARBIEC_CAP_SOCKET at startup (WISENT_BACKEND_MOST_API_CAPABILITY_ID, MOST_AGENT_API_CAPABILITY_ID)",
-			"whenAbsent": "alternative",
-			"detail": "without Skarbiec and without a token file every API call answers 503 \"Most workload authorization is unavailable\"",
-			"alternative": "MOST_API_TOKEN_FILE names an owner-only file holding the bearer; the server compares against it and redeems nothing",
-			"evidence": [
-				{
-					"at": "most/most-rs/crates/most-server/src/auth/mod.rs:160",
-					"contains": "match &self.local_api {"
-				},
-				{
-					"at": "most/most-rs/crates/most-server/src/boot/guard.rs:26",
-					"contains": "Err(unavailable(\"Most workload authorization is unavailable\"))"
-				}
-			]
-		},
-		{
-			"product": "skrzynka",
-			"requires": "stado",
-			"feature": "the mailbox database",
-			"how": "stado-database resolves the fleet database skrzynka through stado database resolve and the credential item in Skarbiec",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without the environment pair every database read fails with \"the fleet database could not be reached at step `resolve database`: …\"",
-			"alternative": "SKRZYNKA_DATABASE_URL and SKRZYNKA_DATABASE_CA_FILE name the user's own Postgres or MySQL server; stado-database opens it and asks neither Stado nor Skarbiec",
-			"evidence": [
-				{
-					"at": "skrzynka/src/db/sql/mod.rs:22",
-					"contains": "stado_database::FleetDatabase::for_product(DATABASE_NAME, \"SKRZYNKA_FLEET_HOME\")"
-				},
-				{
-					"at": "stado/stado-rs/database/src/resolve.rs:177",
-					"contains": "if let Some(found) = from_environment(database) {"
-				}
-			]
-		},
-		{
-			"product": "skrzynka",
-			"requires": "skarbiec",
-			"feature": "mailbox credentials (Gmail OAuth tokens and app passwords)",
-			"how": "runs the Skarbiec CLI named by --skarbiec-bin to read, write and list credential items",
-			"whenAbsent": "alternative",
-			"detail": "without Skarbiec and without a credentials file every mailbox read and connect fails with \"Skarbiec could not be started from the configured path\" (SKARBIEC_UNAVAILABLE)",
-			"alternative": "SKRZYNKA_CREDENTIALS_FILE names an owner-only JSON file of item id -> item that answers get, list, set-json and retag in Skarbiec's place",
-			"evidence": [
-				{
-					"at": "skrzynka/src/skarbiec/cli.rs:95",
-					"contains": "if let Some(path) = &self.local {"
-				},
-				{
-					"at": "skrzynka/src/skarbiec/local/mod.rs:17",
-					"contains": "pub const CREDENTIALS_FILE_ENV: &str = \"SKRZYNKA_CREDENTIALS_FILE\";"
-				}
-			]
-		},
-		{
-			"product": "singularity",
-			"requires": "stado",
-			"feature": "the ecosystem store behind warsztat and finance",
-			"how": "stado-database resolves the fleet database singularity through Stado and Skarbiec",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without the environment pair the store fails naming the step (locate Stado, resolve database, …)",
-			"alternative": "SINGULARITY_DATABASE_URL and SINGULARITY_DATABASE_CA_FILE name the user's own Postgres or MySQL server; stado-database opens it and asks neither Stado nor Skarbiec",
-			"evidence": [
-				{
-					"at": "singularity/src/ecosystem/store/fleet.rs:139",
-					"contains": "stado_database::FleetDatabase::for_product(\"singularity\", STADO_HOME_VARIABLE)"
-				},
-				{
-					"at": "stado/stado-rs/database/src/resolve.rs:177",
-					"contains": "if let Some(found) = from_environment(database) {"
-				}
-			]
-		},
-		{
-			"product": "glina",
-			"requires": "stado",
-			"feature": "credentials behind role:// references in the pipeline config",
-			"how": "runs `stado credentials get --role ROLE --field FIELD` (STADO_BIN, default stado) for each reference",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without a credentials file every command that loads the config stops with \"stado … cannot be started …; without Stado set GLINA_CREDENTIALS_FILE …\"",
-			"alternative": "GLINA_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; every reference is answered from it and Stado is not asked",
-			"evidence": [
-				{
-					"at": "glina/pipeline/host/credentials.js:43",
-					"contains": "execFile(bin, args"
-				},
-				{
-					"at": "glina/pipeline/host/credentials.js:69",
-					"contains": "nonSecretEnv('GLINA_CREDENTIALS_FILE')"
-				}
-			]
-		},
-		{
-			"product": "glina",
-			"requires": "brama",
-			"feature": "model calls of glina sculpt",
-			"how": "signed chat completions to models.brama (url, key, bearer, agent_id)",
-			"whenAbsent": "alternative",
-			"detail": "without Brama and without another backend sculpt stops with \"no model backend is configured: declare models.brama, or models.openai_compatible …\"",
-			"alternative": "models.openai_compatible names any OpenAI-compatible provider (url, bearer, model); the same calls go there unsigned and Brama is not asked",
-			"evidence": [
-				{
-					"at": "glina/pipeline/sculpt/llm.js:46",
-					"contains": "if (models.openai_compatible)"
-				},
-				{
-					"at": "glina/pipeline/sculpt/llm.js:64",
-					"contains": "return completer(cfg, fetch_, 'brama', sign)"
-				}
-			]
-		},
-		{
-			"product": "skryba",
-			"requires": "stado",
-			"feature": "the profile and history store",
-			"how": "stado-database resolves the fleet database skryba through Stado and Skarbiec",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without the environment pair every store read fails naming the step that failed (locate Stado, resolve database, …)",
-			"alternative": "SKRYBA_DATABASE_URL and SKRYBA_DATABASE_CA_FILE name the user own Postgres or MySQL server; stado-database opens it and asks neither Stado nor Skarbiec",
-			"evidence": [
-				{
-					"at": "skryba/src/app/fleet/mod.rs:67",
-					"contains": "FleetDatabase::for_product(DATABASE"
-				},
-				{
-					"at": "stado/stado-rs/database/src/resolve.rs:146",
-					"contains": "let url_variable = format!"
-				}
-			]
-		},
-		{
-			"product": "skryba",
-			"requires": "stado",
-			"feature": "the model client token and agent secret behind BRAMA_TOKEN_ROLE and SKRYBA_AGENT_AUTH_SECRET_ROLE",
-			"how": "runs `stado credentials get --role <role> --field <field>` (STADO_BIN, default stado), so no vault item is named",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without a credentials file rewrite, train and benchmark stop with \"BRAMA_TOKEN_ROLE: stado could not be run; without Stado set SKRYBA_CREDENTIALS_FILE …\"",
-			"alternative": "SKRYBA_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; every ROLE#FIELD reference is answered from it and Stado is not asked",
-			"evidence": [
-				{
-					"at": "skryba/src/app/brama.rs:47",
-					"contains": ".args([\"credentials\", \"get\", \"--role\", role, \"--field\", field])"
-				},
-				{
-					"at": "skryba/src/app/brama.rs:42",
-					"contains": "env::var_os(\"SKRYBA_CREDENTIALS_FILE\")"
-				}
-			]
-		},
-		{
-			"product": "skryba",
-			"requires": "brama",
-			"feature": "generation and the quality judge of rewrite, train and benchmark",
-			"how": "chat completions to BRAMA_URL with the client token, signed when SKRYBA_AGENT_ID is set",
-			"whenAbsent": "alternative",
-			"detail": "without a model URL rewrite, train and benchmark exit 2 naming --brama-url (or BRAMA_URL)",
-			"alternative": "BRAMA_URL names any OpenAI-compatible provider and BRAMA_TOKEN_REF its key; with SKRYBA_AGENT_ID unset the requests go unsigned and Brama is not asked; --generator local generates on this machine",
-			"evidence": [
-				{
-					"at": "skryba/src/app/brama.rs:179",
-					"contains": ".bearer_auth(&self.config.token)"
-				},
-				{
-					"at": "skryba/src/app/brama.rs:184",
-					"contains": ".header(\"x-agent-id\", agent_id)"
-				}
-			]
-		},
-		{
-			"product": "ster",
-			"requires": "brama",
-			"feature": "writing contrastive pairs with a hosted model (generator brama)",
-			"how": "one POST to BRAMA_URL/v1/chat/completions with BRAMA_BEARER",
-			"whenAbsent": "alternative",
-			"detail": "without BRAMA_URL and BRAMA_BEARER the brama generator stops naming the missing variable",
-			"alternative": "BRAMA_URL and BRAMA_BEARER name any OpenAI-compatible provider and its key, sent as a plain bearer; the local generator writes pairs on this machine and asks no gateway",
-			"evidence": [
-				{
-					"at": "ster/src/brama.rs:114",
-					"contains": ".post(&format!(\"{}/v1/chat/completions\", self.base))"
-				},
-				{
-					"at": "ster/src/cli/pairs/mod.rs:285",
-					"contains": "expected local or brama"
-				}
-			]
-		},
-		{
-			"product": "kronika",
-			"requires": "brama",
-			"feature": "writing and auditing documentation (write, check, sync)",
-			"how": "chat completions to BRAMA_URL (or MODEL_ROUTER_URL) with the bearer, signed when WISENT_APP_AGENT_ID is set",
-			"whenAbsent": "alternative",
-			"detail": "without a model URL write, check and sync stop with \"BRAMA_URL or MODEL_ROUTER_URL is required\"; init, sources and onboarding call no model",
-			"alternative": "BRAMA_URL names any OpenAI-compatible provider and BRAMA_API_KEY_ROLE its key; with WISENT_APP_AGENT_ID unset the requests go unsigned and Brama is not asked",
-			"evidence": [
-				{
-					"at": "kronika/src/cli.ts:103",
-					"contains": "const bramaUrl = process.env.BRAMA_URL || process.env.MODEL_ROUTER_URL"
-				},
-				{
-					"at": "kronika/src/docs/model/brama.ts:83",
-					"contains": "if (Boolean(options.agentId) !== Boolean(options.authSecret))"
-				}
-			]
-		},
-		{
-			"product": "preferences",
-			"requires": "stado",
-			"feature": "the operator bearer and account token of the preferences CLI",
-			"how": "runs `stado credentials get --role <role> --field <field>` (STADO_BIN, default stado) for PREFERENCES_TOKEN_ROLE and PREFERENCES_ACCOUNT_TOKEN_ROLE, so no vault item is named",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without a credentials file an operator or account command stops with \"PREFERENCES_TOKEN_ROLE: stado credentials get --role … failed: … cannot be started; without Stado set PREFERENCES_CREDENTIALS_FILE …\"; anonymous voting needs no credential",
-			"alternative": "PREFERENCES_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; both references are answered from it and Stado is not asked",
-			"evidence": [
-				{
-					"at": "preferences/src/cli/client.mjs:56",
-					"contains": "value = execFileSync(binary, [\"credentials\", \"get\", \"--role\", role, \"--field\", field]"
-				},
-				{
-					"at": "preferences/src/cli/client.mjs:51",
-					"contains": "const credentialsFile = process.env.PREFERENCES_CREDENTIALS_FILE"
-				}
-			]
-		},
-		{
-			"product": "kronika",
-			"requires": "stado",
-			"feature": "the model bearer and signing secret behind BRAMA_API_KEY_ROLE and WISENT_APP_AGENT_AUTH_SECRET_ROLE",
-			"how": "runs `stado credentials get --role <role> --field <field>` (STADO_BIN, default stado), so no vault item is named",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without a credentials file write, check and sync stop with \"BRAMA_API_KEY_ROLE: stado credentials get --role … failed: stado cannot be started; without Stado set KRONIKA_CREDENTIALS_FILE …\"; init and onboarding need no credential",
-			"alternative": "KRONIKA_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; every ROLE#FIELD reference is answered from it and Stado is not asked",
-			"evidence": [
-				{
-					"at": "kronika/src/cli/skarbiec.ts:34",
-					"contains": "value = execFileSync(binary, [\"credentials\", \"get\", \"--role\", role, \"--field\", field]"
-				},
-				{
-					"at": "kronika/src/cli/skarbiec.ts:29",
-					"contains": "const credentialsFile = process.env.KRONIKA_CREDENTIALS_FILE"
-				}
-			]
-		},
-		{
-			"product": "film",
-			"requires": "stado",
-			"feature": "the caller secret of film start and film status",
-			"how": "runs `stado credentials get --role <role> --field <field>` for FILM_SECRET_ROLE (STADO_BIN, default stado), so no vault item is named",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without a credentials file film start and film status stop with \"FILM_SECRET_ROLE: stado could not be run: …; without Stado set FILM_CREDENTIALS_FILE …\"",
-			"alternative": "FILM_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; FILM_SECRET_ROLE is answered from it and Stado is not asked",
-			"evidence": [
-				{
-					"at": "film/src/main.rs:187",
-					"contains": ".args([\"credentials\", \"get\", \"--role\", role, \"--field\", field])"
-				},
-				{
-					"at": "film/src/main.rs:181",
-					"contains": "var_os(\"FILM_CREDENTIALS_FILE\")"
-				}
-			]
-		},
-		{
-			"product": "obraz",
-			"requires": "stado",
-			"feature": "the caller secret of obraz render",
-			"how": "runs `stado credentials get --role <role> --field <field>` for OBRAZ_SECRET_ROLE (STADO_BIN, default stado), so no vault item is named",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without a credentials file obraz render stops with \"OBRAZ_SECRET_ROLE: stado could not be run: …; without Stado set OBRAZ_CREDENTIALS_FILE …\"",
-			"alternative": "OBRAZ_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; OBRAZ_SECRET_ROLE is answered from it and Stado is not asked",
-			"evidence": [
-				{
-					"at": "obraz/src/main.rs:139",
-					"contains": ".args([\"credentials\", \"get\", \"--role\", role, \"--field\", field])"
-				},
-				{
-					"at": "obraz/src/main.rs:133",
-					"contains": "var_os(\"OBRAZ_CREDENTIALS_FILE\")"
-				}
-			]
-		},
-		{
-			"product": "transcript-lake",
-			"requires": "stado",
-			"feature": "the goal model system prompt of lake goal",
-			"how": "reads the prompt Stado keeps under ~/.stado/local-storage/ecosystem/releases/jeden-desktop/models/goal-qwen3-4b, digest-checked",
-			"whenAbsent": "alternative",
-			"detail": "without that Stado copy the prompt is read from the Lake data directory, and fetched there once when it is absent; a download failure stops with \"model artifact download failed with status …\"",
-			"alternative": "the digest-pinned prompt and model are downloaded once from the pinned Hugging Face revision into the Lake data directory (TRANSCRIPT_LAKE_GOAL_MODEL names a model file directly); Stado is not asked",
-			"evidence": [
-				{
-					"at": "transcript-lake/src/commands/goal/model.rs:70",
-					"contains": ".join(\".stado/local-storage/ecosystem/releases/jeden-desktop/models/goal-qwen3-4b\")"
-				},
-				{
-					"at": "transcript-lake/src/commands/goal/model.rs:81",
-					"contains": "resolve/{MODEL_REVISION}/{PROMPT_NAME}"
-				}
-			]
-		},
-		{
-			"product": "handtohuman",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and HANDTOHUMAN_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado the walkthrough runs offline",
-			"alternative": "without the endpoint and token the walkthrough runs from the offline transport on this machine and sends no events",
-			"evidence": [
-				{
-					"at": "handtohuman/src/onboarding.rs:79",
-					"contains": "env::var(\"STADO_INTEGRATION_API_URL\")"
-				},
-				{
-					"at": "handtohuman/src/onboarding.rs:86",
-					"contains": "Box::new(OfflineTransport)"
-				}
-			]
-		},
-		{
-			"product": "handtohuman",
-			"requires": "stado",
-			"feature": "the marketplace ledger",
-			"how": "stado-database resolves the fleet database handtohuman through Stado and Skarbiec",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without the environment pair the marketplace fails naming the step that failed (locate Stado, resolve database, …)",
-			"alternative": "HANDTOHUMAN_DATABASE_URL and HANDTOHUMAN_DATABASE_CA_FILE name the user own Postgres or MySQL server; stado-database opens it and asks neither Stado nor Skarbiec",
-			"evidence": [
-				{
-					"at": "handtohuman/src/marketplace/core/open.rs:14",
-					"contains": "FleetDatabase::for_product(Self::DATABASE"
-				},
-				{
-					"at": "stado/stado-rs/database/src/resolve.rs:146",
-					"contains": "let url_variable = format!"
-				}
-			]
-		},
-		{
-			"product": "echo-web",
-			"requires": "stado",
-			"feature": "object storage for generated media, uploads and run manifests",
-			"how": "HTTP to Stado object API at STADO_API_URL with ECHO_STADO_OBJECT_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without a local directory every object read and write fails naming STADO_API_URL or ECHO_STADO_OBJECT_TOKEN",
-			"alternative": "ECHO_OBJECT_DIR names a directory on this machine; put, get, stat, delete and list are answered from it with the object API own HTTP shapes and Stado is not asked",
-			"evidence": [
-				{
-					"at": "echo-web/src/lib/storage/stado.ts:32",
-					"contains": "token: requiredEnv('ECHO_STADO_OBJECT_TOKEN')"
-				},
-				{
-					"at": "echo-web/src/lib/storage/local-objects.ts:16",
-					"contains": "const directory = process.env.ECHO_OBJECT_DIR"
-				}
-			]
-		},
-		{
-			"product": "echo-web",
-			"requires": "brama",
-			"feature": "text, vision and embedding model calls",
-			"how": "chat completions and embeddings to STADO_MODEL_ROUTER_URL with ECHO_STADO_MODEL_ROUTER_TOKEN; subscription routes are also signed with the Echo agent identity",
-			"whenAbsent": "alternative",
-			"detail": "without a router URL every model call fails naming STADO_MODEL_ROUTER_URL",
-			"alternative": "STADO_MODEL_ROUTER_URL names any OpenAI-compatible provider that takes provider/model ids, with ECHO_STADO_MODEL_ROUTER_TOKEN its key; provider/model routes go unsigned and Brama is not asked",
-			"evidence": [
-				{
-					"at": "echo-web/src/lib/api/stado-model-router.ts:106",
-					"contains": "function modelRouterEndpoint"
-				},
-				{
-					"at": "echo-web/src/lib/api/stado-model-router.ts:131",
-					"contains": "if (!subscriptionRoute(model)) return headers"
-				}
-			]
-		},
-		{
-			"product": "glina",
-			"requires": "weles",
-			"feature": "glina create: logging into the text-to-3D studio and downloading its model",
-			"how": "drives the studio through the Weles MCP server (weles-mcp over stdio)",
-			"whenAbsent": "alternative",
-			"detail": "without Weles, glina create stops when weles-mcp cannot be started; nothing else in Glina opens a browser",
-			"alternative": "glina sculpt builds the asset in Blender with a model, and glina import takes a GLB made anywhere; neither asks Weles",
-			"evidence": [
-				{
-					"at": "glina/pipeline/host/weles.js:153",
-					"contains": "command: options.command ?? 'weles-mcp'"
-				},
-				{
-					"at": "glina/pipeline/cli.js:81",
-					"contains": "case 'import':"
-				},
-				{
-					"at": "glina/pipeline/cli.js:169",
-					"contains": "case 'sculpt':"
-				}
-			]
-		},
-		{
-			"product": "skryba-desktop",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and SKRYBA_DESKTOP_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
-			"evidence": [
-				{
-					"at": "skryba-desktop/Sources/SkrybaDesktop/Onboarding/SkrybaJourney.swift:98",
-					"contains": "SKRYBA_DESKTOP_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "skryba-desktop/Sources/SkrybaDesktop/Onboarding/SkrybaJourney.swift:110",
-					"contains": "fallback: fallback"
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "weles-desktop",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and WELES_DESKTOP_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
-			"evidence": [
-				{
-					"at": "weles-desktop/Sources/Weles/Onboarding/WelesOnboarding.swift:123",
-					"contains": "WELES_DESKTOP_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "weles-desktop/Sources/Weles/Onboarding/WelesOnboarding.swift:139",
-					"contains": "fallback: fallback"
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "most-desktop",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and MOST_DESKTOP_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
-			"evidence": [
-				{
-					"at": "most-desktop/Sources/MostDesktop/Onboarding/MostOnboarding.swift:212",
-					"contains": "MOST_DESKTOP_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "most-desktop/Sources/MostDesktop/Onboarding/MostOnboarding.swift:224",
-					"contains": "fallback: fallback"
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "lem-desktop",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and LEM_DESKTOP_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
-			"evidence": [
-				{
-					"at": "lem-desktop/Sources/Lem/Onboarding/LemOnboarding.swift:107",
-					"contains": "LEM_DESKTOP_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "lem-desktop/Sources/Lem/Onboarding/LemOnboarding.swift:119",
-					"contains": "fallback: fallback"
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "jeden-desktop",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and JEDEN_DESKTOP_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition the build installs, and onboarding never blocks the product",
-			"evidence": [
-				{
-					"at": "jeden-desktop/Sources/Jeden/Onboarding/FirstUseJourney.swift:82",
-					"contains": "JEDEN_DESKTOP_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "jeden-desktop/Sources/Jeden/Onboarding/FirstUseJourney.swift:85",
-					"contains": "fallback: fallback"
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "skarbiec-desktop",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and SKARBIEC_DESKTOP_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
-			"evidence": [
-				{
-					"at": "skarbiec-desktop/Sources/SkarbiecDesktop/Skarbiec/SkarbiecOnboarding.swift:32",
-					"contains": "SKARBIEC_DESKTOP_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "skarbiec-desktop/Sources/SkarbiecDesktop/Skarbiec/SkarbiecOnboarding.swift:240",
-					"contains": "fallback: fallback"
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "probierz-desktop",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and PROBIERZ_DESKTOP_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
-			"evidence": [
-				{
-					"at": "probierz-desktop/Sources/ProbierzDesktop/Onboarding/ProbierzJourneyTransport.swift:12",
-					"contains": "PROBIERZ_DESKTOP_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "probierz-desktop/Sources/ProbierzDesktop/Onboarding/ProbierzOnboarding.swift:68",
-					"contains": "fallback: bundled"
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "tama-desktop",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and TAMA_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
-			"evidence": [
-				{
-					"at": "tama-desktop/Sources/TamaDesktop/Tama/First/TamaFirstUseJourney.swift:106",
-					"contains": "TAMA_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "tama-desktop/Sources/TamaDesktop/Tama/First/TamaFirstUseJourney.swift:109",
-					"contains": "fallback: fallback"
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "oko-desktop",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and OKO_DESKTOP_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
-			"evidence": [
-				{
-					"at": "oko-desktop/Sources/Oko/Shell/Onboarding/OkoOnboarding.swift:41",
-					"contains": "OKO_DESKTOP_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "oko-desktop/Sources/Oko/Shell/Onboarding/OkoOnboardingController+Bootstrap.swift:28",
-					"contains": "fallback: fallback"
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "wisent-ios",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and WISENT_IOS_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
-			"evidence": [
-				{
-					"at": "wisent-ios/Wisent/Wisent/Sources/Flows/Authenticated User/Onboarding/WisentFirstUseJourney.swift:8",
-					"contains": "WISENT_IOS_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "wisent-ios/Wisent/Wisent/Sources/Flows/Authenticated User/Onboarding/WisentFirstUseJourney.swift:100",
-					"contains": "fallback: fallback"
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "oko-ios",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and OKO_IOS_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
-			"evidence": [
-				{
-					"at": "oko-ios/Sources/Core/Onboarding/OkoOnboarding.swift:53",
-					"contains": "OKO_IOS_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "oko-ios/Sources/Core/Onboarding/OkoOnboarding.swift:21",
-					"contains": "fallback: fallback"
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "singularity-desktop",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and SINGULARITY_DESKTOP_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
-			"evidence": [
-				{
-					"at": "singularity-desktop/Sources/SingularityDesktop/Being/Onboarding/BeingOnboarding.swift:216",
-					"contains": "SINGULARITY_DESKTOP_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "singularity-desktop/Sources/SingularityDesktop/Being/Onboarding/BeingOnboarding.swift:228",
-					"contains": "fallback: fallback"
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "spis-desktop",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and SPIS_DESKTOP_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
-			"evidence": [
-				{
-					"at": "spis-desktop/Sources/SpisDesktop/Onboarding/SpisOnboarding.swift:218",
-					"contains": "SPIS_DESKTOP_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "spis-desktop/Sources/SpisDesktop/Onboarding/SpisOnboarding.swift:230",
-					"contains": "fallback: fallback"
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "ster-desktop",
-			"requires": "stado",
-			"feature": "the first-use walkthrough definition and its analytics events",
-			"how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and STER_DESKTOP_STADO_INTEGRATION_TOKEN",
-			"whenAbsent": "alternative",
-			"detail": "without Stado every journey read and event send fails as a transport error",
-			"alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
-			"evidence": [
-				{
-					"at": "ster-desktop/Sources/SterDesktop/Onboarding/Walkthrough.swift:33",
-					"contains": "STER_DESKTOP_STADO_INTEGRATION_TOKEN"
-				},
-				{
-					"at": "ster-desktop/Sources/SterDesktop/Onboarding/Journey.swift:80",
-					"contains": "fallback: fallback"
-				},
-				{
-					"at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
-					"contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
-				}
-			]
-		},
-		{
-			"product": "ai-text-detector-web",
-			"requires": "brama",
-			"feature": "scoring a draft",
-			"how": "one chat completion to BRAMA_URL/v1/chat/completions with BRAMA_TOKEN and BRAMA_MODEL",
-			"whenAbsent": "alternative",
-			"detail": "without the three variables a score fails naming the missing one, e.g. \"BRAMA_URL is required\"",
-			"alternative": "BRAMA_URL names any OpenAI-compatible HTTPS origin, BRAMA_TOKEN its key and BRAMA_MODEL its model; the request is a plain bearer call and Brama is not asked",
-			"evidence": [
-				{
-					"at": "ai-text-detector-web/src/lib/brama.ts:21",
-					"contains": "return `${url.origin}/v1/chat/completions`"
-				},
-				{
-					"at": "ai-text-detector-web/src/lib/brama.ts:34",
-					"contains": "Authorization: `Bearer ${requiredEnv(\"BRAMA_TOKEN\")}`"
-				}
-			]
-		},
-		{
-			"product": "ai-text-generator-web",
-			"requires": "brama",
-			"feature": "rewriting a draft",
-			"how": "one chat completion to BRAMA_URL/v1/chat/completions with BRAMA_TOKEN and BRAMA_MODEL",
-			"whenAbsent": "alternative",
-			"detail": "without the three variables a rewrite fails naming the missing one, e.g. \"BRAMA_URL is required\"",
-			"alternative": "BRAMA_URL names any OpenAI-compatible HTTPS origin, BRAMA_TOKEN its key and BRAMA_MODEL its model; the request is a plain bearer call and Brama is not asked",
-			"evidence": [
-				{
-					"at": "ai-text-generator-web/src/lib/brama.ts:15",
-					"contains": "return `${url.origin}/v1/chat/completions`"
-				},
-				{
-					"at": "ai-text-generator-web/src/lib/brama.ts:22",
-					"contains": "Authorization: `Bearer ${requiredEnv(\"BRAMA_TOKEN\")}`"
-				}
-			]
-		},
-		{
-			"product": "handtohuman",
-			"requires": "stado",
-			"feature": "Stripe payments: checkout, charges, payouts and transfers",
-			"how": "POST to wisent-integrations handtohuman/<action> at STADO_INTEGRATION_API_URL with the integration bearer",
-			"whenAbsent": "alternative",
-			"detail": "without Stado and without a key file every payment command stops naming STADO_INTEGRATION_API_URL and HANDTOHUMAN_STRIPE_KEY_FILE",
-			"alternative": "HANDTOHUMAN_STRIPE_KEY_FILE names an owner-only file holding the owner Stripe secret key; every action goes to Stripe directly, built as wisent-integrations builds it, and Stado is not asked",
-			"evidence": [
-				{
-					"at": "handtohuman/src/payments/core/client.rs:85",
-					"contains": "join(&format!(\"api/integration/handtohuman/{action}\"))"
-				},
-				{
-					"at": "handtohuman/src/payments/core/client.rs:19",
-					"contains": "if let Some(key) = direct::key_from_file()?"
-				}
-			]
-		}
-	]
+  "schema": "las.dependencies.v1",
+  "why": "Which Wisent product calls which other Wisent product, and what a person who does not have the other product gets: an alternative, a refusal that names what is missing, or a degraded answer. A machine is not assumed to hold every product. Every entry cites the source lines it was read from as `<repository>/<file>:<line>`; `las dependencies check` re-reads them, so an entry whose code moved or changed is reported instead of trusted.",
+  "outcomes": {
+    "alternative": "the product works without the other one through the path named in `alternative`",
+    "refusal": "the feature stops with an error; `detail` says what the error says",
+    "degraded": "the feature goes on with less; `detail` says what is lost and whether it is said"
+  },
+  "dependencies": [
+    {
+      "product": "jeden",
+      "requires": "stado",
+      "feature": "reading its own Brama credentials",
+      "how": "runs `stado credentials get <item> --field <field>`",
+      "whenAbsent": "alternative",
+      "detail": "without Stado the read fails with \"the Stado CLI could not be started … Install Stado, or carry … and BRAMA_URL in this process's environment\"",
+      "alternative": "set the Brama secret and BRAMA_URL in the environment, or name an OpenAI-compatible provider with JEDEN_MODEL_ENDPOINT; in both cases Stado is not asked",
+      "evidence": [
+        {
+          "at": "jeden/rust/agent/credential/mod.rs:97",
+          "contains": "Command::new(\"stado\")"
+        },
+        {
+          "at": "jeden/rust/agent/credential/mod.rs:163",
+          "contains": "if direct_provider().is_some() {"
+        }
+      ]
+    },
+    {
+      "product": "jeden",
+      "requires": "stado",
+      "feature": "rebuilding itself on macOS",
+      "how": "runs `stado product signing inspect` and `stado product signing sign`",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without JEDEN_CODESIGN_IDENTITY the rebuild stops with \"cannot inspect the running code identity through Stado: …; without Stado set JEDEN_CODESIGN_IDENTITY …\"",
+      "alternative": "JEDEN_CODESIGN_IDENTITY (a codesign identity, or - for ad-hoc) signs the new build with /usr/bin/codesign and asks Stado nothing",
+      "evidence": [
+        {
+          "at": "jeden/rust/cli/run/self_rebuild.rs:50",
+          "contains": "let own_identity = std::env::var(\"JEDEN_CODESIGN_IDENTITY\")"
+        },
+        {
+          "at": "jeden/rust/cli/run/self_rebuild.rs:102",
+          "contains": "Command::new(\"/usr/bin/codesign\")"
+        }
+      ]
+    },
+    {
+      "product": "jeden",
+      "requires": "probierz",
+      "feature": "the probierz tool",
+      "how": "runs a Probierz source checkout (PROBIERZ_ROOT) or the `probierz` CLI",
+      "whenAbsent": "refusal",
+      "detail": "`jeden probierz` is a launcher for Probierz itself, so without Probierz it stops with \"launch Probierz: …; set PROBIERZ_ROOT to a Probierz source checkout or install its CLI\"; nothing else in Jeden needs Probierz",
+      "evidence": [
+        {
+          "at": "jeden/rust/cli/tooling/probierz.rs:39",
+          "contains": "Command::new(\"probierz\")"
+        },
+        {
+          "at": "jeden/rust/cli/tooling/probierz.rs:51",
+          "contains": "set PROBIERZ_ROOT"
+        }
+      ]
+    },
+    {
+      "product": "probierz",
+      "requires": "stado",
+      "feature": "listing registry hosts (`probierz hosts`, `--host stado:<target>`)",
+      "how": "runs `stado registry pull`",
+      "whenAbsent": "degraded",
+      "detail": "says \"the Stado registry is unreadable, so no registry host is listed\" on stderr and lists only the placement selectors and `local`",
+      "evidence": [
+        {
+          "at": "probierz/probierz-rs/src/discovery/commands.rs:76",
+          "contains": "Command::new(\"stado\")"
+        },
+        {
+          "at": "probierz/probierz-rs/src/discovery/commands.rs:90",
+          "contains": "the Stado registry is unreadable"
+        }
+      ]
+    },
+    {
+      "product": "probierz",
+      "requires": "tama",
+      "feature": "violations per repository in the fleet overview",
+      "how": "runs `tama find-violations --repo <root> --json`",
+      "whenAbsent": "degraded",
+      "detail": "the repository's row carries \"tama find-violations cannot be run: <error>\" and the overview goes on with the other repositories",
+      "evidence": [
+        {
+          "at": "probierz/probierz-rs/src/status/fleet/overview.rs:6",
+          "contains": "Command::new(\"tama\")"
+        },
+        {
+          "at": "probierz/probierz-rs/src/status/fleet/overview.rs:12",
+          "contains": "tama find-violations cannot be run"
+        }
+      ]
+    },
+    {
+      "product": "stado",
+      "requires": "skarbiec",
+      "feature": "the credential store behind fleet and service credentials",
+      "how": "the selected store; Skarbiec when nothing is configured",
+      "whenAbsent": "alternative",
+      "detail": "with no store configured Stado talks to Skarbiec and fails when it is not there",
+      "alternative": "configure the store as an absolute file path (`file:///path` or `/path`); reads, writes, removals and listings then use that file",
+      "evidence": [
+        {
+          "at": "stado/stado-rs/src/credential_store/mod.rs:138",
+          "contains": "Backend::Skarbiec { url: None }"
+        },
+        {
+          "at": "stado/stado-rs/src/credential_store/mod.rs:145",
+          "contains": "strip_prefix(\"file://\")"
+        }
+      ]
+    },
+    {
+      "product": "stado",
+      "requires": "skarbiec",
+      "feature": "`stado credentials get|put|ls|rm`, build secrets of `stado product` builds and signing credentials of `stado product signing`",
+      "how": "the selected credential store; build and signing secrets are read through `stado credentials get`",
+      "whenAbsent": "alternative",
+      "detail": "with Skarbiec selected and absent these fail on the connection; a build reports each missing secret as \"build secret unavailable: …\" and goes on, signing stops",
+      "alternative": "select a file store (`file:///path`); these commands then read and write that file and need no Skarbiec",
+      "evidence": [
+        {
+          "at": "stado/stado-rs/src/cli/secrets/store/items.rs:29",
+          "contains": "Backend::File { path } => Ok(Store::File(path))"
+        },
+        {
+          "at": "stado/stado-rs/product/src/common/mod.rs:85",
+          "contains": "\"credentials\", \"get\", item"
+        },
+        {
+          "at": "stado/stado-rs/product/src/install/recipes/build/manifest.rs:100",
+          "contains": "crate::common::credential_field"
+        },
+        {
+          "at": "stado/stado-rs/product/src/signing/credentials.rs:28",
+          "contains": "crate::common::credential_field"
+        }
+      ]
+    },
+    {
+      "product": "stado",
+      "requires": "tama",
+      "feature": "fleet build approvals",
+      "how": "runs `tama build approval …` only when a build exceeds the day's budget",
+      "whenAbsent": "alternative",
+      "detail": "builds inside the daily budget go on without Tama; one past it is refused with the budget's refusal followed by \"cannot verify recorded user build approval through Tama: …\"",
+      "alternative": "`stado queue budget --limit <N>` declares the day's ceiling in the fleet registry; builds within it need no Tama approval",
+      "evidence": [
+        {
+          "at": "stado/stado-rs/src/scheduler/builds/charge.rs:76",
+          "contains": "let approved = if let Some(refusal) = budget.refusal(wanted, asked_by) {"
+        },
+        {
+          "at": "stado/stado-rs/src/scheduler/builds/approval.rs:29",
+          "contains": "cannot verify recorded user build approval through Tama"
+        },
+        {
+          "at": "stado/stado-rs/src/cli/work/queue.rs:180",
+          "contains": "current.with_limit(&mut document, limit);"
+        }
+      ]
+    },
+    {
+      "product": "tama",
+      "requires": "oko",
+      "feature": "the stop gate and task assignment",
+      "how": "runs the Oko CLI (`TAMA_OKO_CLI`, default `oko`) for the task and defect registers",
+      "whenAbsent": "alternative",
+      "detail": "an installed Oko that cannot be read still refuses every stop with \"… An unreadable task ledger is not an empty task ledger.\"",
+      "alternative": "with no Oko CLI installed (neither TAMA_OKO_CLI nor oko on PATH) the stop gate uses the session own todo list as the only register; the text gate and the build gate refuse nothing; tama task scope set takes the identifier and repositories the session names and writes nothing back",
+      "evidence": [
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/assignment/rules.rs:43",
+          "contains": "pub fn oko_installed() -> bool {"
+        },
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/programs/block/stop/block_stop_with_open_work.rs:90",
+          "contains": "if !rules::oko_installed() {"
+        },
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/programs/block/text/block_text_outside_tool_calls.rs:56",
+          "contains": "if !rules::oko_installed() {"
+        },
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/ports/block_off_task_work/registers.rs:19",
+          "contains": "if !oko_installed() {"
+        },
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/ports/block_one_off_repairs/mod.rs:137",
+          "contains": "if !crate::assignment::rules::oko_installed() {"
+        },
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/programs/block/stop/block_stop_with_open_work.rs:299",
+          "contains": "An unreadable task ledger is not an empty task ledger."
+        }
+      ]
+    },
+    {
+      "product": "tama",
+      "requires": "stado",
+      "feature": "the vault listing the internal-names guard reads",
+      "how": "runs `stado credentials ls --json`",
+      "whenAbsent": "alternative",
+      "detail": "a failed read is recorded and the last kept listing is used",
+      "alternative": "a listing file named by the guard's listing variable, or the listing kept from the last successful read",
+      "evidence": [
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/ports/block_internal_names/names.rs:130",
+          "contains": "std::env::var(VAULT_LISTING_ENV)"
+        },
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/ports/block_internal_names/names.rs:138",
+          "contains": "Command::new(\"stado\")"
+        }
+      ]
+    },
+    {
+      "product": "oko",
+      "requires": "stado",
+      "feature": "finding the shared database",
+      "how": "runs `stado database resolve oko --consumer oko --json`",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without the environment pair every command that needs the database fails until one resolve succeeded; the answer kept in ~/.oko/database.json is used afterwards",
+      "alternative": "set OKO_DATABASE_URL and OKO_DATABASE_ANON_KEY; Oko then asks neither Stado nor Skarbiec",
+      "evidence": [
+        {
+          "at": "oko/rust/src/database/resolved.rs:40",
+          "contains": "OKO_DATABASE_URL"
+        },
+        {
+          "at": "oko/rust/src/database/mod.rs:74",
+          "contains": "let configured = resolved::from_environment()?;"
+        }
+      ]
+    },
+    {
+      "product": "oko",
+      "requires": "skarbiec",
+      "feature": "the shared database's address and key",
+      "how": "reads the credential item Stado names, as consumer oko-database-client",
+      "whenAbsent": "alternative",
+      "detail": "as for Stado: without the environment pair no database until one resolve succeeded",
+      "alternative": "set OKO_DATABASE_URL and OKO_DATABASE_ANON_KEY; Oko then asks neither Stado nor Skarbiec",
+      "evidence": [
+        {
+          "at": "oko/rust/src/database/resolved.rs:41",
+          "contains": "OKO_DATABASE_ANON_KEY"
+        },
+        {
+          "at": "oko/rust/src/database/mod.rs:74",
+          "contains": "let configured = resolved::from_environment()?;"
+        }
+      ]
+    },
+    {
+      "product": "oko",
+      "requires": "brama",
+      "feature": "reading what each operator message is",
+      "how": "one typed decision on Brama's decision route per message",
+      "whenAbsent": "alternative",
+      "detail": "without Brama and without a declared service a message stays unread; Tama's stop gate holds the turn on unread messages",
+      "alternative": "oko model-service set declares an OpenAI-compatible service; each message is then read by its model in one chat completion. Without any model service, `oko tasks kind <session> <number> <KIND> --by …` records what the message is: a task of its own, a detail of the open task, a question or another declared kind",
+      "evidence": [
+        {
+          "at": "oko/rust/src/tasks/reading/mod.rs:303",
+          "contains": "return chat::ask(&client, &model, said).map(Some);"
+        },
+        {
+          "at": "oko/rust/src/tasks/reading/chat.rs:41",
+          "contains": "pub(super) fn ask(client: &Client, model: &str, said: &str) -> Outcome<Answer> {"
+        }
+      ]
+    },
+    {
+      "product": "oko",
+      "requires": "brama",
+      "feature": "closing a task",
+      "how": "the independent judge, asked through Brama",
+      "whenAbsent": "alternative",
+      "detail": "without the judge no verdict is recorded",
+      "alternative": "the operator closes the task himself with `oko transcripts tasks close <task> --reason TEXT` or Close on Oko Desktop's Tasks screen",
+      "evidence": [
+        {
+          "at": "oko/rust/src/tasks/record/verdict.rs:71",
+          "contains": "pub fn close("
+        }
+      ]
+    },
+    {
+      "product": "brama",
+      "requires": "skarbiec",
+      "feature": "provider credentials",
+      "how": "capability redemption through the local Skarbiec broker",
+      "whenAbsent": "alternative",
+      "detail": "a managed installation without Skarbiec has no provider credential and refuses the request",
+      "alternative": "`brama serve --local-credentials-stdin` takes a provider-to-credential JSON object on stdin and keeps it in memory for the server's lifetime",
+      "evidence": [
+        {
+          "at": "brama/src/gateway/broker.rs:3",
+          "contains": "Capability redemption through the local Skarbiec broker"
+        },
+        {
+          "at": "brama/src/cli/serving.rs:18",
+          "contains": "local_credentials_stdin: bool"
+        }
+      ]
+    },
+    {
+      "product": "skarbiec",
+      "requires": "stado",
+      "feature": "where the vault file is",
+      "how": "reads the vault Stado's configuration declares, when there is one",
+      "whenAbsent": "alternative",
+      "detail": "with no Stado configuration Skarbiec uses its own default",
+      "alternative": "SKARBIEC_VAULT_FILE, else ~/.local/share/skarbiec/skarbiec.vault.json",
+      "evidence": [
+        {
+          "at": "skarbiec/src/core/mod.rs:44",
+          "contains": "std::env::var(\"SKARBIEC_VAULT_FILE\")"
+        },
+        {
+          "at": "skarbiec/src/core/mod.rs:56",
+          "contains": ".local/share/skarbiec/skarbiec.vault.json"
+        }
+      ]
+    },
+    {
+      "product": "weles",
+      "requires": "stado",
+      "feature": "placing a browser session",
+      "how": "runs the Stado binary (STADO_BIN or the installed one)",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without WELES_STANDALONE it stops with \"BLOCKED: … cannot verify Weles placement through Stado: …. On a machine without Stado set WELES_STANDALONE=1.\"",
+      "alternative": "WELES_STANDALONE=1 runs Weles as the only host and skips the placement check, saying so on stderr",
+      "evidence": [
+        {
+          "at": "weles/src/session/placement/service-placement.ts:64",
+          "contains": "process.env.WELES_STANDALONE === '1'"
+        },
+        {
+          "at": "weles/src/session/placement/service-placement.ts:85",
+          "contains": "On a machine without Stado set WELES_STANDALONE=1."
+        }
+      ]
+    },
+    {
+      "product": "weles",
+      "requires": "skarbiec",
+      "feature": "scoped account credentials",
+      "how": "HTTP to WC_SKARBIEC_URL",
+      "whenAbsent": "alternative",
+      "detail": "without Skarbiec and without WELES_CREDENTIALS_FILE a read stops with \"WC_SKARBIEC_URL is required from the Stado service directory; without Skarbiec set WELES_CREDENTIALS_FILE …\"",
+      "alternative": "WELES_CREDENTIALS_FILE names an owner-only JSON file (item -> field -> value); reads and writes of scoped and acquired credentials go there and Skarbiec is not asked; tenant reads still need Skarbiec",
+      "evidence": [
+        {
+          "at": "weles/src/secrets/scoped-service/transport.ts:316",
+          "contains": "if (local) return readLocalField(local, item, field, tenantId);"
+        },
+        {
+          "at": "weles/src/_shared/scoped-secrets.mjs:299",
+          "contains": "if (local) return readLocalField(local, service.item, field);"
+        },
+        {
+          "at": "weles/src/secrets/scoped-service/transport.ts:83",
+          "contains": "without Skarbiec set WELES_CREDENTIALS_FILE"
+        }
+      ]
+    },
+    {
+      "product": "weles",
+      "requires": "brama",
+      "feature": "model reasoning inside a browser workflow",
+      "how": "HTTP to STADO_MODEL_ROUTER_URL with Weles' Brama identity",
+      "whenAbsent": "alternative",
+      "detail": "without Brama and without WELES_MODEL_ENDPOINT it stops with \"missing required STADO_MODEL_ROUTER_URL; without Brama set WELES_MODEL_ENDPOINT and WELES_MODEL …\"",
+      "alternative": "WELES_MODEL_ENDPOINT, WELES_MODEL (and WELES_MODEL_KEY) send the same unsigned calls to an OpenAI-compatible provider; native Jeden tasks get JEDEN_MODEL_ENDPOINT",
+      "evidence": [
+        {
+          "at": "weles/src/agent/jeden.ts:120",
+          "contains": "const directUrl = nonEmpty(process.env.WELES_MODEL_ENDPOINT);"
+        },
+        {
+          "at": "weles/src/agent/jeden.ts:147",
+          "contains": "without Brama set WELES_MODEL_ENDPOINT and WELES_MODEL"
+        }
+      ]
+    },
+    {
+      "product": "brama",
+      "requires": "skarbiec",
+      "feature": "installing the Brama service with `stado product install`",
+      "how": "Stado's product catalogue declares the dependency and installs it first",
+      "whenAbsent": "alternative",
+      "detail": "without --without skarbiec the install installs Skarbiec's service first; a BRAMA_LOCAL_CREDENTIALS_FILE that is not owner-only is refused with \"BRAMA_LOCAL_CREDENTIALS_FILE must be readable by its owner only\"",
+      "alternative": "--without skarbiec skips it; BRAMA_LOCAL_CREDENTIALS_FILE in ~/.config/brama/service.env names an owner-only provider-to-credential file and start-with-skarbiec starts the gateway in standalone mode without any Skarbiec stage",
+      "evidence": [
+        {
+          "at": "stado/catalog/products.yml:177",
+          "contains": "alternative: BRAMA_LOCAL_CREDENTIALS_FILE"
+        },
+        {
+          "at": "brama/src/release/bin/start-with-skarbiec:53",
+          "contains": "if [ -n \"${BRAMA_LOCAL_CREDENTIALS_FILE:-}\" ]; then"
+        },
+        {
+          "at": "stado/stado-rs/product/src/install/mod.rs:139",
+          "contains": "if without.iter().any(|name| name == dependency_id) {"
+        }
+      ]
+    },
+    {
+      "product": "weles",
+      "requires": "brama",
+      "feature": "installing the Weles service with `stado product install`",
+      "how": "Stado's product catalogue declares the dependency and installs it first",
+      "whenAbsent": "alternative",
+      "detail": "without --without brama the install installs Brama's service first",
+      "alternative": "stado product install weles --surface service --without brama skips it; Weles then uses WELES_MODEL_ENDPOINT",
+      "evidence": [
+        {
+          "at": "stado/catalog/products.yml:269",
+          "contains": "alternative: WELES_MODEL_ENDPOINT and WELES_MODEL"
+        },
+        {
+          "at": "stado/stado-rs/product/src/install/mod.rs:139",
+          "contains": "if without.iter().any(|name| name == dependency_id) {"
+        }
+      ]
+    },
+    {
+      "product": "weles",
+      "requires": "skarbiec",
+      "feature": "installing the Weles service with `stado product install`",
+      "how": "Stado's product catalogue declares the dependency and installs it first",
+      "whenAbsent": "alternative",
+      "detail": "without --without skarbiec the install installs Skarbiec's service first",
+      "alternative": "--without skarbiec skips it; Weles then uses WELES_CREDENTIALS_FILE",
+      "evidence": [
+        {
+          "at": "stado/catalog/products.yml:274",
+          "contains": "alternative: WELES_CREDENTIALS_FILE"
+        },
+        {
+          "at": "stado/stado-rs/product/src/install/mod.rs:139",
+          "contains": "if without.iter().any(|name| name == dependency_id) {"
+        }
+      ]
+    },
+    {
+      "product": "probierz",
+      "requires": "brama",
+      "feature": "installing the Probierz service with `stado product install`",
+      "how": "Stado's product catalogue declares the dependency and installs it first",
+      "whenAbsent": "alternative",
+      "detail": "without --without brama the install installs Brama's service first",
+      "alternative": "--without brama skips it; the failure intake needs no model, only probierz repair asks Brama",
+      "evidence": [
+        {
+          "at": "stado/catalog/products.yml:627",
+          "contains": "alternative: the failure intake needs no model"
+        },
+        {
+          "at": "stado/stado-rs/product/src/install/mod.rs:139",
+          "contains": "if without.iter().any(|name| name == dependency_id) {"
+        }
+      ]
+    },
+    {
+      "product": "oko",
+      "requires": "brama",
+      "feature": "installing the Oko service with `stado product install`",
+      "how": "Stado's product catalogue declares the dependency and installs it first",
+      "whenAbsent": "alternative",
+      "detail": "without --without brama the install installs Brama's service first",
+      "alternative": "--without brama skips it; what each message is is then recorded by hand and tasks closed by hand (oko transcripts tasks kind / close, Read a message and Close on Oko Desktop)",
+      "evidence": [
+        {
+          "at": "stado/catalog/products.yml:917",
+          "contains": "alternative: what each message is, is recorded with oko transcripts tasks kind"
+        },
+        {
+          "at": "stado/stado-rs/product/src/install/mod.rs:139",
+          "contains": "if without.iter().any(|name| name == dependency_id) {"
+        }
+      ]
+    },
+    {
+      "product": "echo",
+      "requires": "stado",
+      "feature": "the Echo database address and key",
+      "how": "runs `stado credentials get --field value <item>` (ECHO_STADO_BIN, default ~/.stado/bin/stado) as consumer jeden-echo-reader",
+      "whenAbsent": "alternative",
+      "detail": "without Stado it stops with \"Skarbiec refused <item> for consumer …\"",
+      "alternative": "set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in the environment; Stado is asked only for a value the environment does not carry",
+      "evidence": [
+        {
+          "at": "echo/lib/env/credential.mjs:15",
+          "contains": "execFileSync(stadoBin, [\"credentials\", \"get\""
+        },
+        {
+          "at": "echo/lib/env/credential.mjs:33",
+          "contains": "process.env.NEXT_PUBLIC_SUPABASE_URL ||="
+        }
+      ]
+    },
+    {
+      "product": "lem",
+      "requires": "stado",
+      "feature": "finding Brama's address",
+      "how": "runs `stado service directory connect brama --consumer <consumer> --json`",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without a configured url the gateway address is empty and no model call is made",
+      "alternative": "set `url` in Lem's Brama configuration; the directory is then only reported beside it",
+      "evidence": [
+        {
+          "at": "lem/Sources/LemCore/Brama/LemBramaConfig.swift:125",
+          "contains": "LemStado.service(service, consumer: skarbiec.consumer)"
+        },
+        {
+          "at": "lem/Sources/LemCore/Brama/LemBramaConfig.swift:126",
+          "contains": "if !explicit.isEmpty { return (explicit, entry) }"
+        }
+      ]
+    },
+    {
+      "product": "most",
+      "requires": "stado",
+      "feature": "production message storage",
+      "how": "the fleet database Stado places for the product (stado_database FleetDatabase for most)",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without MOST_DATABASE_URL, MOST_COMPOSITION=prod stops with \"prod database initialization failed: …\"",
+      "alternative": "MOST_DATABASE_URL names the user's own Postgres; the server and most-migrate open it and ask Stado nothing",
+      "evidence": [
+        {
+          "at": "most/most-rs/crates/most-core/src/storage/pg/mod.rs:106",
+          "contains": "let Some(url) = std::env::var(\"MOST_DATABASE_URL\")"
+        },
+        {
+          "at": "most/most-rs/crates/most-server/src/boot/composition/store.rs:54",
+          "contains": "PostgresStorage::connect().await"
+        }
+      ]
+    },
+    {
+      "product": "lem",
+      "requires": "stado",
+      "feature": "remote compute jobs",
+      "how": "runs `stado machine submit|status …` (LEM_STADO_EXECUTABLE, default stado on PATH)",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without LEM_COMPUTE_SSH_HOST it stops with \"Unable to find Stado executable <name>. Without Stado set LEM_COMPUTE_SSH_HOST …\"",
+      "alternative": "LEM_COMPUTE_SSH_HOST names the user's CUDA machine; Lem copies the source there with scp and runs, watches, cancels and collects the job over ssh in /tmp/wc-<job id>",
+      "evidence": [
+        {
+          "at": "lem/Sources/LemBackend/Compute/LemSSHMachineAdapter.swift:16",
+          "contains": "static let hostVariable = \"LEM_COMPUTE_SSH_HOST\""
+        },
+        {
+          "at": "lem/Sources/LemBackend/Backend/LemBackend.swift:38",
+          "contains": "try computeMachineProvider()"
+        },
+        {
+          "at": "lem/Sources/LemBackend/Stado/LemStadoProcessAdapter.swift:17",
+          "contains": "Without Stado set LEM_COMPUTE_SSH_HOST"
+        }
+      ]
+    },
+    {
+      "product": "most",
+      "requires": "stado",
+      "feature": "SMS through Twilio",
+      "how": "HTTP to Stado's integration API (STADO_INTEGRATION_API_URL) with MOST_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "with neither the Stado token nor a Twilio account the prod composition registers no Twilio backend and goes on with the mac relay and direct Apple backends; a dev composition that asks for Twilio logs \"STADO_INTEGRATION_API_URL is required for wisent-integrations\"",
+      "alternative": "MOST_TWILIO_ACCOUNT_SID and MOST_TWILIO_AUTH_TOKEN with MOST_TWILIO_MESSAGING_SERVICE_SID or MOST_TWILIO_FROM: Most posts to Twilio's Messages API itself and asks Stado nothing",
+      "evidence": [
+        {
+          "at": "most/most-rs/crates/most-server/src/boot/composition/select.rs:74",
+          "contains": "if twilio_declared() {"
+        },
+        {
+          "at": "most/most-rs/crates/most-server/src/boot/composition/store.rs:15",
+          "contains": "|| std::env::var(\"MOST_TWILIO_ACCOUNT_SID\").is_ok()"
+        },
+        {
+          "at": "most/most-rs/crates/most-backend-twilio/src/transport.rs:42",
+          "contains": "STADO_INTEGRATION_API_URL is required for wisent-integrations"
+        }
+      ]
+    },
+    {
+      "product": "byk-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado's integration API with STADO_INTEGRATION_API_URL and BYK_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued in UserDefaults until Stado answers",
+      "evidence": [
+        {
+          "at": "byk-desktop/Sources/BykDesktop/Onboarding/Controller.swift:34",
+          "contains": "BYK_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "byk-desktop/Sources/BykDesktop/Onboarding/Controller.swift:203",
+          "contains": "let fallback = try Self.loadFallback()"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "brama-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado's integration API with STADO_INTEGRATION_API_URL and BRAMA_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued in UserDefaults until Stado answers",
+      "evidence": [
+        {
+          "at": "brama-desktop/Sources/BramaDesktop/Brama/Onboarding/BramaOnboarding.swift:25",
+          "contains": "BRAMA_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "brama-desktop/Sources/BramaDesktop/Brama/Onboarding/BramaOnboarding.swift:183",
+          "contains": "let fallback = try Self.loadFallback()"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "byk-ios",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado's integration API with STADO_INTEGRATION_API_URL and BYK_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued in UserDefaults until Stado answers",
+      "evidence": [
+        {
+          "at": "byk-ios/Sources/Features/BykFirstUseJourney.swift:123",
+          "contains": "BYK_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "byk-ios/Sources/Features/BykFirstUseJourney.swift:113",
+          "contains": "let fallback = try JourneyRouter.makeBundle("
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "echo-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado's integration API with STADO_INTEGRATION_API_URL and ECHO_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued in UserDefaults until Stado answers",
+      "evidence": [
+        {
+          "at": "echo-desktop/Sources/EchoDesktop/Onboarding/Controller.swift:238",
+          "contains": "ECHO_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "echo-desktop/Sources/EchoDesktop/Onboarding/Controller.swift:234",
+          "contains": "let fallback = try Self.loadFallback()"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "jeden",
+      "requires": "brama",
+      "feature": "model calls",
+      "how": "BRAMA_URL serves /v1/models and /v1/chat/completions, signed with WISENT_APP_AGENT_AUTH_SECRET",
+      "whenAbsent": "alternative",
+      "detail": "without Brama and without JEDEN_MODEL_ENDPOINT a run stops with \"BRAMA_URL is required; … or set JEDEN_MODEL_ENDPOINT to an OpenAI-compatible provider to run without Brama\"",
+      "alternative": "JEDEN_MODEL_ENDPOINT (bearer JEDEN_MODEL_KEY) sends the same calls to any OpenAI-compatible provider, unsigned, without asking Stado for Brama credentials",
+      "evidence": [
+        {
+          "at": "jeden/rust/agent/runtime/routing/mod.rs:46",
+          "contains": "let direct = crate::agent::credential::direct_provider();"
+        },
+        {
+          "at": "jeden/rust/agent/credential/mod.rs:43",
+          "contains": "pub(crate) const DIRECT_URL: &str = \"JEDEN_MODEL_ENDPOINT\";"
+        }
+      ]
+    },
+    {
+      "product": "tama",
+      "requires": "brama",
+      "feature": "model-judged guards",
+      "how": "asks `oko gateway send --prompt`, which Brama answers by default",
+      "whenAbsent": "alternative",
+      "detail": "with neither Brama nor a declared service the guard gets no judgement, logs \"the model service refused the call: …\" and lets the turn through",
+      "alternative": "oko model-service set --origin URL --model M (key on stdin) declares any OpenAI-compatible service; oko gateway send --prompt and every Oko completion then ask it instead of Brama",
+      "evidence": [
+        {
+          "at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/mod.rs:174",
+          "contains": "the model service refused the call"
+        },
+        {
+          "at": "oko/rust/src/brama/mod.rs:195",
+          "contains": "None => crate::tasks::judge::provider::declared_service()?,"
+        },
+        {
+          "at": "oko/rust/src/brama/mod.rs:249",
+          "contains": "crate::tasks::judge::provider::declared_service()?"
+        }
+      ]
+    },
+    {
+      "product": "oko",
+      "requires": "brama",
+      "feature": "model calls for the judge, assignments, advice, evals and suggestions",
+      "how": "signed chat completions to Brama as Oko",
+      "whenAbsent": "alternative",
+      "detail": "without Brama and without a declared service each call is refused with the step that failed, e.g. \"role oko-model-router field token cannot be read by consumer oko-model-router-client: …\"",
+      "alternative": "oko model-service set --origin URL --model M (key on stdin) declares any OpenAI-compatible service; the judge, brama::complete and oko gateway send --prompt ask it with the declared model",
+      "evidence": [
+        {
+          "at": "oko/rust/src/tasks/judge/provider.rs:63",
+          "contains": "pub(crate) fn declared_service()"
+        },
+        {
+          "at": "oko/rust/src/brama/mod.rs:249",
+          "contains": "crate::tasks::judge::provider::declared_service()?"
+        },
+        {
+          "at": "oko/rust/src/brama/mod.rs:101",
+          "contains": "cannot be read by consumer"
+        }
+      ]
+    },
+    {
+      "product": "probierz",
+      "requires": "brama",
+      "feature": "model calls for local authoring, figure evaluation and SEO evaluation",
+      "how": "signed chat completions to STADO_MODEL_ROUTER_URL (Brama) with STADO_MODEL_ROUTER_TOKEN and the Probierz agent identity",
+      "whenAbsent": "alternative",
+      "detail": "without a router URL each command stops with \"STADO_MODEL_ROUTER_URL is required\"",
+      "alternative": "STADO_MODEL_ROUTER_URL and STADO_MODEL_ROUTER_TOKEN name any OpenAI-compatible provider and its key; with PROBIERZ_MODEL_AGENT_ID and PROBIERZ_MODEL_AGENT_SECRET unset the requests go unsigned and Brama is not asked",
+      "evidence": [
+        {
+          "at": "probierz/probierz-rs/src/authoring/router.rs:40",
+          "contains": "STADO_MODEL_ROUTER_URL is required"
+        },
+        {
+          "at": "probierz/probierz-rs/src/authoring/router.rs:141",
+          "contains": "if !agent_id.trim().is_empty() || !agent_secret.trim().is_empty() {"
+        },
+        {
+          "at": "probierz/probierz-rs/src/authoring/seo/evaluate/inputs.rs:200",
+          "contains": "if agent_id.is_empty() != agent_secret.is_empty() {"
+        }
+      ]
+    },
+    {
+      "product": "lem",
+      "requires": "skarbiec",
+      "feature": "the gateway bearer, agent signing secret and Semantic Scholar key",
+      "how": "Skarbiec workload acquisition signed with ~/.lem/workload-ed25519.pem",
+      "whenAbsent": "alternative",
+      "detail": "without Skarbiec and without a local credentials file every acquisition fails with \"cannot reach the Skarbiec broker at …\"",
+      "alternative": "LEM_CREDENTIALS_FILE or ~/.lem/credentials.json, owner-only JSON of item -> field -> value; Lem reads it and asks Skarbiec nothing",
+      "evidence": [
+        {
+          "at": "lem/Sources/LemCore/Skarbiec/LemSkarbiec.swift:55",
+          "contains": "if let local = LemLocalCredentials.configuredURL() {"
+        },
+        {
+          "at": "lem/Sources/LemCore/Skarbiec/LemLocalCredentials.swift:53",
+          "contains": "must be readable by its owner only (chmod 600)"
+        }
+      ]
+    },
+    {
+      "product": "lem",
+      "requires": "brama",
+      "feature": "model calls for citation reading and the figure quality loop",
+      "how": "signed chat completions to the gateway in ~/.lem/brama.json or Stado's directory entry for Brama",
+      "whenAbsent": "alternative",
+      "detail": "without a gateway the figure loop stops with \"Brama has no route in the Stado service directory\"",
+      "alternative": "url in ~/.lem/brama.json names any OpenAI-compatible provider; an empty lem-agent-auth.agent_auth_secret in the local credentials file sends the requests unsigned",
+      "evidence": [
+        {
+          "at": "lem/Sources/LemCore/FigureQualityEvaluator/LemFigureQualityEvaluator.swift:78",
+          "contains": "Brama has no route in the Stado service directory"
+        },
+        {
+          "at": "lem/Sources/LemCore/CitationHarvest/LemCitationHarvest+Complete.swift:27",
+          "contains": "if !agentSecret.isEmpty {"
+        }
+      ]
+    },
+    {
+      "product": "most",
+      "requires": "skarbiec",
+      "feature": "the Most API bearer",
+      "how": "capability redemption through SKARBIEC_CAP_SOCKET at startup (WISENT_BACKEND_MOST_API_CAPABILITY_ID, MOST_AGENT_API_CAPABILITY_ID)",
+      "whenAbsent": "alternative",
+      "detail": "without Skarbiec and without a token file every API call answers 503 \"Most workload authorization is unavailable\"",
+      "alternative": "MOST_API_TOKEN_FILE names an owner-only file holding the bearer; the server compares against it and redeems nothing",
+      "evidence": [
+        {
+          "at": "most/most-rs/crates/most-server/src/auth/mod.rs:160",
+          "contains": "match &self.local_api {"
+        },
+        {
+          "at": "most/most-rs/crates/most-server/src/boot/guard.rs:26",
+          "contains": "Err(unavailable(\"Most workload authorization is unavailable\"))"
+        }
+      ]
+    },
+    {
+      "product": "skrzynka",
+      "requires": "stado",
+      "feature": "the mailbox database",
+      "how": "stado-database resolves the fleet database skrzynka through stado database resolve and the credential item in Skarbiec",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without the environment pair every database read fails with \"the fleet database could not be reached at step `resolve database`: …\"",
+      "alternative": "SKRZYNKA_DATABASE_URL and SKRZYNKA_DATABASE_CA_FILE name the user's own Postgres or MySQL server; stado-database opens it and asks neither Stado nor Skarbiec",
+      "evidence": [
+        {
+          "at": "skrzynka/src/db/sql/mod.rs:22",
+          "contains": "stado_database::FleetDatabase::for_product(DATABASE_NAME, \"SKRZYNKA_FLEET_HOME\")"
+        },
+        {
+          "at": "stado/stado-rs/database/src/resolve.rs:225",
+          "contains": "if let Some(found) = from_environment(database) {"
+        }
+      ]
+    },
+    {
+      "product": "skrzynka",
+      "requires": "skarbiec",
+      "feature": "mailbox credentials (Gmail OAuth tokens and app passwords)",
+      "how": "runs the Skarbiec CLI named by --skarbiec-bin to read, write and list credential items",
+      "whenAbsent": "alternative",
+      "detail": "without Skarbiec and without a credentials file every mailbox read and connect fails with \"Skarbiec could not be started from the configured path\" (SKARBIEC_UNAVAILABLE)",
+      "alternative": "SKRZYNKA_CREDENTIALS_FILE names an owner-only JSON file of item id -> item that answers get, list, set-json and retag in Skarbiec's place",
+      "evidence": [
+        {
+          "at": "skrzynka/src/skarbiec/cli.rs:95",
+          "contains": "if let Some(path) = &self.local {"
+        },
+        {
+          "at": "skrzynka/src/skarbiec/local/mod.rs:17",
+          "contains": "pub const CREDENTIALS_FILE_ENV: &str = \"SKRZYNKA_CREDENTIALS_FILE\";"
+        }
+      ]
+    },
+    {
+      "product": "singularity",
+      "requires": "stado",
+      "feature": "the ecosystem store behind warsztat and finance",
+      "how": "stado-database resolves the fleet database singularity through Stado and Skarbiec",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without the environment pair the store fails naming the step (locate Stado, resolve database, …)",
+      "alternative": "SINGULARITY_DATABASE_URL and SINGULARITY_DATABASE_CA_FILE name the user's own Postgres or MySQL server; stado-database opens it and asks neither Stado nor Skarbiec",
+      "evidence": [
+        {
+          "at": "singularity/src/ecosystem/store/fleet.rs:139",
+          "contains": "stado_database::FleetDatabase::for_product(\"singularity\", STADO_HOME_VARIABLE)"
+        },
+        {
+          "at": "stado/stado-rs/database/src/resolve.rs:225",
+          "contains": "if let Some(found) = from_environment(database) {"
+        }
+      ]
+    },
+    {
+      "product": "glina",
+      "requires": "stado",
+      "feature": "credentials behind role:// references in the pipeline config",
+      "how": "runs `stado credentials get --role ROLE --field FIELD` (STADO_BIN, default stado) for each reference",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without a credentials file every command that loads the config stops with \"stado … cannot be started …; without Stado set GLINA_CREDENTIALS_FILE …\"",
+      "alternative": "GLINA_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; every reference is answered from it and Stado is not asked",
+      "evidence": [
+        {
+          "at": "glina/pipeline/host/credentials.js:43",
+          "contains": "execFile(bin, args"
+        },
+        {
+          "at": "glina/pipeline/host/credentials.js:69",
+          "contains": "nonSecretEnv('GLINA_CREDENTIALS_FILE')"
+        }
+      ]
+    },
+    {
+      "product": "glina",
+      "requires": "brama",
+      "feature": "model calls of glina sculpt",
+      "how": "signed chat completions to models.brama (url, key, bearer, agent_id)",
+      "whenAbsent": "alternative",
+      "detail": "without Brama and without another backend sculpt stops with \"no model backend is configured: declare models.brama, or models.openai_compatible …\"",
+      "alternative": "models.openai_compatible names any OpenAI-compatible provider (url, bearer, model); the same calls go there unsigned and Brama is not asked",
+      "evidence": [
+        {
+          "at": "glina/pipeline/sculpt/llm.js:52",
+          "contains": "if (models.openai_compatible)"
+        },
+        {
+          "at": "glina/pipeline/sculpt/llm.js:71",
+          "contains": "return completer(cfg, fetch_, 'brama', sign)"
+        }
+      ]
+    },
+    {
+      "product": "skryba",
+      "requires": "stado",
+      "feature": "the profile and history store",
+      "how": "stado-database resolves the fleet database skryba through Stado and Skarbiec",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without the environment pair every store read fails naming the step that failed (locate Stado, resolve database, …)",
+      "alternative": "SKRYBA_DATABASE_URL and SKRYBA_DATABASE_CA_FILE name the user own Postgres or MySQL server; stado-database opens it and asks neither Stado nor Skarbiec",
+      "evidence": [
+        {
+          "at": "skryba/src/app/fleet/mod.rs:82",
+          "contains": "FleetDatabase::for_product(DATABASE"
+        },
+        {
+          "at": "stado/stado-rs/database/src/resolve.rs:183",
+          "contains": "let url_variable = format!"
+        }
+      ]
+    },
+    {
+      "product": "skryba",
+      "requires": "stado",
+      "feature": "the model client token and agent secret behind BRAMA_TOKEN_ROLE and SKRYBA_AGENT_AUTH_SECRET_ROLE",
+      "how": "runs `stado credentials get --role <role> --field <field>` (STADO_BIN, default stado), so no vault item is named",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without a credentials file rewrite, train and benchmark stop with \"BRAMA_TOKEN_ROLE: stado could not be run; without Stado set SKRYBA_CREDENTIALS_FILE …\"",
+      "alternative": "SKRYBA_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; every ROLE#FIELD reference is answered from it and Stado is not asked",
+      "evidence": [
+        {
+          "at": "skryba/src/app/brama.rs:47",
+          "contains": ".args([\"credentials\", \"get\", \"--role\", role, \"--field\", field])"
+        },
+        {
+          "at": "skryba/src/app/brama.rs:42",
+          "contains": "env::var_os(\"SKRYBA_CREDENTIALS_FILE\")"
+        }
+      ]
+    },
+    {
+      "product": "skryba",
+      "requires": "brama",
+      "feature": "generation and the quality judge of rewrite, train and benchmark",
+      "how": "chat completions to BRAMA_URL with the client token, signed when SKRYBA_AGENT_ID is set",
+      "whenAbsent": "alternative",
+      "detail": "without a model URL rewrite, train and benchmark exit 2 naming --brama-url (or BRAMA_URL)",
+      "alternative": "BRAMA_URL names any OpenAI-compatible provider and BRAMA_TOKEN_REF its key; with SKRYBA_AGENT_ID unset the requests go unsigned and Brama is not asked; --generator local generates on this machine",
+      "evidence": [
+        {
+          "at": "skryba/src/app/brama.rs:175",
+          "contains": ".bearer_auth(&self.config.token)"
+        },
+        {
+          "at": "skryba/src/app/brama.rs:180",
+          "contains": ".header(\"x-agent-id\", agent_id)"
+        }
+      ]
+    },
+    {
+      "product": "ster",
+      "requires": "brama",
+      "feature": "writing contrastive pairs with a hosted model (generator brama)",
+      "how": "one POST to BRAMA_URL/v1/chat/completions with BRAMA_BEARER",
+      "whenAbsent": "alternative",
+      "detail": "without BRAMA_URL and BRAMA_BEARER the brama generator stops naming the missing variable",
+      "alternative": "BRAMA_URL and BRAMA_BEARER name any OpenAI-compatible provider and its key, sent as a plain bearer; the local generator writes pairs on this machine and asks no gateway",
+      "evidence": [
+        {
+          "at": "ster/src/brama.rs:110",
+          "contains": ".post(&format!(\"{}/v1/chat/completions\", self.base))"
+        },
+        {
+          "at": "ster/src/cli/pairs/mod.rs:293",
+          "contains": "expected local or brama"
+        }
+      ]
+    },
+    {
+      "product": "kronika",
+      "requires": "brama",
+      "feature": "writing and auditing documentation (write, check, sync)",
+      "how": "chat completions to BRAMA_URL (or MODEL_ROUTER_URL) with the bearer, signed when WISENT_APP_AGENT_ID is set",
+      "whenAbsent": "alternative",
+      "detail": "without a model URL write, check and sync stop with \"BRAMA_URL or MODEL_ROUTER_URL is required\"; init, sources and onboarding call no model",
+      "alternative": "BRAMA_URL names any OpenAI-compatible provider and BRAMA_API_KEY_ROLE its key; with WISENT_APP_AGENT_ID unset the requests go unsigned and Brama is not asked",
+      "evidence": [
+        {
+          "at": "kronika/src/cli.ts:104",
+          "contains": "const bramaUrl = process.env.BRAMA_URL || process.env.MODEL_ROUTER_URL"
+        },
+        {
+          "at": "kronika/src/docs/model/brama.ts:81",
+          "contains": "if (Boolean(options.agentId) !== Boolean(options.authSecret))"
+        }
+      ]
+    },
+    {
+      "product": "preferences",
+      "requires": "stado",
+      "feature": "the operator bearer and account token of the preferences CLI",
+      "how": "runs `stado credentials get --role <role> --field <field>` (STADO_BIN, default stado) for PREFERENCES_TOKEN_ROLE and PREFERENCES_ACCOUNT_TOKEN_ROLE, so no vault item is named",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without a credentials file an operator or account command stops with \"PREFERENCES_TOKEN_ROLE: stado credentials get --role … failed: … cannot be started; without Stado set PREFERENCES_CREDENTIALS_FILE …\"; anonymous voting needs no credential",
+      "alternative": "PREFERENCES_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; both references are answered from it and Stado is not asked",
+      "evidence": [
+        {
+          "at": "preferences/src/cli/client.mjs:53",
+          "contains": "value = execFileSync(binary, [\"credentials\", \"get\", \"--role\", role, \"--field\", field]"
+        },
+        {
+          "at": "preferences/src/cli/client.mjs:48",
+          "contains": "const credentialsFile = process.env.PREFERENCES_CREDENTIALS_FILE"
+        }
+      ]
+    },
+    {
+      "product": "kronika",
+      "requires": "stado",
+      "feature": "the model bearer and signing secret behind BRAMA_API_KEY_ROLE and WISENT_APP_AGENT_AUTH_SECRET_ROLE",
+      "how": "runs `stado credentials get --role <role> --field <field>` (STADO_BIN, default stado), so no vault item is named",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without a credentials file write, check and sync stop with \"BRAMA_API_KEY_ROLE: stado credentials get --role … failed: stado cannot be started; without Stado set KRONIKA_CREDENTIALS_FILE …\"; init and onboarding need no credential",
+      "alternative": "KRONIKA_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; every ROLE#FIELD reference is answered from it and Stado is not asked",
+      "evidence": [
+        {
+          "at": "kronika/src/cli/skarbiec.ts:34",
+          "contains": "value = execFileSync(binary, [\"credentials\", \"get\", \"--role\", role, \"--field\", field]"
+        },
+        {
+          "at": "kronika/src/cli/skarbiec.ts:29",
+          "contains": "const credentialsFile = process.env.KRONIKA_CREDENTIALS_FILE"
+        }
+      ]
+    },
+    {
+      "product": "film",
+      "requires": "stado",
+      "feature": "the caller secret of film start and film status",
+      "how": "runs `stado credentials get --role <role> --field <field>` for FILM_SECRET_ROLE (STADO_BIN, default stado), so no vault item is named",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without a credentials file film start and film status stop with \"FILM_SECRET_ROLE: stado could not be run: …; without Stado set FILM_CREDENTIALS_FILE …\"",
+      "alternative": "FILM_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; FILM_SECRET_ROLE is answered from it and Stado is not asked",
+      "evidence": [
+        {
+          "at": "film/src/main.rs:235",
+          "contains": ".args([\"credentials\", \"get\", \"--role\", role, \"--field\", field])"
+        },
+        {
+          "at": "film/src/main.rs:229",
+          "contains": "var_os(\"FILM_CREDENTIALS_FILE\")"
+        }
+      ]
+    },
+    {
+      "product": "obraz",
+      "requires": "stado",
+      "feature": "the caller secret of obraz render",
+      "how": "runs `stado credentials get --role <role> --field <field>` for OBRAZ_SECRET_ROLE (STADO_BIN, default stado), so no vault item is named",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without a credentials file obraz render stops with \"OBRAZ_SECRET_ROLE: stado could not be run: …; without Stado set OBRAZ_CREDENTIALS_FILE …\"",
+      "alternative": "OBRAZ_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; OBRAZ_SECRET_ROLE is answered from it and Stado is not asked",
+      "evidence": [
+        {
+          "at": "obraz/src/main.rs:139",
+          "contains": ".args([\"credentials\", \"get\", \"--role\", role, \"--field\", field])"
+        },
+        {
+          "at": "obraz/src/main.rs:133",
+          "contains": "var_os(\"OBRAZ_CREDENTIALS_FILE\")"
+        }
+      ]
+    },
+    {
+      "product": "transcript-lake",
+      "requires": "stado",
+      "feature": "the goal model system prompt of lake goal",
+      "how": "reads the prompt Stado keeps under ~/.stado/local-storage/ecosystem/releases/jeden-desktop/models/goal-qwen3-4b, digest-checked",
+      "whenAbsent": "alternative",
+      "detail": "without that Stado copy the prompt is read from the Lake data directory, and fetched there once when it is absent; a download failure stops with \"model artifact download failed with status …\"",
+      "alternative": "the digest-pinned prompt and model are downloaded once from the pinned Hugging Face revision into the Lake data directory (TRANSCRIPT_LAKE_GOAL_MODEL names a model file directly); Stado is not asked",
+      "evidence": [
+        {
+          "at": "transcript-lake/src/commands/goal/model.rs:166",
+          "contains": ".join(\".stado/local-storage/ecosystem/releases/jeden-desktop/models/goal-qwen3-4b\")"
+        },
+        {
+          "at": "transcript-lake/src/commands/goal/model.rs:177",
+          "contains": "resolve/{MODEL_REVISION}/{PROMPT_NAME}"
+        }
+      ]
+    },
+    {
+      "product": "handtohuman",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and HANDTOHUMAN_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado the walkthrough runs offline",
+      "alternative": "without the endpoint and token the walkthrough runs from the offline transport on this machine and sends no events",
+      "evidence": [
+        {
+          "at": "handtohuman/src/onboarding.rs:79",
+          "contains": "env::var(\"STADO_INTEGRATION_API_URL\")"
+        },
+        {
+          "at": "handtohuman/src/onboarding.rs:86",
+          "contains": "Box::new(OfflineTransport)"
+        }
+      ]
+    },
+    {
+      "product": "handtohuman",
+      "requires": "stado",
+      "feature": "the marketplace ledger",
+      "how": "stado-database resolves the fleet database handtohuman through Stado and Skarbiec",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without the environment pair the marketplace fails naming the step that failed (locate Stado, resolve database, …)",
+      "alternative": "HANDTOHUMAN_DATABASE_URL and HANDTOHUMAN_DATABASE_CA_FILE name the user own Postgres or MySQL server; stado-database opens it and asks neither Stado nor Skarbiec",
+      "evidence": [
+        {
+          "at": "handtohuman/src/marketplace/core/open.rs:15",
+          "contains": "FleetDatabase::for_product(Self::DATABASE"
+        },
+        {
+          "at": "stado/stado-rs/database/src/resolve.rs:183",
+          "contains": "let url_variable = format!"
+        }
+      ]
+    },
+    {
+      "product": "echo-web",
+      "requires": "stado",
+      "feature": "object storage for generated media, uploads and run manifests",
+      "how": "HTTP to Stado object API at STADO_API_URL with ECHO_STADO_OBJECT_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without a local directory every object read and write fails naming STADO_API_URL or ECHO_STADO_OBJECT_TOKEN",
+      "alternative": "ECHO_OBJECT_DIR names a directory on this machine; put, get, stat, delete and list are answered from it with the object API own HTTP shapes and Stado is not asked",
+      "evidence": [
+        {
+          "at": "echo-web/src/lib/storage/stado.ts:44",
+          "contains": "token: requiredEnv('ECHO_STADO_OBJECT_TOKEN')"
+        },
+        {
+          "at": "echo-web/src/lib/storage/local-objects.ts:16",
+          "contains": "const directory = process.env.ECHO_OBJECT_DIR"
+        }
+      ]
+    },
+    {
+      "product": "echo-web",
+      "requires": "brama",
+      "feature": "text, vision and embedding model calls",
+      "how": "chat completions and embeddings to STADO_MODEL_ROUTER_URL with ECHO_STADO_MODEL_ROUTER_TOKEN; subscription routes are also signed with the Echo agent identity",
+      "whenAbsent": "alternative",
+      "detail": "without a router URL every model call fails naming STADO_MODEL_ROUTER_URL",
+      "alternative": "STADO_MODEL_ROUTER_URL names any OpenAI-compatible provider that takes provider/model ids, with ECHO_STADO_MODEL_ROUTER_TOKEN its key; provider/model routes go unsigned and Brama is not asked",
+      "evidence": [
+        {
+          "at": "echo-web/src/lib/api/stado-model-router.ts:106",
+          "contains": "function modelRouterEndpoint"
+        },
+        {
+          "at": "echo-web/src/lib/api/stado-model-router.ts:131",
+          "contains": "if (!subscriptionRoute(model)) return headers"
+        }
+      ]
+    },
+    {
+      "product": "glina",
+      "requires": "weles",
+      "feature": "glina create: logging into the text-to-3D studio and downloading its model",
+      "how": "drives the studio through the Weles MCP server (weles-mcp over stdio)",
+      "whenAbsent": "alternative",
+      "detail": "without Weles, glina create stops when weles-mcp cannot be started; nothing else in Glina opens a browser",
+      "alternative": "glina sculpt builds the asset in Blender with a model, and glina import takes a GLB made anywhere; neither asks Weles",
+      "evidence": [
+        {
+          "at": "glina/pipeline/host/weles.js:153",
+          "contains": "command: options.command ?? 'weles-mcp'"
+        },
+        {
+          "at": "glina/pipeline/cli.js:77",
+          "contains": "case 'import':"
+        },
+        {
+          "at": "glina/pipeline/cli.js:154",
+          "contains": "case 'sculpt':"
+        }
+      ]
+    },
+    {
+      "product": "skryba-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and SKRYBA_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "skryba-desktop/Sources/SkrybaDesktop/Onboarding/SkrybaJourney.swift:99",
+          "contains": "SKRYBA_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "skryba-desktop/Sources/SkrybaDesktop/Onboarding/SkrybaJourney.swift:111",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "weles-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and WELES_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "weles-desktop/Sources/Weles/Onboarding/WelesOnboarding.swift:124",
+          "contains": "WELES_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "weles-desktop/Sources/Weles/Onboarding/WelesOnboarding.swift:140",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "most-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and MOST_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "most-desktop/Sources/MostDesktop/Onboarding/MostOnboarding.swift:217",
+          "contains": "MOST_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "most-desktop/Sources/MostDesktop/Onboarding/MostOnboarding.swift:229",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "lem-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and LEM_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "lem-desktop/Sources/Lem/Onboarding/LemOnboarding.swift:107",
+          "contains": "LEM_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "lem-desktop/Sources/Lem/Onboarding/LemOnboarding.swift:119",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "jeden-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and JEDEN_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition the build installs, and onboarding never blocks the product",
+      "evidence": [
+        {
+          "at": "jeden-desktop/Sources/Jeden/Onboarding/FirstUseJourney.swift:82",
+          "contains": "JEDEN_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "jeden-desktop/Sources/Jeden/Onboarding/FirstUseJourney.swift:90",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "skarbiec-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and SKARBIEC_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "skarbiec-desktop/Sources/SkarbiecDesktop/Skarbiec/SkarbiecOnboarding.swift:32",
+          "contains": "SKARBIEC_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "skarbiec-desktop/Sources/SkarbiecDesktop/Skarbiec/SkarbiecOnboarding.swift:246",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "probierz-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and PROBIERZ_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "probierz-desktop/Sources/ProbierzDesktop/Onboarding/ProbierzJourneyTransport.swift:12",
+          "contains": "PROBIERZ_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "probierz-desktop/Sources/ProbierzDesktop/Onboarding/ProbierzOnboarding.swift:70",
+          "contains": "fallback: bundled"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "tama-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and TAMA_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "tama-desktop/Sources/TamaDesktop/Tama/First/TamaFirstUseJourney.swift:110",
+          "contains": "TAMA_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "tama-desktop/Sources/TamaDesktop/Tama/First/TamaFirstUseJourney.swift:113",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "oko-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and OKO_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "oko-desktop/Sources/Oko/Shell/Onboarding/OkoOnboarding.swift:41",
+          "contains": "OKO_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "oko-desktop/Sources/Oko/Shell/Onboarding/OkoOnboardingController+Bootstrap.swift:28",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "wisent-ios",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and WISENT_IOS_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "wisent-ios/Wisent/Wisent/Sources/Flows/Authenticated User/Onboarding/WisentFirstUseJourney.swift:8",
+          "contains": "WISENT_IOS_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "wisent-ios/Wisent/Wisent/Sources/Flows/Authenticated User/Onboarding/WisentFirstUseJourney.swift:105",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "oko-ios",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and OKO_IOS_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "oko-ios/Sources/Core/Onboarding/OkoOnboarding.swift:53",
+          "contains": "OKO_IOS_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "oko-ios/Sources/Core/Onboarding/OkoOnboarding.swift:21",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "singularity-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and SINGULARITY_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "singularity-desktop/Sources/SingularityDesktop/Being/Onboarding/BeingOnboarding.swift:223",
+          "contains": "SINGULARITY_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "singularity-desktop/Sources/SingularityDesktop/Being/Onboarding/BeingOnboarding.swift:235",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "spis-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and SPIS_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "spis-desktop/Sources/SpisDesktop/Onboarding/SpisOnboarding.swift:225",
+          "contains": "SPIS_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "spis-desktop/Sources/SpisDesktop/Onboarding/SpisOnboarding.swift:237",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "ster-desktop",
+      "requires": "stado",
+      "feature": "the first-use walkthrough definition and its analytics events",
+      "how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and STER_DESKTOP_STADO_INTEGRATION_TOKEN",
+      "whenAbsent": "alternative",
+      "detail": "without Stado every journey read and event send fails as a transport error",
+      "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued until Stado answers",
+      "evidence": [
+        {
+          "at": "ster-desktop/Sources/SterDesktop/Onboarding/Walkthrough.swift:33",
+          "contains": "STER_DESKTOP_STADO_INTEGRATION_TOKEN"
+        },
+        {
+          "at": "ster-desktop/Sources/SterDesktop/Onboarding/Journey.swift:82",
+          "contains": "fallback: fallback"
+        },
+        {
+          "at": "echo/packages/onboarding-swift/Sources/WisentOnboarding/JourneyClient.swift:66",
+          "contains": "selectedBundle = try JourneyRouter.validate(bundle: fallback"
+        }
+      ]
+    },
+    {
+      "product": "ai-text-detector-web",
+      "requires": "brama",
+      "feature": "scoring a draft",
+      "how": "one chat completion to BRAMA_URL/v1/chat/completions with BRAMA_TOKEN and BRAMA_MODEL",
+      "whenAbsent": "alternative",
+      "detail": "without the three variables a score fails naming the missing one, e.g. \"BRAMA_URL is required\"",
+      "alternative": "BRAMA_URL names any OpenAI-compatible HTTPS origin, BRAMA_TOKEN its key and BRAMA_MODEL its model; the request is a plain bearer call and Brama is not asked",
+      "evidence": [
+        {
+          "at": "ai-text-detector-web/src/lib/brama.ts:21",
+          "contains": "return `${url.origin}/v1/chat/completions`"
+        },
+        {
+          "at": "ai-text-detector-web/src/lib/brama.ts:34",
+          "contains": "Authorization: `Bearer ${requiredEnv(\"BRAMA_TOKEN\")}`"
+        }
+      ]
+    },
+    {
+      "product": "ai-text-generator-web",
+      "requires": "brama",
+      "feature": "rewriting a draft",
+      "how": "one chat completion to BRAMA_URL/v1/chat/completions with BRAMA_TOKEN and BRAMA_MODEL",
+      "whenAbsent": "alternative",
+      "detail": "without the three variables a rewrite fails naming the missing one, e.g. \"BRAMA_URL is required\"",
+      "alternative": "BRAMA_URL names any OpenAI-compatible HTTPS origin, BRAMA_TOKEN its key and BRAMA_MODEL its model; the request is a plain bearer call and Brama is not asked",
+      "evidence": [
+        {
+          "at": "ai-text-generator-web/src/lib/brama.ts:15",
+          "contains": "return `${url.origin}/v1/chat/completions`"
+        },
+        {
+          "at": "ai-text-generator-web/src/lib/brama.ts:22",
+          "contains": "Authorization: `Bearer ${requiredEnv(\"BRAMA_TOKEN\")}`"
+        }
+      ]
+    },
+    {
+      "product": "handtohuman",
+      "requires": "stado",
+      "feature": "Stripe payments: checkout, charges, payouts and transfers",
+      "how": "POST to wisent-integrations handtohuman/<action> at STADO_INTEGRATION_API_URL with the integration bearer",
+      "whenAbsent": "alternative",
+      "detail": "without Stado and without a key file every payment command stops naming STADO_INTEGRATION_API_URL and HANDTOHUMAN_STRIPE_KEY_FILE",
+      "alternative": "HANDTOHUMAN_STRIPE_KEY_FILE names an owner-only file holding the owner Stripe secret key; every action goes to Stripe directly, built as wisent-integrations builds it, and Stado is not asked",
+      "evidence": [
+        {
+          "at": "handtohuman/src/payments/core/client.rs:84",
+          "contains": "join(&format!(\"api/integration/handtohuman/{action}\"))"
+        },
+        {
+          "at": "handtohuman/src/payments/core/client.rs:19",
+          "contains": "if let Some(key) = direct::key_from_file()?"
+        }
+      ]
+    }
+  ]
 }
