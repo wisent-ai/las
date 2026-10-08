@@ -135,6 +135,7 @@ The current source registry knows these surfaces:
 | `brama` | model gateway detect/list MCP | signed release required |
 | `warsztat` | repository proposal workflow MCP | signed release and explicit proposal-tool allowlist |
 | `finance` | financial reference/proposal MCP | separate local policy and exact configuration required |
+| `trading` | trading platform agent-proxy actions MCP | signed release required; the proxy authenticates each call with the agent token |
 
 Descriptions are operator hints, not authorization contracts. The signed manifest,
 local special policy, advertised schema verification, argument policy, and child

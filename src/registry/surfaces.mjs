@@ -201,6 +201,26 @@ export const SURFACES = [
 			"SINGULARITY_FINANCE_CUSTODY_TOKEN_FILE",
 		],
 	},
+	{
+		name: "trading",
+		command: path.join(
+			ROOT,
+			"trading-autonomy",
+			"mcp",
+			"target",
+			"debug",
+			"trading-autonomy-mcp",
+		),
+		args: [],
+		cwd: path.join(ROOT, "trading-autonomy"),
+		summary:
+			"Trading platform agent actions (payment links, posts, mail, model chat, media) through the authenticated agent proxy; the proxy refusals are the tool errors.",
+		envAllowlist: [
+			"TRADING_AUTONOMY_PROXY_URL",
+			"TRADING_AUTONOMY_INSTANCE_ID",
+			"TRADING_AUTONOMY_AUTH_SECRET_FILE",
+		],
+	},
 ];
 
 for (const surface of SURFACES) {
