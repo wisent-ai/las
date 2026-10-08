@@ -462,11 +462,11 @@
       "how": "Stado's product catalogue declares the dependency and installs it first",
       "whenAbsent": "alternative",
       "detail": "without --without brama the install installs Brama's service first",
-      "alternative": "--without brama skips it; what each message is is then recorded by hand and tasks closed by hand (oko transcripts tasks kind / close, Read a message and Close on Oko Desktop)",
+      "alternative": "--without brama skips it; oko model-service set then names an OpenAI-compatible service every model call asks, or, with no model service, what each message is is recorded by hand and tasks closed by hand (oko tasks kind / close, Read a message and Close on Oko Desktop)",
       "evidence": [
         {
           "at": "stado/catalog/products.yml:917",
-          "contains": "alternative: what each message is, is recorded with oko transcripts tasks kind"
+          "contains": "alternative: oko model-service set declares an OpenAI-compatible service"
         },
         {
           "at": "stado/stado-rs/product/src/install/mod.rs:139",
