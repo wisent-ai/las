@@ -11,17 +11,17 @@
       "product": "jeden",
       "requires": "stado",
       "feature": "reading its own Brama credentials",
-      "how": "runs `stado credentials get <item> --field <field>`",
+      "how": "runs `stado credentials get --role <role> --field <field>`",
       "whenAbsent": "alternative",
       "detail": "without Stado the read fails with \"the Stado CLI could not be started … Install Stado, or carry … and BRAMA_URL in this process's environment\"",
       "alternative": "set the Brama secret and BRAMA_URL in the environment, or name an OpenAI-compatible provider with JEDEN_MODEL_ENDPOINT; in both cases Stado is not asked",
       "evidence": [
         {
-          "at": "jeden/rust/agent/credential/mod.rs:97",
+          "at": "jeden/rust/agent/credential/mod.rs:108",
           "contains": "Command::new(\"stado\")"
         },
         {
-          "at": "jeden/rust/agent/credential/mod.rs:163",
+          "at": "jeden/rust/agent/credential/mod.rs:174",
           "contains": "if direct_provider().is_some() {"
         }
       ]
@@ -42,24 +42,6 @@
         {
           "at": "jeden/rust/cli/run/self_rebuild.rs:102",
           "contains": "Command::new(\"/usr/bin/codesign\")"
-        }
-      ]
-    },
-    {
-      "product": "jeden",
-      "requires": "probierz",
-      "feature": "the probierz tool",
-      "how": "runs a Probierz source checkout (PROBIERZ_ROOT) or the `probierz` CLI",
-      "whenAbsent": "refusal",
-      "detail": "`jeden probierz` is a launcher for Probierz itself, so without Probierz it stops with \"launch Probierz: …; set PROBIERZ_ROOT to a Probierz source checkout or install its CLI\"; nothing else in Jeden needs Probierz",
-      "evidence": [
-        {
-          "at": "jeden/rust/cli/tooling/probierz.rs:39",
-          "contains": "Command::new(\"probierz\")"
-        },
-        {
-          "at": "jeden/rust/cli/tooling/probierz.rs:51",
-          "contains": "set PROBIERZ_ROOT"
         }
       ]
     },
@@ -122,7 +104,7 @@
       "product": "stado",
       "requires": "skarbiec",
       "feature": "`stado credentials get|put|ls|rm`, build secrets of `stado product` builds and signing credentials of `stado product signing`",
-      "how": "the selected credential store; build and signing secrets are read through `stado credentials get`",
+      "how": "the selected credential store; build and signing secrets are read through `stado credentials get --role`",
       "whenAbsent": "alternative",
       "detail": "with Skarbiec selected and absent these fail on the connection; a build reports each missing secret as \"build secret unavailable: …\" and goes on, signing stops",
       "alternative": "select a file store (`file:///path`); these commands then read and write that file and need no Skarbiec",
@@ -132,8 +114,8 @@
           "contains": "Backend::File { path } => Ok(Store::File(path))"
         },
         {
-          "at": "stado/stado-rs/product/src/common/mod.rs:85",
-          "contains": "\"credentials\", \"get\", item"
+          "at": "stado/stado-rs/product/src/common/mod.rs:149",
+          "contains": ".args([\"credentials\", \"get\", \"--role\", role, \"--field\", field])"
         },
         {
           "at": "stado/stado-rs/product/src/install/recipes/build/manifest.rs:100",
@@ -232,8 +214,8 @@
       "alternative": "set OKO_DATABASE_URL and OKO_DATABASE_ANON_KEY; Oko then asks neither Stado nor Skarbiec",
       "evidence": [
         {
-          "at": "oko/rust/src/database/resolved.rs:40",
-          "contains": "OKO_DATABASE_URL"
+          "at": "oko/rust/src/database/resolved.rs:30",
+          "contains": "std::env::var(\"OKO_DATABASE_URL\")"
         },
         {
           "at": "oko/rust/src/database/mod.rs:74",
@@ -251,8 +233,8 @@
       "alternative": "set OKO_DATABASE_URL and OKO_DATABASE_ANON_KEY; Oko then asks neither Stado nor Skarbiec",
       "evidence": [
         {
-          "at": "oko/rust/src/database/resolved.rs:41",
-          "contains": "OKO_DATABASE_ANON_KEY"
+          "at": "oko/rust/src/database/resolved.rs:31",
+          "contains": "std::env::var(\"OKO_DATABASE_ANON_KEY\")"
         },
         {
           "at": "oko/rust/src/database/mod.rs:74",
@@ -496,18 +478,18 @@
       "product": "echo",
       "requires": "stado",
       "feature": "the Echo database address and key",
-      "how": "runs `stado credentials get --field value <item>` (ECHO_STADO_BIN, default ~/.stado/bin/stado) as consumer jeden-echo-reader",
+      "how": "runs `stado credentials get --field value <item>` (ECHO_STADO_BIN, default ~/.stado/bin/stado) under Stado's own identity",
       "whenAbsent": "alternative",
-      "detail": "without Stado it stops with \"Skarbiec refused <item> for consumer …\"",
+      "detail": "without Stado it stops with \"<stado> credentials get <item> refused: …\"",
       "alternative": "set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in the environment; Stado is asked only for a value the environment does not carry",
       "evidence": [
         {
-          "at": "echo/lib/env/credential.mjs:15",
-          "contains": "execFileSync(stadoBin, [\"credentials\", \"get\""
+          "at": "echo/lib/env/credential.mjs:29",
+          "contains": "execFileSync(bin, [\"credentials\", \"get\", \"--field\", \"value\", item]"
         },
         {
-          "at": "echo/lib/env/credential.mjs:33",
-          "contains": "process.env.NEXT_PUBLIC_SUPABASE_URL ||="
+          "at": "echo/lib/env/credential.mjs:53",
+          "contains": "if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {"
         }
       ]
     },
@@ -674,8 +656,8 @@
       "alternative": "the walkthrough runs from the definition bundled in the app (or the last one cached), and its events stay queued in UserDefaults until Stado answers",
       "evidence": [
         {
-          "at": "echo-desktop/Sources/EchoDesktop/Onboarding/Controller.swift:238",
-          "contains": "ECHO_DESKTOP_STADO_INTEGRATION_TOKEN"
+          "at": "echo-desktop/Sources/EchoDesktop/Onboarding/Controller.swift:245",
+          "contains": "tokenEnvironmentKey: \"ECHO_DESKTOP_STADO_INTEGRATION_TOKEN\""
         },
         {
           "at": "echo-desktop/Sources/EchoDesktop/Onboarding/Controller.swift:234",
@@ -855,13 +837,13 @@
       "product": "skrzynka",
       "requires": "skarbiec",
       "feature": "mailbox credentials (Gmail OAuth tokens and app passwords)",
-      "how": "runs the Skarbiec CLI named by --skarbiec-bin to read, write and list credential items",
+      "how": "runs the Skarbiec CLI named by --skarbiec-bin to read, write, list and delete credential items",
       "whenAbsent": "alternative",
       "detail": "without Skarbiec and without a credentials file every mailbox read and connect fails with \"Skarbiec could not be started from the configured path\" (SKARBIEC_UNAVAILABLE)",
-      "alternative": "SKRZYNKA_CREDENTIALS_FILE names an owner-only JSON file of item id -> item that answers get, list, set-json and retag in Skarbiec's place",
+      "alternative": "SKRZYNKA_CREDENTIALS_FILE names an owner-only JSON file of item id -> item that answers get, list, set-json, retag and delete in Skarbiec's place",
       "evidence": [
         {
-          "at": "skrzynka/src/skarbiec/cli.rs:95",
+          "at": "skrzynka/src/skarbiec/cli.rs:112",
           "contains": "if let Some(path) = &self.local {"
         },
         {
@@ -1089,11 +1071,11 @@
       "alternative": "OBRAZ_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; OBRAZ_SECRET_ROLE is answered from it and Stado is not asked",
       "evidence": [
         {
-          "at": "obraz/src/main.rs:139",
+          "at": "obraz/src/cli/credentials.rs:28",
           "contains": ".args([\"credentials\", \"get\", \"--role\", role, \"--field\", field])"
         },
         {
-          "at": "obraz/src/main.rs:133",
+          "at": "obraz/src/cli/credentials.rs:22",
           "contains": "var_os(\"OBRAZ_CREDENTIALS_FILE\")"
         }
       ]
@@ -1318,8 +1300,8 @@
       "alternative": "the walkthrough runs from the definition the build installs, and onboarding never blocks the product",
       "evidence": [
         {
-          "at": "jeden-desktop/Sources/Jeden/Onboarding/FirstUseJourney.swift:82",
-          "contains": "JEDEN_DESKTOP_STADO_INTEGRATION_TOKEN"
+          "at": "jeden-desktop/Sources/Jeden/Onboarding/FirstUseJourney.swift:86",
+          "contains": "tokenEnvironmentKey: \"JEDEN_DESKTOP_STADO_INTEGRATION_TOKEN\""
         },
         {
           "at": "jeden-desktop/Sources/Jeden/Onboarding/FirstUseJourney.swift:90",
@@ -1571,7 +1553,7 @@
           "contains": "return `${url.origin}/v1/chat/completions`"
         },
         {
-          "at": "ai-text-generator-web/src/lib/brama.ts:22",
+          "at": "ai-text-generator-web/src/lib/brama.ts:26",
           "contains": "Authorization: `Bearer ${requiredEnv(\"BRAMA_TOKEN\")}`"
         }
       ]
