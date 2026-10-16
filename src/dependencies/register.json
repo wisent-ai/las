@@ -17,8 +17,8 @@
 			"alternative": "set the Brama secret and BRAMA_URL in the environment, or name an OpenAI-compatible provider with JEDEN_MODEL_ENDPOINT; in both cases Stado is not asked",
 			"evidence": [
 				{
-					"at": "jeden/rust/agent/credential/mod.rs:108",
-					"contains": "Command::new(\"stado\")"
+					"at": "jeden/rust/agent/credential/directory.rs:26",
+					"contains": "let output = stado_wait::output(Command::new(\"stado\").args(["
 				},
 				{
 					"at": "jeden/rust/agent/credential/mod.rs:99",
@@ -40,7 +40,7 @@
 					"contains": "let own_identity = std::env::var(\"JEDEN_CODESIGN_IDENTITY\")"
 				},
 				{
-					"at": "jeden/rust/cli/run/self_rebuild.rs:102",
+					"at": "jeden/rust/cli/run/self_rebuild.rs:111",
 					"contains": "Command::new(\"/usr/bin/codesign\")"
 				}
 			]
@@ -67,17 +67,17 @@
 			"product": "probierz",
 			"requires": "tama",
 			"feature": "violations per repository in the fleet overview",
-			"how": "runs `tama find-violations --repo <root> --json`",
+			"how": "runs `tama violations find --repo <root> --json`",
 			"whenAbsent": "degraded",
-			"detail": "the repository's row carries \"tama find-violations cannot be run: <error>\" and the overview goes on with the other repositories",
+			"detail": "the repository's row carries \"tama violations find cannot be run for <root>: <error>\" and the overview goes on with the other repositories",
 			"evidence": [
 				{
-					"at": "probierz/probierz-rs/src/status/fleet/overview.rs:6",
-					"contains": "Command::new(\"tama\")"
+					"at": "probierz/probierz-rs/src/status/fleet/overview/scanner.rs:4",
+					"contains": "let output = stado_wait::output(Command::new(\"tama\").args(["
 				},
 				{
-					"at": "probierz/probierz-rs/src/status/fleet/overview.rs:12",
-					"contains": "tama find-violations cannot be run"
+					"at": "probierz/probierz-rs/src/status/fleet/overview/scanner.rs:14",
+					"contains": "tama violations find cannot be run for {root}"
 				}
 			]
 		},
@@ -110,7 +110,7 @@
 			"alternative": "select a file store (`file:///path`); these commands then read and write that file and need no Skarbiec",
 			"evidence": [
 				{
-					"at": "stado/stado-rs/src/cli/secrets/store/items.rs:29",
+					"at": "stado/stado-rs/src/cli/secrets/store/items/mod.rs:31",
 					"contains": "Backend::File { path } => Ok(Store::File(path))"
 				},
 				{
@@ -122,7 +122,7 @@
 					"contains": "crate::common::credential_field"
 				},
 				{
-					"at": "stado/stado-rs/product/src/signing/credentials.rs:28",
+					"at": "stado/stado-rs/product/src/signing/credentials/mod.rs:39",
 					"contains": "crate::common::credential_field"
 				}
 			]
@@ -141,8 +141,8 @@
 					"contains": "let approved = if let Some(refusal) = budget.refusal(wanted, asked_by) {"
 				},
 				{
-					"at": "stado/stado-rs/src/scheduler/builds/approval.rs:29",
-					"contains": "cannot verify recorded user build approval through Tama"
+					"at": "stado/stado-rs/src/scheduler/builds/approval.rs:20",
+					"contains": "format!(\"cannot verify recorded user build approval through Tama: {missing}\")"
 				},
 				{
 					"at": "stado/stado-rs/src/cli/work/queue.rs:180",
@@ -160,7 +160,7 @@
 			"alternative": "with no Oko CLI installed (neither TAMA_OKO_CLI nor oko on PATH) the stop gate uses the session own todo list as the only register; the text gate and the build gate refuse nothing; tama task scope set takes the identifier and repositories the session names and writes nothing back",
 			"evidence": [
 				{
-					"at": "tama/rust/crates/tama-hook-tools/src/assignment/rules.rs:43",
+					"at": "tama/rust/crates/tama-hook-tools/src/assignment/rules/mod.rs:44",
 					"contains": "pub fn oko_installed() -> bool {"
 				},
 				{
@@ -168,16 +168,12 @@
 					"contains": "if !rules::oko_installed() {"
 				},
 				{
-					"at": "tama/rust/crates/tama-hook-tools/src/programs/block/text/block_text_outside_tool_calls.rs:82",
+					"at": "tama/rust/crates/tama-hook-tools/src/programs/block/text/block_text_outside_tool_calls.rs:79",
 					"contains": "if !rules::oko_installed() {"
 				},
 				{
 					"at": "tama/rust/crates/tama-hook-tools/src/ports/block_off_task_work/registers.rs:19",
 					"contains": "if !oko_installed() {"
-				},
-				{
-					"at": "tama/rust/crates/tama-hook-tools/src/ports/block_one_off_repairs/mod.rs:137",
-					"contains": "if !crate::assignment::rules::oko_installed() {"
 				},
 				{
 					"at": "tama/rust/crates/tama-hook-tools/src/programs/block/stop/block_stop_with_open_work.rs:225",
@@ -215,7 +211,7 @@
 			"evidence": [
 				{
 					"at": "oko/rust/src/database/resolved.rs:30",
-					"contains": "std::env::var(\"OKO_DATABASE_URL\")"
+					"contains": "let url = environment_value(\"OKO_DATABASE_URL\")?;"
 				},
 				{
 					"at": "oko/rust/src/database/mod.rs:48",
@@ -234,7 +230,7 @@
 			"evidence": [
 				{
 					"at": "oko/rust/src/database/resolved.rs:31",
-					"contains": "std::env::var(\"OKO_DATABASE_ANON_KEY\")"
+					"contains": "let key = environment_value(\"OKO_DATABASE_ANON_KEY\")?;"
 				},
 				{
 					"at": "oko/rust/src/database/mod.rs:48",
@@ -252,8 +248,8 @@
 			"alternative": "oko model-service set declares an OpenAI-compatible service; each message is then read by its model in one chat completion. Without any model service, `oko tasks kind <session> <number> <KIND> --by …` records what the message is: a task of its own, a detail of the open task, a question or another declared kind",
 			"evidence": [
 				{
-					"at": "oko/rust/src/tasks/reading/mod.rs:303",
-					"contains": "return chat::ask(&client, &model, said).map(Some);"
+					"at": "oko/rust/src/tasks/reading/mod.rs:138",
+					"contains": "return chat::ask(&client, &model, said);"
 				},
 				{
 					"at": "oko/rust/src/tasks/reading/chat.rs:45",
@@ -305,8 +301,8 @@
 			"alternative": "SKARBIEC_VAULT_FILE, else ~/.local/share/skarbiec/skarbiec.vault.json",
 			"evidence": [
 				{
-					"at": "skarbiec/src/core/mod.rs:44",
-					"contains": "std::env::var(\"SKARBIEC_VAULT_FILE\")"
+					"at": "skarbiec/src/core/mod.rs:50",
+					"contains": "if let Some(path) = std::env::var_os(\"SKARBIEC_VAULT_FILE\") {"
 				},
 				{
 					"at": "skarbiec/src/core/mod.rs:62",
@@ -393,7 +389,7 @@
 					"contains": "if [ -n \"${BRAMA_LOCAL_CREDENTIALS_FILE:-}\" ]; then"
 				},
 				{
-					"at": "stado/stado-rs/product/src/install/mod.rs:139",
+					"at": "stado/stado-rs/product/src/install/operation/perform.rs:144",
 					"contains": "if without.iter().any(|name| name == dependency_id) {"
 				}
 			]
@@ -412,7 +408,7 @@
 					"contains": "alternative: WELES_MODEL_ENDPOINT and WELES_MODEL"
 				},
 				{
-					"at": "stado/stado-rs/product/src/install/mod.rs:139",
+					"at": "stado/stado-rs/product/src/install/operation/perform.rs:144",
 					"contains": "if without.iter().any(|name| name == dependency_id) {"
 				}
 			]
@@ -431,7 +427,7 @@
 					"contains": "alternative: WELES_CREDENTIALS_FILE"
 				},
 				{
-					"at": "stado/stado-rs/product/src/install/mod.rs:139",
+					"at": "stado/stado-rs/product/src/install/operation/perform.rs:144",
 					"contains": "if without.iter().any(|name| name == dependency_id) {"
 				}
 			]
@@ -450,7 +446,7 @@
 					"contains": "alternative: the failure intake needs no model"
 				},
 				{
-					"at": "stado/stado-rs/product/src/install/mod.rs:139",
+					"at": "stado/stado-rs/product/src/install/operation/perform.rs:144",
 					"contains": "if without.iter().any(|name| name == dependency_id) {"
 				}
 			]
@@ -469,7 +465,7 @@
 					"contains": "alternative: oko model-service set declares an OpenAI-compatible service"
 				},
 				{
-					"at": "stado/stado-rs/product/src/install/mod.rs:139",
+					"at": "stado/stado-rs/product/src/install/operation/perform.rs:144",
 					"contains": "if without.iter().any(|name| name == dependency_id) {"
 				}
 			]
@@ -523,7 +519,7 @@
 			"evidence": [
 				{
 					"at": "most/most-rs/crates/most-core/src/storage/pg/mod.rs:106",
-					"contains": "let Some(url) = std::env::var(\"MOST_DATABASE_URL\")"
+					"contains": "let url = match std::env::var(\"MOST_DATABASE_URL\") {"
 				},
 				{
 					"at": "most/most-rs/crates/most-server/src/boot/composition/store.rs:54",
@@ -679,7 +675,7 @@
 			"alternative": "JEDEN_MODEL_ENDPOINT (bearer JEDEN_MODEL_KEY) sends the same calls to any OpenAI-compatible provider, unsigned, without asking Stado for Brama credentials",
 			"evidence": [
 				{
-					"at": "jeden/rust/agent/runtime/routing/mod.rs:46",
+					"at": "jeden/rust/agent/runtime/routing/config/mod.rs:15",
 					"contains": "let direct = crate::agent::credential::direct_provider();"
 				},
 				{
@@ -694,19 +690,19 @@
 			"feature": "model-judged guards",
 			"how": "asks `oko gateway send --prompt`, which Brama answers by default",
 			"whenAbsent": "alternative",
-			"detail": "with neither Brama nor a declared service the guard gets no judgement, logs \"the model service refused the call: …\" and lets the turn through",
+			"detail": "with neither Brama nor a declared service the guard gets no judgement, records \"oko gateway send failed (…): …\" as the model outage and lets the turn through",
 			"alternative": "oko model-service set --origin URL --model M (key on stdin) declares any OpenAI-compatible service; oko gateway send --prompt and every Oko completion then ask it instead of Brama",
 			"evidence": [
 				{
-					"at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/mod.rs:174",
-					"contains": "the model service refused the call"
+					"at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/mod.rs:204",
+					"contains": "\"{} gateway send failed ({}): {said}\","
 				},
 				{
-					"at": "oko/rust/src/brama/mod.rs:195",
+					"at": "oko/rust/src/brama/send.rs:68",
 					"contains": "None => crate::tasks::judge::provider::declared_service()?,"
 				},
 				{
-					"at": "oko/rust/src/brama/mod.rs:249",
+					"at": "oko/rust/src/brama/send.rs:144",
 					"contains": "crate::tasks::judge::provider::declared_service()?"
 				}
 			]
@@ -725,7 +721,7 @@
 					"contains": "pub(crate) fn declared_service()"
 				},
 				{
-					"at": "oko/rust/src/brama/mod.rs:249",
+					"at": "oko/rust/src/brama/send.rs:144",
 					"contains": "crate::tasks::judge::provider::declared_service()?"
 				},
 				{
@@ -752,8 +748,8 @@
 					"contains": "if !agent_id.trim().is_empty() || !agent_secret.trim().is_empty() {"
 				},
 				{
-					"at": "probierz/probierz-rs/src/authoring/seo/evaluate/inputs.rs:200",
-					"contains": "if agent_id.is_empty() != agent_secret.is_empty() {"
+					"at": "probierz/probierz-rs/src/authoring/seo/evaluate/inputs.rs:222",
+					"contains": "(None, None) => (String::new(), String::new()),"
 				}
 			]
 		},
@@ -809,7 +805,7 @@
 					"contains": "match &self.local_api {"
 				},
 				{
-					"at": "most/most-rs/crates/most-server/src/boot/guard.rs:26",
+					"at": "most/most-rs/crates/most-server/src/boot/guard.rs:31",
 					"contains": "Err(unavailable(\"Most workload authorization is unavailable\"))"
 				}
 			]
@@ -824,11 +820,11 @@
 			"alternative": "SKRZYNKA_DATABASE_URL and SKRZYNKA_DATABASE_CA_FILE name the user's own Postgres or MySQL server; stado-database opens it and asks neither Stado nor Skarbiec",
 			"evidence": [
 				{
-					"at": "skrzynka/src/db/sql/mod.rs:22",
+					"at": "skrzynka/src/db/sql/mod.rs:24",
 					"contains": "stado_database::FleetDatabase::for_product(DATABASE_NAME, \"SKRZYNKA_FLEET_HOME\")"
 				},
 				{
-					"at": "stado/stado-rs/database/src/resolve.rs:225",
+					"at": "stado/stado-rs/database/src/resolve/mod.rs:209",
 					"contains": "if let Some(found) = from_environment(database) {"
 				}
 			]
@@ -843,7 +839,7 @@
 			"alternative": "SKRZYNKA_CREDENTIALS_FILE names an owner-only JSON file of item id -> item that answers get, list, set-json, retag and delete in Skarbiec's place",
 			"evidence": [
 				{
-					"at": "skrzynka/src/skarbiec/cli.rs:112",
+					"at": "skrzynka/src/skarbiec/cli.rs:36",
 					"contains": "if let Some(path) = &self.local {"
 				},
 				{
@@ -866,7 +862,7 @@
 					"contains": "stado_database::FleetDatabase::for_product(\"singularity\", STADO_HOME_VARIABLE)"
 				},
 				{
-					"at": "stado/stado-rs/database/src/resolve.rs:225",
+					"at": "stado/stado-rs/database/src/resolve/mod.rs:209",
 					"contains": "if let Some(found) = from_environment(database) {"
 				}
 			]
@@ -885,8 +881,8 @@
 					"contains": "execFile(bin, args"
 				},
 				{
-					"at": "glina/pipeline/host/credentials.js:69",
-					"contains": "nonSecretEnv('GLINA_CREDENTIALS_FILE')"
+					"at": "glina/pipeline/host/credentials.js:90",
+					"contains": "const credentialsFile = setting('GLINA_CREDENTIALS_FILE');"
 				}
 			]
 		},
@@ -923,7 +919,7 @@
 					"contains": "FleetDatabase::for_product(DATABASE"
 				},
 				{
-					"at": "stado/stado-rs/database/src/resolve.rs:183",
+					"at": "stado/stado-rs/database/src/resolve/environment.rs:17",
 					"contains": "let url_variable = format!"
 				}
 			]
@@ -938,11 +934,11 @@
 			"alternative": "SKRYBA_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; every ROLE#FIELD reference is answered from it and Stado is not asked",
 			"evidence": [
 				{
-					"at": "skryba/src/app/brama.rs:47",
+					"at": "skryba/src/app/brama/credentials.rs:49",
 					"contains": ".args([\"credentials\", \"get\", \"--role\", role, \"--field\", field])"
 				},
 				{
-					"at": "skryba/src/app/brama.rs:42",
+					"at": "skryba/src/app/brama/credentials.rs:38",
 					"contains": "env::var_os(\"SKRYBA_CREDENTIALS_FILE\")"
 				}
 			]
@@ -957,11 +953,11 @@
 			"alternative": "BRAMA_URL names any OpenAI-compatible provider and BRAMA_TOKEN_REF its key; with SKRYBA_AGENT_ID unset the requests go unsigned and Brama is not asked; --generator local generates on this machine",
 			"evidence": [
 				{
-					"at": "skryba/src/app/brama.rs:175",
+					"at": "skryba/src/app/brama/mod.rs:139",
 					"contains": ".bearer_auth(&self.config.token)"
 				},
 				{
-					"at": "skryba/src/app/brama.rs:180",
+					"at": "skryba/src/app/brama/mod.rs:144",
 					"contains": ".header(\"x-agent-id\", agent_id)"
 				}
 			]
@@ -1071,31 +1067,12 @@
 			"alternative": "OBRAZ_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; OBRAZ_SECRET_ROLE is answered from it and Stado is not asked",
 			"evidence": [
 				{
-					"at": "obraz/src/cli/credentials.rs:28",
-					"contains": ".args([\"credentials\", \"get\", \"--role\", role, \"--field\", field])"
+					"at": "obraz/src/cli/credentials.rs:49",
+					"contains": "let output = stado_wait::output(std::process::Command::new(&binary).args(["
 				},
 				{
 					"at": "obraz/src/cli/credentials.rs:35",
 					"contains": "var_os(\"OBRAZ_CREDENTIALS_FILE\")"
-				}
-			]
-		},
-		{
-			"product": "transcript-lake",
-			"requires": "stado",
-			"feature": "the goal model system prompt of lake goal",
-			"how": "reads the prompt Stado keeps under ~/.stado/local-storage/ecosystem/releases/jeden-desktop/models/goal-qwen3-4b, digest-checked",
-			"whenAbsent": "alternative",
-			"detail": "without that Stado copy the prompt is read from the Lake data directory, and fetched there once when it is absent; a download failure stops with \"model artifact download failed with status …\"",
-			"alternative": "the digest-pinned prompt and model are downloaded once from the pinned Hugging Face revision into the Lake data directory (TRANSCRIPT_LAKE_GOAL_MODEL names a model file directly); Stado is not asked",
-			"evidence": [
-				{
-					"at": "transcript-lake/src/commands/goal/model.rs:76",
-					"contains": ".join(\".stado/local-storage/ecosystem/releases/jeden-desktop/models/goal-qwen3-4b\")"
-				},
-				{
-					"at": "transcript-lake/src/commands/goal/model.rs:87",
-					"contains": "resolve/{MODEL_REVISION}/{PROMPT_NAME}"
 				}
 			]
 		},
@@ -1105,12 +1082,12 @@
 			"feature": "the first-use walkthrough definition and its analytics events",
 			"how": "reads the journey from Stado integration API with STADO_INTEGRATION_API_URL and HANDTOHUMAN_STADO_INTEGRATION_TOKEN",
 			"whenAbsent": "alternative",
-			"detail": "without Stado the walkthrough runs offline",
+			"detail": "without Stado the walkthrough runs offline; one of the pair without the other is refused naming the missing one",
 			"alternative": "without the endpoint and token the walkthrough runs from the offline transport on this machine and sends no events",
 			"evidence": [
 				{
-					"at": "handtohuman/src/onboarding.rs:79",
-					"contains": "env::var(\"STADO_INTEGRATION_API_URL\")"
+					"at": "handtohuman/src/onboarding.rs:90",
+					"contains": "let endpoint = setting(\"STADO_INTEGRATION_API_URL\")?;"
 				},
 				{
 					"at": "handtohuman/src/onboarding.rs:93",
@@ -1132,7 +1109,7 @@
 					"contains": "FleetDatabase::for_product(Self::DATABASE"
 				},
 				{
-					"at": "stado/stado-rs/database/src/resolve.rs:183",
+					"at": "stado/stado-rs/database/src/resolve/environment.rs:17",
 					"contains": "let url_variable = format!"
 				}
 			]
@@ -1185,8 +1162,8 @@
 			"alternative": "glina sculpt builds the asset in Blender with a model, and glina import takes a GLB made anywhere; neither asks Weles",
 			"evidence": [
 				{
-					"at": "glina/pipeline/host/weles.js:153",
-					"contains": "command: options.command ?? 'weles-mcp'"
+					"at": "glina/pipeline/host/weles.js:26",
+					"contains": "const WELES_MCP = 'weles-mcp';"
 				},
 				{
 					"at": "glina/pipeline/cli.js:77",
@@ -1526,16 +1503,20 @@
 			"feature": "scoring a draft",
 			"how": "one chat completion to BRAMA_URL/v1/chat/completions with BRAMA_TOKEN and BRAMA_MODEL",
 			"whenAbsent": "alternative",
-			"detail": "without the three variables a score fails naming the missing one, e.g. \"BRAMA_URL is required\"",
-			"alternative": "BRAMA_URL names any OpenAI-compatible HTTPS origin, BRAMA_TOKEN its key and BRAMA_MODEL its model; the request is a plain bearer call and Brama is not asked",
+			"detail": "without AIWRITECHECK_MODEL_ENDPOINT and without the three Brama variables a score fails naming the missing one, e.g. \"BRAMA_URL is required\"",
+			"alternative": "AIWRITECHECK_MODEL_ENDPOINT names any OpenAI-compatible HTTPS origin, AIWRITECHECK_MODEL its model and AIWRITECHECK_MODEL_KEY its bearer when it takes one; Brama is then not asked",
 			"evidence": [
 				{
 					"at": "ai-text-detector-web/src/lib/brama.ts:44",
 					"contains": "return `${url.origin}/v1/chat/completions`"
 				},
 				{
-					"at": "ai-text-detector-web/src/lib/brama.ts:34",
-					"contains": "Authorization: `Bearer ${requiredEnv(\"BRAMA_TOKEN\")}`"
+					"at": "ai-text-detector-web/src/lib/brama.ts:48",
+					"contains": "const direct = optionalEnv(DIRECT_ENDPOINT);"
+				},
+				{
+					"at": "ai-text-detector-web/src/lib/brama.ts:60",
+					"contains": "key: requiredEnv(\"BRAMA_TOKEN\"),"
 				}
 			]
 		},
@@ -1545,16 +1526,20 @@
 			"feature": "rewriting a draft",
 			"how": "one chat completion to BRAMA_URL/v1/chat/completions with BRAMA_TOKEN and BRAMA_MODEL",
 			"whenAbsent": "alternative",
-			"detail": "without the three variables a rewrite fails naming the missing one, e.g. \"BRAMA_URL is required\"",
-			"alternative": "BRAMA_URL names any OpenAI-compatible HTTPS origin, BRAMA_TOKEN its key and BRAMA_MODEL its model; the request is a plain bearer call and Brama is not asked",
+			"detail": "without UNDETECTABLETEXT_MODEL_ENDPOINT and without the three Brama variables a rewrite fails naming the missing one, e.g. \"BRAMA_URL is required\"",
+			"alternative": "UNDETECTABLETEXT_MODEL_ENDPOINT names any OpenAI-compatible HTTPS origin, UNDETECTABLETEXT_MODEL its model and UNDETECTABLETEXT_MODEL_KEY its bearer when it takes one; Brama is then not asked",
 			"evidence": [
 				{
 					"at": "ai-text-generator-web/src/lib/brama.ts:40",
 					"contains": "return `${url.origin}/v1/chat/completions`"
 				},
 				{
-					"at": "ai-text-generator-web/src/lib/brama.ts:26",
-					"contains": "Authorization: `Bearer ${requiredEnv(\"BRAMA_TOKEN\")}`"
+					"at": "ai-text-generator-web/src/lib/brama.ts:44",
+					"contains": "const direct = optionalEnv(DIRECT_ENDPOINT);"
+				},
+				{
+					"at": "ai-text-generator-web/src/lib/brama.ts:56",
+					"contains": "key: requiredEnv(\"BRAMA_TOKEN\"),"
 				}
 			]
 		},
