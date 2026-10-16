@@ -9,9 +9,10 @@ attempt. `status` only inspects progress. `skip` preserves the current catalogue
 before a first adoption, compiled defaults remain eligible, while an existing
 durable catalogue keeps governing eligibility.
 
-The optional onboarding control-plane transport waits for the actual response,
-without a Las request deadline. Its URL must be an HTTPS origin: credentials,
-non-root path, query and fragment are refused rather than silently discarded.
+The optional onboarding control-plane transport waits for the actual response
+however long it takes. A URL that does not parse is refused with the parser's
+cause; it must be an HTTPS origin, and credentials, a non-root path, a query or
+a fragment are refused by name rather than silently discarded.
 HTTP redirects are not followed. Their status and response body remain a named
 control-plane failure instead of sending journey data to another destination.
 It accepts only an object envelope with `ok: true` and `result`. Failures retain
@@ -28,9 +29,12 @@ Opening that panel does not send a new request; `not_observed` is not healthy,
 and unreadable state is reported with its file and cause.
 
 `node tests/onboarding/state.mjs` qualifies retained-state admission through
-the real source CLI. Declare `LAS_TEST_SOURCE_REVISION`,
-`LAS_TEST_SUCCESS_EXIT` and `LAS_TEST_REFUSAL_EXIT`; the candidate and journey
-must be committed. It creates local onboarding state and requires malformed
+the real CLI of the declared revision. Declare `LAS_TEST_SOURCE_REVISION`,
+`LAS_TEST_SUCCESS_EXIT` and `LAS_TEST_REFUSAL_EXIT`; the journey takes that
+commit's `src/` and `package.json` out of git into its run directory, so other
+uncommitted files in the checkout neither reach it nor stop it, and refuses to
+run when the journey or `tests/source.mjs` differs from the commit. It creates
+local onboarding state and requires malformed
 JSON, unsupported schema, invalid installation identity, pending-event queue,
 evidence or metadata containers, and actual filesystem read errors to refuse
 without replacing retained data. Both status and advance must preserve invalid

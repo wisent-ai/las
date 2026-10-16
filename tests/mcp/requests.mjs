@@ -1,21 +1,16 @@
-// Runs Las's MCP server from the declared clean source and sends it requests a
-// client can get wrong; every request that names an id must be answered, with
-// the JSON-RPC code and the cause, and a notification must not be.
+// Runs Las's MCP server from the declared revision's committed source and sends
+// it requests a client can get wrong; every request that names an id must be
+// answered, with the JSON-RPC code and the cause, and a notification must not be.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import {
-  CODE_INVALID_PARAMS,
-  CODE_INVALID_REQUEST,
-  CODE_PARSE_ERROR,
-  JSONRPC_VERSION,
-  LAS_VERSION,
-} from '../../src/mcp/protocol.mjs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { committedSource } from '../source.mjs';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const journey = fileURLToPath(import.meta.url);
+const root = resolve(dirname(journey), '../..');
 const run = join(root, '.build', 'mcp-requests', randomUUID());
 const home = join(run, 'home');
 mkdirSync(home, { recursive: true });
@@ -45,37 +40,36 @@ async function command(program, args, extra, input) {
   save();
   return record;
 }
-const request = (id, method, params) => ({ jsonrpc: JSONRPC_VERSION, id, method, ...(params && { params }) });
-// What each line is answered with: an id and an error code, `result` for a
-// success, or nothing for a notification.
-const cases = [
-  { send: request('init', 'initialize', {}), id: 'init', answer: 'result' },
-  { send: { jsonrpc: JSONRPC_VERSION, id: 'no-method' }, id: 'no-method', answer: CODE_INVALID_REQUEST },
-  { send: 'null', id: null, answer: CODE_INVALID_REQUEST },
-  { send: '[]', id: null, answer: CODE_INVALID_REQUEST },
-  { send: { jsonrpc: JSONRPC_VERSION, id: 'boolean-method', method: true }, id: 'boolean-method', answer: CODE_INVALID_REQUEST },
-  { send: { jsonrpc: JSONRPC_VERSION, method: 'notifications/initialized' } },
-  { send: '{"jsonrpc":', id: null, answer: CODE_PARSE_ERROR },
-  { send: request('no-params', 'tools/call'), id: 'no-params', answer: CODE_INVALID_PARAMS },
-  { send: request('bad-arguments', 'tools/call', { name: 'las__onboarding', arguments: [] }), id: 'bad-arguments', answer: CODE_INVALID_PARAMS },
-  { send: request('last', 'ping'), id: 'last', answer: 'result' },
-];
 const shape = answers => answers.map(({ id, answer }) => JSON.stringify([id, answer])).sort();
 try {
   const success = Number(required('LAS_TEST_SUCCESS_EXIT'));
   const refusal = Number(required('LAS_TEST_REFUSAL_EXIT'));
   assert.ok(Number.isSafeInteger(success) && Number.isSafeInteger(refusal) && success !== refusal);
-  const revision = await command('git', ['rev-parse', 'HEAD']);
-  assert.equal(revision.exit, success, revision.stderr);
-  assert.equal(revision.stdout.trim(), required('LAS_TEST_SOURCE_REVISION'));
-  report.sourceRevision = revision.stdout.trim();
-  const clean = await command('git', ['status', '--porcelain']);
-  assert.equal(clean.exit, success, clean.stderr);
-  assert.equal(clean.stdout.trim(), '', 'commit the candidate before qualification');
+  const { revision, source } = await committedSource({
+    command, root, run, journey, declared: required('LAS_TEST_SOURCE_REVISION'), success,
+  });
+  report.sourceRevision = revision;
+  const protocol = await import(pathToFileURL(join(source, 'src/mcp/protocol.mjs')).href);
+  const { CODE_INVALID_PARAMS, CODE_INVALID_REQUEST, CODE_PARSE_ERROR, JSONRPC_VERSION, LAS_VERSION } = protocol;
+  const request = (id, method, params) => ({ jsonrpc: JSONRPC_VERSION, id, method, ...(params && { params }) });
+  // What each line is answered with: an id and an error code, `result` for a
+  // success, or nothing for a notification.
+  const cases = [
+    { send: request('init', 'initialize', {}), id: 'init', answer: 'result' },
+    { send: { jsonrpc: JSONRPC_VERSION, id: 'no-method' }, id: 'no-method', answer: CODE_INVALID_REQUEST },
+    { send: 'null', id: null, answer: CODE_INVALID_REQUEST },
+    { send: '[]', id: null, answer: CODE_INVALID_REQUEST },
+    { send: { jsonrpc: JSONRPC_VERSION, id: 'boolean-method', method: true }, id: 'boolean-method', answer: CODE_INVALID_REQUEST },
+    { send: { jsonrpc: JSONRPC_VERSION, method: 'notifications/initialized' } },
+    { send: '{"jsonrpc":', id: null, answer: CODE_PARSE_ERROR },
+    { send: request('no-params', 'tools/call'), id: 'no-params', answer: CODE_INVALID_PARAMS },
+    { send: request('bad-arguments', 'tools/call', { name: 'las__onboarding', arguments: [] }), id: 'bad-arguments', answer: CODE_INVALID_PARAMS },
+    { send: request('last', 'ping'), id: 'last', answer: 'result' },
+  ];
 
   // LAS_ONLY names no surface, so no child is federated and only Las answers.
   const input = cases.map(({ send }) => (typeof send === 'string' ? send : JSON.stringify(send))).join('\n') + '\n';
-  const served = await command(process.execPath, [join(root, 'src/mcp.mjs')], { LAS_ONLY: `none-${randomUUID()}` }, input);
+  const served = await command(process.execPath, [join(source, 'src/mcp.mjs')], { LAS_ONLY: `none-${randomUUID()}` }, input);
   assert.equal(served.signal, null, served.stderr);
   assert.equal(served.exit, success, served.stderr);
   assert.equal(served.stderr, '', 'Las wrote no handler failure');

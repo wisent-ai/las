@@ -1,12 +1,15 @@
-// Runs the product CLI from the declared clean source; no transport is simulated.
+// Runs the product CLI from the declared revision's committed source; no
+// transport is simulated.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { committedSource } from '../source.mjs';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const journey = fileURLToPath(import.meta.url);
+const root = resolve(dirname(journey), '../..');
 const run = join(root, '.build', 'onboarding-state', randomUUID());
 const home = join(run, 'home');
 const state = join(run, 'state');
@@ -42,14 +45,11 @@ try {
   const success = Number(required('LAS_TEST_SUCCESS_EXIT'));
   const refusal = Number(required('LAS_TEST_REFUSAL_EXIT'));
   assert.ok(Number.isSafeInteger(success) && Number.isSafeInteger(refusal) && success !== refusal);
-  const revision = await command('git', ['rev-parse', 'HEAD']);
-  assert.equal(revision.exit, success, revision.stderr);
-  assert.equal(revision.stdout.trim(), required('LAS_TEST_SOURCE_REVISION'));
-  report.sourceRevision = revision.stdout.trim();
-  const clean = await command('git', ['status', '--porcelain']);
-  assert.equal(clean.exit, success, clean.stderr);
-  assert.equal(clean.stdout.trim(), '', 'commit the candidate and journey before qualification');
-  const cli = join(root, 'src/cli.mjs');
+  const { revision, source } = await committedSource({
+    command, root, run, journey, declared: required('LAS_TEST_SOURCE_REVISION'), success,
+  });
+  report.sourceRevision = revision;
+  const cli = join(source, 'src/cli.mjs');
   report.cliSha256 = createHash('sha256').update(readFileSync(cli)).digest('hex');
   const invoke = action => command(process.execPath, [cli, 'onboarding', action]);
   const started = await invoke('show');
@@ -93,7 +93,7 @@ try {
     assert.equal(failed.signal, null, failed.stderr);
     assert.equal(failed.exit, refusal, failed.stderr);
     assert.ok(failed.stderr.includes(path), failed.stderr);
-    assert.match(failed.stderr, /EISDIR|directory/i);
+    assert.match(failed.stderr, /EISDIR/, 'the read refusal names the system error');
     assert.equal(statSync(path).isDirectory(), true, 'read refusal replaced its input');
   } finally {
     rmSync(path, { recursive: true });

@@ -40,8 +40,9 @@ A child surface's failures are named on stderr (`surface '<name>' unavailable:
 policy, launch, exit or protocol breach. A JSON-RPC error the child answered is
 named by its code only; its text is withheld, and child stderr is discarded.
 
-`node tests/mcp/requests.mjs` runs the server from the declared clean source
-with no surface federated and checks each of these answers. It takes
+`node tests/mcp/requests.mjs` runs the server from the declared revision's
+committed source, taken out of git into its run directory, with no surface
+federated, and checks each of these answers. It takes
 `LAS_TEST_SOURCE_REVISION`, `LAS_TEST_SUCCESS_EXIT` and `LAS_TEST_REFUSAL_EXIT`
 and keeps its commands, output and verdict under `.build/mcp-requests/`. It does
 not qualify a federated child.

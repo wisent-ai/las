@@ -1,14 +1,16 @@
-// Runs the product CLI from the declared clean source against catalogues it
-// cannot inspect, read or parse; every refusal must carry the path and cause.
+// Runs the product CLI from the declared revision's committed source against
+// catalogues it cannot inspect, read or parse; every refusal must carry the
+// path and cause.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { chmodSync, constants, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { SCHEMA_VERSION } from '../../src/catalog.mjs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { committedSource } from '../source.mjs';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const journey = fileURLToPath(import.meta.url);
+const root = resolve(dirname(journey), '../..');
 const run = join(root, '.build', 'catalog-load', randomUUID());
 const home = join(run, 'home');
 mkdirSync(home, { recursive: true });
@@ -51,16 +53,14 @@ try {
   const success = Number(required('LAS_TEST_SUCCESS_EXIT'));
   const refusal = Number(required('LAS_TEST_REFUSAL_EXIT'));
   assert.ok(Number.isSafeInteger(success) && Number.isSafeInteger(refusal) && success !== refusal);
-  const revision = await command('git', ['rev-parse', 'HEAD']);
-  assert.equal(revision.exit, success, revision.stderr);
-  assert.equal(revision.stdout.trim(), required('LAS_TEST_SOURCE_REVISION'));
-  report.sourceRevision = revision.stdout.trim();
-  const clean = await command('git', ['status', '--porcelain']);
-  assert.equal(clean.exit, success, clean.stderr);
-  assert.equal(clean.stdout.trim(), '', 'commit the candidate before qualification');
-  const cli = join(root, 'src/cli.mjs');
+  const { revision, source } = await committedSource({
+    command, root, run, journey, declared: required('LAS_TEST_SOURCE_REVISION'), success,
+  });
+  report.sourceRevision = revision;
+  const cli = join(source, 'src/cli.mjs');
   report.cliSha256 = createHash('sha256').update(readFileSync(cli)).digest('hex');
   const list = catalogue => command(process.execPath, [cli, 'list'], { LAS_CATALOG_PATH: catalogue });
+  const { SCHEMA_VERSION } = await import(pathToFileURL(join(source, 'src/catalog.mjs')).href);
   const empty = JSON.stringify({ schemaVersion: SCHEMA_VERSION, registrations: [] });
 
   const absent = join(run, 'absent', 'catalog.json');
