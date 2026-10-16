@@ -175,11 +175,20 @@ export function loadCatalog() {
 		return cachedCatalog;
 	cachedCatalog = undefined;
 	cachedCatalogPath = target;
-	if (!existsSync(target)) {
+	// Only a missing entry means there is no catalogue; a catalogue whose
+	// metadata cannot be read throws its cause instead of running as empty.
+	let metadata;
+	try {
+		metadata = lstatSync(target, { throwIfNoEntry: false });
+	} catch (error) {
+		throw new Error(
+			`Las catalogue cannot be inspected: ${target}: ${error.message}`,
+		);
+	}
+	if (!metadata) {
 		cachedCatalog = null;
 		return cachedCatalog;
 	}
-	const metadata = lstatSync(target);
 	if (
 		metadata.isSymbolicLink() ||
 		!metadata.isFile() ||
@@ -189,11 +198,21 @@ export function loadCatalog() {
 			`Las catalogue must be a regular file of at most 4 MiB: ${target}`,
 		);
 	}
+	let text;
+	try {
+		text = readFileSync(target, "utf8");
+	} catch (error) {
+		throw new Error(
+			`Las catalogue cannot be read: ${target}: ${error.message}`,
+		);
+	}
 	let candidate;
 	try {
-		candidate = JSON.parse(readFileSync(target, "utf8"));
-	} catch {
-		throw new Error(`Las catalogue is not valid JSON: ${target}`);
+		candidate = JSON.parse(text);
+	} catch (error) {
+		throw new Error(
+			`Las catalogue is not valid JSON: ${target}: ${error.message}`,
+		);
 	}
 	cachedCatalog = validateStoredCatalog(candidate, target);
 	return cachedCatalog;

@@ -34,9 +34,12 @@ Any mismatch fails closed for that surface.
 ### Skarbiec
 
 Las permits only `health`, `capability_available`, and `capability_request`, pins
-their schemas/descriptions, validates a bounded purpose/resource/target taxonomy,
-limits TTL to 60 seconds, use count to one, and delegation depth to zero, and
-validates exact result envelopes. It returns only availability or opaque
+their schemas/descriptions, validates the purpose/resource/target taxonomy,
+and validates exact result envelopes. Callers declare positive whole-number
+`ttl_seconds` and `max_uses`; optional `delegation_depth` is nonnegative.
+Las checks their shape, while Skarbiec owns the capability policy and refuses
+requests outside its authority. Las does not impose a separate lifetime,
+use-count or delegation ceiling. It returns only availability or opaque
 capability IDs—not redeemed credentials.
 
 ### Finance

@@ -15,19 +15,16 @@ import {
 	catalogPath,
 	catalogRegistration,
 } from "./catalog.mjs";
+import { adoptionAccepted } from "./catalog/outcome.mjs";
 import { recordCatalogueAdopted } from "./onboarding/journey.mjs";
+import { onboardingControlPlane } from "./onboarding/diagnostics.mjs";
 import { dependenciesWithout } from "./dependencies/register.mjs";
 import { SURFACES, activeSurfaces, surfaceConfigured } from "./registry.mjs";
 
 const LOOPBACK_HOST = "127.0.0.1";
-// One adoption request carries at most 8 MiB. How many sources it names and how long a name or
-// path may be are the filesystem's to say: it refuses a name or path it cannot hold, by name.
-const MAX_REQUEST_BYTES = 8 * 1024 * 1024;
-const UPLOAD_INDEX_DIGITS = 2;
-// Import storage is owner-only; the session token is 32 random bytes; the largest TCP port.
+// Request size and session entropy come from this deployment's declarations.
 const OWNER_ONLY_DIRECTORY = 0o700;
 const OWNER_ONLY_FILE = 0o600;
-const SESSION_TOKEN_BYTES = 32;
 const MAX_PORT = 65535;
 // The statuses the GUI answers with.
 const HTTP_OK = 200;
@@ -86,6 +83,7 @@ function catalogSnapshot() {
 	const active = new Set(activeSurfaces());
 	return {
 		path: catalogPath(),
+		onboardingControlPlane: onboardingControlPlane(),
 		surfaces: SURFACES.map((surface) => {
 			const state = catalogRegistration(surface);
 			return {
@@ -119,17 +117,36 @@ function catalogReadback() {
 	}
 }
 
-function readRequestJson(request) {
+function declaredBytes(name) {
+	const value = process.env[name];
+	if (typeof value !== "string" || !/^[1-9]\d*$/.test(value)) {
+		throw new Error(
+			`${name} must declare a positive whole byte count before starting the GUI`,
+		);
+	}
+	const bytes = Number(value);
+	if (!Number.isSafeInteger(bytes)) {
+		throw new Error(`${name} cannot be represented as an exact byte count`);
+	}
+	return bytes;
+}
+
+function readRequestJson(request, maximumBytes) {
 	const declared = request.headers["content-length"];
 	if (typeof declared !== "string" || !/^\d+$/.test(declared)) {
 		throw Object.assign(new Error("Content-Length is required"), {
 			status: HTTP_LENGTH_REQUIRED,
 		});
 	}
-	if (Number(declared) > MAX_REQUEST_BYTES) {
-		throw Object.assign(new Error("request exceeds 8 MiB"), {
-			status: HTTP_PAYLOAD_TOO_LARGE,
-		});
+	if (Number(declared) > maximumBytes) {
+		throw Object.assign(
+			new Error(
+				`request declares ${declared} bytes, above LAS_GUI_MAX_REQUEST_BYTES=${maximumBytes}`,
+			),
+			{
+				status: HTTP_PAYLOAD_TOO_LARGE,
+			},
+		);
 	}
 	if (
 		request.headers["content-type"]?.split(";", 1)[0].trim() !==
@@ -144,13 +161,18 @@ function readRequestJson(request) {
 		let size = 0;
 		request.on("data", (chunk) => {
 			size += chunk.length;
-			if (size > MAX_REQUEST_BYTES) {
+			if (size > maximumBytes) {
 				reject(
-					Object.assign(new Error("request exceeds 8 MiB"), {
-						status: HTTP_PAYLOAD_TOO_LARGE,
-					}),
+					Object.assign(
+						new Error(
+							`request received ${size} bytes, above LAS_GUI_MAX_REQUEST_BYTES=${maximumBytes}`,
+						),
+						{
+							status: HTTP_PAYLOAD_TOO_LARGE,
+						},
+					),
 				);
-				request.destroy();
+				request.pause();
 				return;
 			}
 			chunks.push(chunk);
@@ -158,11 +180,16 @@ function readRequestJson(request) {
 		request.on("end", () => {
 			try {
 				resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
-			} catch {
+			} catch (error) {
 				reject(
-					Object.assign(new Error("request body is not valid JSON"), {
-						status: HTTP_BAD_REQUEST,
-					}),
+					Object.assign(
+						new Error(`request JSON decoding failed: ${error.message}`, {
+							cause: error,
+						}),
+						{
+							status: HTTP_BAD_REQUEST,
+						},
+					),
 				);
 			}
 		});
@@ -197,12 +224,13 @@ function guiImportDirectory(sessionId) {
 function stageUploads(uploads, sessionId) {
 	if (!uploads.length) return [];
 	for (const [index, upload] of uploads.entries()) {
+		const { name, content, ...extra } = isRecord(upload) ? upload : {};
 		if (
 			!isRecord(upload) ||
-			Object.keys(upload).some((key) => key !== "name" && key !== "content") ||
-			typeof upload.name !== "string" ||
-			upload.name.length === 0 ||
-			typeof upload.content !== "string"
+			Object.keys(extra).length ||
+			typeof name !== "string" ||
+			name.length === 0 ||
+			typeof content !== "string"
 		) {
 			throw new Error(
 				`upload ${index + 1} must contain only a file name and text content`,
@@ -214,10 +242,7 @@ function stageUploads(uploads, sessionId) {
 		const base =
 			path.basename(upload.name).replaceAll(/[^A-Za-z0-9._-]/g, "_") ||
 			"mcp.json";
-		const target = path.join(
-			directory,
-			`${String(index + 1).padStart(UPLOAD_INDEX_DIGITS, "0")}-${randomUUID()}-${base}`,
-		);
+		const target = path.join(directory, `${index + 1}-${randomUUID()}-${base}`);
 		writeFileSync(target, upload.content, {
 			encoding: "utf8",
 			flag: "wx",
@@ -227,43 +252,25 @@ function stageUploads(uploads, sessionId) {
 	});
 }
 
+// The request names its sources by which list it fills: paths, uploads, or
+// neither for discovery. Filling both is refused, as is any other field.
 function adoptionSources(body, sessionId) {
-	if (
-		!isRecord(body) ||
-		Object.keys(body).some(
-			(key) => !["mode", "paths", "uploads", "replace"].includes(key),
-		)
-	) {
-		throw new Error(
-			"request must contain only mode, paths, uploads, and replace",
-		);
+	const { paths, uploads, replace, ...extra } = isRecord(body) ? body : {};
+	if (!isRecord(body) || Object.keys(extra).length) {
+		throw new Error("request must contain only paths, uploads, and replace");
 	}
-	if (!["discover", "paths", "uploads"].includes(body.mode))
-		throw new Error("mode must be discover, paths, or uploads");
-	if (typeof body.replace !== "boolean")
-		throw new Error("replace must be boolean");
-	if (!Array.isArray(body.paths) || !Array.isArray(body.uploads))
+	if (typeof replace !== "boolean") throw new Error("replace must be boolean");
+	if (!Array.isArray(paths) || !Array.isArray(uploads))
 		throw new Error("paths and uploads must be arrays");
 	if (
-		body.paths.some(
-			(source) => typeof source !== "string" || source.length === 0,
-		)
+		paths.some((source) => typeof source !== "string" || source.length === 0)
 	) {
 		throw new Error("every source path must be a non-empty path");
 	}
-	if (body.mode === "discover") {
-		if (body.paths.length || body.uploads.length)
-			throw new Error("discovery mode does not accept explicit sources");
-		return [];
-	}
-	if (body.mode === "paths") {
-		if (!body.paths.length || body.uploads.length)
-			throw new Error("path mode requires at least one path and no uploads");
-		return body.paths;
-	}
-	if (!body.uploads.length || body.paths.length)
-		throw new Error("upload mode requires at least one upload and no paths");
-	return stageUploads(body.uploads, sessionId);
+	if (paths.length && uploads.length)
+		throw new Error("a request names either paths or uploads, not both");
+	if (paths.length) return paths;
+	return stageUploads(uploads, sessionId);
 }
 
 function authorized(request, authority, origin, token, mutation) {
@@ -280,7 +287,17 @@ export async function startLasGui({ port = 0 } = {}) {
 	if (!Number.isInteger(port) || port < 0 || port > MAX_PORT) {
 		throw new Error(`GUI port must be an integer from 0 through ${MAX_PORT}`);
 	}
-	const token = randomBytes(SESSION_TOKEN_BYTES).toString("base64url");
+	const maximumBytes = declaredBytes("LAS_GUI_MAX_REQUEST_BYTES");
+	const tokenBytes = declaredBytes("LAS_GUI_SESSION_TOKEN_BYTES");
+	let token;
+	try {
+		token = randomBytes(tokenBytes).toString("base64url");
+	} catch (error) {
+		throw new Error(
+			`LAS_GUI_SESSION_TOKEN_BYTES=${tokenBytes}: generating session entropy failed: ${error.message}`,
+			{ cause: error },
+		);
+	}
 	const sessionId = randomUUID();
 	let authority;
 	let origin;
@@ -343,25 +360,29 @@ export async function startLasGui({ port = 0 } = {}) {
 					sendJson(response, HTTP_FORBIDDEN, { error: refusal });
 					return;
 				}
-				const body = await readRequestJson(request);
+				const body = await readRequestJson(request, maximumBytes);
 				const sources = adoptionSources(body, sessionId);
 				const result = adoptMcpConfigurations(SURFACES, {
 					sources,
 					replace: body.replace,
 				});
-				if (result.status === "imported" || result.status === "unchanged") {
+				const accepted = adoptionAccepted(result);
+				if (accepted) {
 					await recordCatalogueAdopted({
 						client: "gui",
 						surfaceCount: result.imported.length + result.unchanged.length,
 						catalogPath: result.catalogPath,
 					});
 				}
-				sendJson(response, HTTP_OK, { result, ...catalogReadback() });
+				sendJson(response, HTTP_OK, { result, accepted, ...catalogReadback() });
 				return;
 			}
 			sendJson(response, HTTP_NOT_FOUND, { error: "route not found" });
 		})().catch((error) => {
 			if (response.headersSent || response.destroyed) return;
+			// Send the refusal before closing a request whose body was not consumed.
+			response.setHeader("Connection", "close");
+			response.once("finish", () => request.destroy());
 			sendJson(
 				response,
 				Number.isInteger(error?.status) ? error.status : HTTP_BAD_REQUEST,

@@ -17,16 +17,12 @@ public enum WorkspaceLocator {
                 .appendingPathComponent("Documents/CodingProjects/Wisent", isDirectory: true)
         )
 
-        var ancestor = Bundle.main.bundleURL.standardizedFileURL
-        for _ in 0..<14 {
-            candidates.append(ancestor)
-            ancestor.deleteLastPathComponent()
-        }
+        candidates.append(Bundle.main.bundleURL.standardizedFileURL)
 
         var seen = Set<String>()
         for candidate in candidates {
             var current = candidate.standardizedFileURL
-            for _ in 0..<10 {
+            while true {
                 let path = current.path
                 if seen.insert(path).inserted, isWorkspace(current) {
                     return current
@@ -43,6 +39,6 @@ public enum WorkspaceLocator {
         let manager = FileManager.default
         return manager.fileExists(atPath: url.appendingPathComponent("las/src/registry.mjs").path)
             && manager.fileExists(atPath: url.appendingPathComponent("weles", isDirectory: true).path)
-            && manager.fileExists(atPath: url.appendingPathComponent("wisent-compute", isDirectory: true).path)
+            && manager.fileExists(atPath: url.appendingPathComponent("stado", isDirectory: true).path)
     }
 }

@@ -32,6 +32,7 @@ export class OnboardingSession {
 	}
 
 	async save() {
+		this.state.control_plane = this.transport.diagnostic;
 		await this.deps.saveState(this.state);
 	}
 
@@ -80,6 +81,7 @@ export class OnboardingSession {
 			try {
 				await this.transport.collectEvent(event);
 			} catch {
+				await this.save();
 				return;
 			}
 			this.state.pending_events.shift();

@@ -21,3 +21,25 @@ export const STATE_PATH = join(
 export const OWNER_ONLY_DIRECTORY = 0o700;
 export const OWNER_ONLY_FILE = 0o600;
 export const JSON_INDENT = 2;
+
+export function validateSavedFields(state) {
+	if (
+		typeof state.installation_id !== "string" ||
+		!state.installation_id.trim()
+	)
+		throw new Error(
+			`onboarding state ${STATE_PATH} installation_id must be a nonempty string`,
+		);
+	if (!Array.isArray(state.pending_events))
+		throw new Error(
+			`onboarding state ${STATE_PATH} pending_events must be an array`,
+		);
+	for (const field of ["evidence", "meta"]) {
+		const value = state[field];
+		if (value === null || typeof value !== "object" || Array.isArray(value))
+			throw new Error(
+				`onboarding state ${STATE_PATH} ${field} must be an object`,
+			);
+	}
+	return state;
+}

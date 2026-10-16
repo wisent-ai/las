@@ -15,6 +15,7 @@ import {
 	OWNER_ONLY_FILE,
 	PRODUCT_ID,
 	STATE_PATH,
+	validateSavedFields,
 } from "./journey/contract.mjs";
 import {
 	canonicalFallback,
@@ -26,19 +27,36 @@ import { StadoTransport } from "./journey/transport.mjs";
 import { COPY, LOCAL_SCREENS } from "./journey/screens.mjs";
 
 async function loadState() {
+	let body;
 	try {
-		const parsed = JSON.parse(await readFile(STATE_PATH, "utf8"));
-		if (isRecord(parsed) && parsed.schema_version === 1) return parsed;
-	} catch {
-		// Missing or damaged local state falls back to a fresh, valid store.
+		body = await readFile(STATE_PATH, "utf8");
+	} catch (cause) {
+		if (cause.code === "ENOENT") {
+			return {
+				schema_version: 1,
+				installation_id: randomUUID(),
+				pending_events: [],
+				evidence: {},
+				meta: {},
+			};
+		}
+		throw new Error(
+			`onboarding state ${STATE_PATH} cannot be read: ${cause.message}`,
+			{ cause },
+		);
 	}
-	return {
-		schema_version: 1,
-		installation_id: randomUUID(),
-		pending_events: [],
-		evidence: {},
-		meta: {},
-	};
+	try {
+		const parsed = JSON.parse(body);
+		if (isRecord(parsed) && parsed.schema_version === 1) return parsed;
+	} catch (cause) {
+		throw new Error(
+			`onboarding state ${STATE_PATH} is not valid JSON: ${cause.message}`,
+			{ cause },
+		);
+	}
+	throw new Error(
+		`onboarding state ${STATE_PATH} is not a schema_version 1 state`,
+	);
 }
 
 async function saveState(state) {
@@ -135,12 +153,7 @@ function newProgress(bundle, subjectHash, revision) {
 }
 
 async function openSession(client, { start = true } = {}) {
-	const state = await loadState();
-	if (typeof state.installation_id !== "string")
-		state.installation_id = randomUUID();
-	if (!Array.isArray(state.pending_events)) state.pending_events = [];
-	if (!isRecord(state.evidence)) state.evidence = {};
-	if (!isRecord(state.meta)) state.meta = {};
+	const state = validateSavedFields(await loadState());
 	const subjectHash = sha256(`las:${state.installation_id}`);
 	const transport = new StadoTransport(client);
 	let bundle;
@@ -200,6 +213,7 @@ async function openSession(client, { start = true } = {}) {
 	if (!existing)
 		await session.emit([session.event("onboarding_started", revision)]);
 	else await session.flush();
+	await session.save();
 	return session;
 }
 
@@ -216,6 +230,7 @@ function view(session) {
 		actions: local.actions,
 		current_screen_id: screen.screen_id,
 		completed_screen_ids: session.progress.completed_screen_ids,
+		control_plane: session.transport.diagnostic,
 	};
 }
 

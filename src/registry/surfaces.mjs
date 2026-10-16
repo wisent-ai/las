@@ -70,9 +70,9 @@ export const SURFACES = [
 	},
 	{
 		name: "stado",
-		command: "/usr/bin/python3",
-		args: ["-m", "stado.mcp.server"],
-		cwd: path.join(ROOT, "wisent-compute"),
+		command: path.join(ROOT, "stado", "stado-rs", "target", "debug", "stado"),
+		args: ["mcp"],
+		cwd: path.join(ROOT, "stado"),
 		summary: "GPU job queue. Read-only status, cost, quota, schedules.",
 		envAllowlist: [
 			"COMPUTE_API_URL",
@@ -86,9 +86,9 @@ export const SURFACES = [
 	},
 	{
 		name: "lem",
-		command: path.join(ROOT, "lem-desktop", ".build", "debug", "LemMCP"),
+		command: path.join(ROOT, "lem", ".build", "debug", "LemMCP"),
 		args: [],
-		cwd: path.join(ROOT, "lem-desktop"),
+		cwd: path.join(ROOT, "lem"),
 		summary: "Research-paper manager. Read-only registry + provenance.",
 		envAllowlist: [],
 	},
@@ -116,9 +116,9 @@ export const SURFACES = [
 			"probierz-rs",
 			"target",
 			"debug",
-			"probierz-mcp",
+			"probierz",
 		),
-		args: [],
+		args: ["mcp"],
 		cwd: path.join(ROOT, "probierz"),
 		summary:
 			"Cross-platform test toolkit. Discovery (surfaces/specs) + toolchain check/setup + change-driven ci: select targets a change affects, run the ready ones (recording video/trace/screenshots), analyze the verdict.",
@@ -163,7 +163,7 @@ export const SURFACES = [
 		args: [],
 		cwd: path.join(ROOT, "singularity"),
 		summary:
-			"Policy-gated repository proposals. Never merge, deploy, or restart.",
+			"Policy-gated canonical main checkout operations. Independent acceptance and qualified delivery remain separate.",
 		allowTools: [
 			"workspace_create",
 			"workspace_read",
@@ -173,10 +173,14 @@ export const SURFACES = [
 			"workspace_check",
 			"commit_create",
 			"branch_publish",
-			"pull_request_open",
 			"proposal_status",
 		],
-		envAllowlist: ["LAS_ONLY", "LAS_SKIP"],
+		envAllowlist: [
+			"LAS_ONLY",
+			"LAS_SKIP",
+			"JEDEN_REPO_POLICY_FILE",
+			"JEDEN_REPO_STATE_DIR",
+		],
 	},
 	{
 		name: "finance",

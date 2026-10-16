@@ -4,17 +4,17 @@ import SwiftUI
 private let probierzDefinition = SurfaceDefinition(
     id: "probierz",
     name: "Probierz",
-    subtitle: "Cross-platform verification surfaces and artifact readiness.",
+    subtitle: "Cross-platform verification source contracts and artifact inventory.",
     symbol: "checkmark.seal",
     accent: .orange,
     repositoryPath: "probierz",
     privacyBoundary: "Probierz reports configuration and artifact counts only. It never starts a suite automatically and never renders screenshots, traces, videos, OTP material, or application credentials.",
     checks: [
-        CheckSpec(id: "manifest", title: "Node package", detail: "Probierz package contract", relativePath: "package.json", kind: .file),
-        CheckSpec(id: "mcp", title: "Las MCP surface", detail: "Probierz agent entry point", relativePath: "agent/mcp.mjs", kind: .file),
+        CheckSpec(id: "manifest", title: "Rust package", detail: "Probierz package contract", relativePath: "probierz-rs/Cargo.toml", kind: .file),
+        CheckSpec(id: "mcp", title: "Las MCP source", detail: "Source presence for probierz mcp, not a live handshake", relativePath: "probierz-rs/src/mcp", kind: .directory),
         CheckSpec(id: "apps", title: "Application surfaces", detail: "Configured test surfaces", relativePath: "apps", kind: .directory),
         CheckSpec(id: "results", title: "Result store", detail: "Local result metadata directory", relativePath: "test-results", kind: .directory),
-        CheckSpec(id: "config", title: "Workspace configuration", detail: "Shared TypeScript contract", relativePath: "tsconfig.base.json", kind: .file),
+        CheckSpec(id: "config", title: "Release declaration", detail: "Declared delivery contract, not installed runtime evidence", relativePath: ".wisent-release.json", kind: .file),
     ],
     aggregates: [
         AggregateSpec(id: "surfaces", title: "Configured surfaces", detail: "Application directory count", relativePath: "apps", mode: .immediateDirectories),

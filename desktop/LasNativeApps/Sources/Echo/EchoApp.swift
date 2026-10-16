@@ -11,7 +11,7 @@ private let echoDefinition = SurfaceDefinition(
     privacyBoundary: "Echo reports contract presence and aggregate counts only. Account data, user content, generated media, raw logs, credentials, and captured artifacts are never rendered.",
     checks: [
         CheckSpec(id: "manifest", title: "Application manifest", detail: "Node package contract", relativePath: "package.json", kind: .file),
-        CheckSpec(id: "mcp", title: "Las MCP surface", detail: "Read-only Echo agent entry point", relativePath: "agent/mcp.mjs", kind: .file),
+        CheckSpec(id: "mcp", title: "Las MCP source", detail: "Source presence, not a live MCP handshake", relativePath: "mcp/server.mjs", kind: .file),
         CheckSpec(id: "web", title: "Web application", detail: "Existing Next application surface", relativePath: "src/app", kind: .directory),
         CheckSpec(id: "deployment", title: "Deployment contract", detail: "Vercel deployment declaration", relativePath: "vercel.json", kind: .file),
         CheckSpec(id: "supabase", title: "Database contracts", detail: "Supabase schema directory", relativePath: "supabase", kind: .directory),

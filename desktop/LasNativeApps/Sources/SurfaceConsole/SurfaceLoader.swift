@@ -26,22 +26,29 @@ struct SurfaceLoader: Sendable {
     }
 
     private func inspectCheck(_ spec: CheckSpec, repositoryRoot: URL) -> ContractCheck {
-        guard let url = safeURL(spec.relativePath, repositoryRoot: repositoryRoot),
-              let values = try? url.resourceValues(forKeys: [
-                .isDirectoryKey,
-                .isRegularFileKey,
-                .isSymbolicLinkKey,
-                .contentModificationDateKey,
-              ]),
-              values.isSymbolicLink != true else {
+        func unavailable(_ cause: String) -> ContractCheck {
             return ContractCheck(
                 id: spec.id,
                 title: spec.title,
-                detail: spec.detail,
+                detail: "\(spec.detail)\n\(cause)",
                 relativePath: spec.relativePath,
                 isAvailable: false,
                 modifiedAt: nil
             )
+        }
+        guard let url = safeURL(spec.relativePath, repositoryRoot: repositoryRoot) else {
+            return unavailable("Refused path outside repository: \(spec.relativePath)")
+        }
+        let values: URLResourceValues
+        do {
+            values = try url.resourceValues(forKeys: [
+                .isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey, .contentModificationDateKey,
+            ])
+        } catch {
+            return unavailable("Cannot read resource properties for \(url.path): \(error)")
+        }
+        guard values.isSymbolicLink != true else {
+            return unavailable("Refused symbolic link: \(url.path)")
         }
 
         let available: Bool
@@ -57,7 +64,7 @@ struct SurfaceLoader: Sendable {
         return ContractCheck(
             id: spec.id,
             title: spec.title,
-            detail: spec.detail,
+            detail: available ? spec.detail : "\(spec.detail)\n\(url.path) does not satisfy required kind \(spec.kind).",
             relativePath: spec.relativePath,
             isAvailable: available,
             modifiedAt: values.contentModificationDate
@@ -65,29 +72,47 @@ struct SurfaceLoader: Sendable {
     }
 
     private func inspectAggregate(_ spec: AggregateSpec, repositoryRoot: URL) -> SafeAggregate {
-        guard let root = safeURL(spec.relativePath, repositoryRoot: repositoryRoot),
-              let rootValues = try? root.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]),
-              rootValues.isDirectory == true,
-              rootValues.isSymbolicLink != true else {
+        func unavailable(_ cause: String) -> SafeAggregate {
             return SafeAggregate(
                 id: spec.id,
                 title: spec.title,
-                detail: spec.detail,
+                detail: "\(spec.detail)\n\(cause)",
                 count: nil
             )
+        }
+        guard let root = safeURL(spec.relativePath, repositoryRoot: repositoryRoot) else {
+            return unavailable("Refused path outside repository: \(spec.relativePath)")
+        }
+        do {
+            let values = try root.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+            guard values.isDirectory == true, values.isSymbolicLink != true else {
+                return unavailable("Expected a non-symbolic-link directory at \(root.path)")
+            }
+        } catch {
+            return unavailable("Cannot read directory properties for \(root.path): \(error)")
         }
 
         switch spec.mode {
         case .immediateFiles, .immediateDirectories:
-            let entries = (try? FileManager.default.contentsOfDirectory(
-                at: root,
-                includingPropertiesForKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey],
-                options: [.skipsHiddenFiles]
-            )) ?? []
+            let entries: [URL]
+            do {
+                entries = try FileManager.default.contentsOfDirectory(
+                    at: root,
+                    includingPropertiesForKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey],
+                    options: [.skipsHiddenFiles]
+                )
+            } catch {
+                return unavailable("Cannot list directory \(root.path): \(error)")
+            }
             var count = 0
             for entry in entries {
-                guard let values = try? entry.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey]),
-                      values.isSymbolicLink != true else { continue }
+                let values: URLResourceValues
+                do {
+                    values = try entry.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey])
+                } catch {
+                    return unavailable("Cannot read resource properties for \(entry.path): \(error)")
+                }
+                guard values.isSymbolicLink != true else { continue }
                 let matchesKind = spec.mode == .immediateFiles
                     ? values.isRegularFile == true
                     : values.isDirectory == true
@@ -102,17 +127,25 @@ struct SurfaceLoader: Sendable {
             )
 
         case .recursiveFiles:
+            var traversalError: String?
             guard let enumerator = FileManager.default.enumerator(
                 at: root,
                 includingPropertiesForKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey],
-                options: [.skipsHiddenFiles, .skipsPackageDescendants]
+                options: [.skipsHiddenFiles, .skipsPackageDescendants],
+                errorHandler: { url, error in
+                    traversalError = "Cannot enumerate \(url.path): \(error)"
+                    return false
+                }
             ) else {
-                return SafeAggregate(id: spec.id, title: spec.title, detail: spec.detail, count: nil)
+                return unavailable("Cannot create directory enumerator for \(root.path)")
             }
             var count = 0
             while let entry = enumerator.nextObject() as? URL {
-                guard let values = try? entry.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey]) else {
-                    continue
+                let values: URLResourceValues
+                do {
+                    values = try entry.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey])
+                } catch {
+                    return unavailable("Cannot read resource properties for \(entry.path): \(error)")
                 }
                 if values.isSymbolicLink == true {
                     if values.isDirectory == true { enumerator.skipDescendants() }
@@ -120,6 +153,9 @@ struct SurfaceLoader: Sendable {
                 }
                 guard values.isRegularFile == true, extensionAllowed(entry, spec: spec) else { continue }
                 count += 1
+            }
+            if let traversalError {
+                return unavailable(traversalError)
             }
             return SafeAggregate(
                 id: spec.id,

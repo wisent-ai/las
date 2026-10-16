@@ -6,7 +6,7 @@
 // three-hundred-line limit; the catalogue store and the adoption itself
 // stay there.
 
-import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
+import { lstatSync, readFileSync, realpathSync } from "node:fs";
 
 /**
  * @param {string} sourcePath the configuration file to read
@@ -25,14 +25,21 @@ export function parseSource(sourcePath, surfacesByName, shape) {
 	} = shape;
 	const rejected = [];
 	const registrations = [];
-	if (!existsSync(sourcePath)) {
+	// Only ENOENT means the configuration does not exist; a file whose
+	// metadata cannot be read is refused with the cause.
+	let metadata;
+	try {
+		metadata = lstatSync(sourcePath);
+	} catch (error) {
 		rejected.push({
 			source: sourcePath,
-			reason: "configuration file does not exist",
+			reason:
+				error?.code === "ENOENT"
+					? "configuration file does not exist"
+					: `configuration cannot be inspected: ${error.message}`,
 		});
 		return { source: sourcePath, registrations, rejected };
 	}
-	const metadata = lstatSync(sourcePath);
 	if (metadata.isSymbolicLink() || !metadata.isFile()) {
 		rejected.push({
 			source: sourcePath,
@@ -49,13 +56,23 @@ export function parseSource(sourcePath, surfacesByName, shape) {
 		return { source: sourcePath, registrations, rejected };
 	}
 	const realSource = realpathSync(sourcePath);
-	let decoded;
+	let text;
 	try {
-		decoded = JSON.parse(readFileSync(realSource, "utf8"));
-	} catch {
+		text = readFileSync(realSource, "utf8");
+	} catch (error) {
 		rejected.push({
 			source: realSource,
-			reason: "configuration is not valid JSON",
+			reason: `configuration cannot be read: ${error.message}`,
+		});
+		return { source: realSource, registrations, rejected };
+	}
+	let decoded;
+	try {
+		decoded = JSON.parse(text);
+	} catch (error) {
+		rejected.push({
+			source: realSource,
+			reason: `configuration is not valid JSON: ${error.message}`,
 		});
 		return { source: realSource, registrations, rejected };
 	}

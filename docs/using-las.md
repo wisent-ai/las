@@ -50,8 +50,17 @@ eligible for federation. Signed release verification and `LAS_ONLY`/`LAS_SKIP`
 still apply, and the imported environment is consumed only through each
 surface's existing allowlist.
 
-### Use the graphical importer
+Every command that reads the catalogue (`list`, `tools`, `check`, `forget`,
+`adopt`) treats only a missing file as "no catalogue". A catalogue that
+cannot be inspected, is not a regular file, cannot be read, or does not parse
+is a refusal naming the path and the cause: `Las catalogue cannot be
+inspected: <path>: EACCES …`, `Las catalogue cannot be read: <path>: EACCES
+…`, `Las catalogue is not valid JSON: <path>: Expected property name or '}'
+in JSON at position 1 …`. Las never runs as if nothing were registered when
+the catalogue is merely unreadable.
 
+### Use the graphical importer
+Before launch, declare `LAS_GUI_MAX_REQUEST_BYTES` and `LAS_GUI_SESSION_TOKEN_BYTES` in the deployment environment as positive whole byte counts. Missing or unrepresentable declarations refuse startup before binding; request failures name the actual and declared size, and token-generation failures preserve their cause. An oversized request is paused while its HTTP refusal is sent, then the connection closes; malformed JSON reports the decoder cause instead of an unexplained connection reset.
 ```bash
 las gui
 las gui --port 41731
@@ -181,6 +190,17 @@ las dependencies --json
 
 Every entry cites the source lines it was read from, as
 `<repository>/<file>:<line>` with the text that line contains.
+Each citation must be an object with nonblank string `at` and `contains`
+fields and an exactly representable positive line number. Other shapes refuse
+with the entry and invalid field named; a boolean or number is never coerced
+into quoted source text.
+The register and its `outcomes` field must be objects, and each dependency
+entry must be an object. Invalid containers name the register field or entry
+instead of failing while dereferencing a missing product or citation.
+Citation paths stay inside the named workspace repository. Parent traversal,
+absolute file paths, a symlinked repository root or a file symlink escaping
+that root fail evidence checking with the path and reason retained. `set`
+cannot record such evidence; CLI and GUI show the same failed citation.
 `las dependencies check` reads each cited file again and exits `1` when a
 quote changed, vanished or now stands on several lines, naming the file, the
 line, the quoted text and what the line says now (or that the file cannot be
@@ -207,7 +227,19 @@ each holds `src/dependencies/register.json.lock` (its pid) while it reads,
 changes and renames the new file into place. A second change while the first
 runs is refused with `las: the dependency register is being changed by process
 <pid> (…); run this change after it ends` (exit `1`) and writes nothing; a lock
-whose process has exited is taken over.
+whose process has exited is taken over. A lock with no complete holder pid is
+refused without removal, because its owner may still be initializing it.
+The holder must be a positive, exactly representable decimal PID. Partial
+numbers, process-group IDs and malformed holder declarations are not probed
+as another process or treated as permission to remove its lock.
+Process-inspection errors other than permission denial or a nonexistent
+process retain their cause and refuse the change rather than claiming the
+holder has exited.
+If writing the holder identity fails, the process closes its descriptor and
+removes its incomplete lock before returning the failure. Replacement output
+is created exclusively: an existing `.next` file is refused, not overwritten
+or deleted. A replacement created by this invocation is removed after a write
+or rename failure; the original register is not replaced by partial output.
 
 `las dependencies remove <product> <requires> --feature TEXT` drops the entry
 with that key, for a dependency that is gone or now described by another
@@ -222,42 +254,25 @@ with the session token, the same query as `--without`.
 
 ### First use and replay
 
-`las onboarding` starts the shipped first-use journey and `las onboarding
-advance` reaches the durable action, `las adopt`. A successful import or an
-identical retained registration records `catalogue_adopted`; reading the
-screens or running `las list` does not. `las onboarding reset` discards the
-recorded journey progress so the same idempotent adoption can complete a new
-attempt. `status` only inspects progress. `skip` preserves the current catalogue;
-before a first adoption, compiled defaults remain eligible, while an existing
-durable catalogue keeps governing eligibility.
+See [First use and retained state](onboarding/state.md) for replay, control-plane diagnostics, and CLI refusal/recovery qualification.
 
-### MCP transport
+The native Byk posture console reads Oko's Rust package, MCP, goal and telemetry
+source directories and its local executable. These are source/artifact checks,
+not a child handshake, signed-release verification or database access proof.
+Oko's MCP command is `oko mcp serve`; Las still requires its exact launch
+contract and tool schemas to match the signed release before federation.
+The Most and Probierz native consoles inspect their Rust sources, and Echo
+inspects `mcp/server.mjs`; those checks also establish source presence only.
+Native source checks show the failed filesystem operation, path and cause in the card detail.
+Unreadable directories or entries make counts unavailable, not zero or partial; refused symbolic links are identified.
+Probierz and Stado federation launch their current Rust executables with `mcp`,
+not `probierz-mcp` or the retired `stado.mcp.server` Python module. Native workspace
+discovery requires `stado/`, not `wisent-compute/`, and follows candidate ancestors to the filesystem root without a depth cap; each new launch contract still needs its own signed authorization.
 
-Las reads one JSON-RPC request per stdin line and writes one response per stdout
-line. Protocol version is `2024-11-05`.
+### MCP server
 
-Supported methods:
-
-- `initialize` (exactly once);
-- `ping`;
-- `tools/list`;
-- `tools/call`.
-
-
-Notifications receive no response. Requests before initialization fail. A later
-request may not replace `agentId`; when Skarbiec is active, initialization must
-provide the exact `SKARBIEC_MCP_AGENT_ID`.
-
-### Namespacing
-
-A child tool `health` from surface `most` becomes:
-
-```text
-most__health
-```
-
-Las removes ambiguity with a double-underscore separator. The remote child still
-receives its original `health` name.
+The MCP transport, how each malformed request is answered, what Las says about
+a failing child and how tools are namespaced are in [mcp.md](mcp.md).
 
 ### Operator filters
 

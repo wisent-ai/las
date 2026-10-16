@@ -5,14 +5,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { verifyCitation } from "./source-path.mjs";
+import { changeFile } from "./store.mjs";
+
+export { RegisterBusy } from "./store.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // las/src/dependencies -> las/src -> las -> the Wisent workspace root shared
 // by every sibling product repository.
 const WORKSPACE = path.resolve(HERE, "..", "..", "..");
-
-/** Another process is changing the register right now. */
-export class RegisterBusy extends Error {}
 
 function invalid(index, reason) {
 	return new Error(`dependency register entry ${index}: ${reason}`);
@@ -24,10 +25,20 @@ function text(entry, index, field) {
 }
 
 function validated(document) {
+	if (!document || typeof document !== "object" || Array.isArray(document))
+		throw new Error("dependency register must be an object");
 	if (!Array.isArray(document.dependencies))
 		throw new Error("dependency register has no dependencies list");
-	const outcomes = Object.keys(document.outcomes ?? {});
+	if (
+		!document.outcomes ||
+		typeof document.outcomes !== "object" ||
+		Array.isArray(document.outcomes)
+	)
+		throw new Error("dependency register outcomes must be an object");
+	const outcomes = Object.keys(document.outcomes);
 	document.dependencies.forEach((entry, index) => {
+		if (!entry || typeof entry !== "object" || Array.isArray(entry))
+			throw invalid(index, "entry must be an object");
 		text(entry, index, "product");
 		text(entry, index, "requires");
 		text(entry, index, "feature");
@@ -42,20 +53,32 @@ function validated(document) {
 		if (!Array.isArray(entry.evidence) || !entry.evidence.length)
 			throw invalid(index, "evidence must cite at least one source line");
 		entry.evidence = entry.evidence.map((cited) => {
+			if (!cited || typeof cited !== "object" || Array.isArray(cited))
+				throw invalid(index, "each evidence item must be an object");
+			text(cited, index, "at");
+			text(cited, index, "contains");
 			// `at` is `<repository>/<file>:<line>`, the way the source is cited
 			// everywhere else; it is split once here for the readers below.
-			const located = /^([^/]+)\/(.+):([1-9]\d*)$/.exec(cited.at ?? "");
-			if (!located || !cited.contains)
+			const located = /^(?<repository>[^/]+)\/(?<file>.+):(?<line>\d+)$/.exec(
+				cited.at,
+			);
+			if (!located)
 				throw invalid(
 					index,
 					"each evidence item needs at (<repository>/<file>:<line>) and contains",
 				);
-			return {
-				...cited,
-				repository: located[1],
-				file: located[2],
-				line: Number(located[3]),
-			};
+			const { repository, file, line } = located.groups;
+			// A line number counts from the first line: it is a whole number of at
+			// least the smallest positive one.
+			if (
+				!Number.isSafeInteger(Number(line)) ||
+				Number(line) < Number.MIN_VALUE
+			)
+				throw invalid(
+					index,
+					`evidence line must be a whole line number from the first line on: ${cited.at}`,
+				);
+			return { ...cited, repository, file, line: Number(line) };
 		});
 	});
 	return document;
@@ -103,55 +126,8 @@ export function selectDependencies(register, query) {
 	);
 }
 
-/**
- * One cited line read again: whether the file still says what the register
- * quotes. A quote no longer at its line but on exactly one other line of the
- * same file still holds — the code says the same thing, only lower or higher
- * — and is answered with `movedTo`, the line it is on now, so readers and
- * `--move-lines` use that line. A quote that changed, vanished or now stands
- * on several lines does not hold: only a person reading the code can say
- * whether the dependency still behaves as recorded.
- */
-function verify(cited) {
-	const file = path.join(WORKSPACE, cited.repository, cited.file);
-	let lines;
-	try {
-		lines = fs.readFileSync(file, "utf8").split("\n");
-	} catch (error) {
-		return {
-			...cited,
-			ok: false,
-			observed: `the file cannot be read: ${error.message}`,
-		};
-	}
-	const observed = lines[cited.line - 1];
-	if (observed !== undefined && observed.includes(cited.contains))
-		return { ...cited, ok: true };
-	const found = lines.flatMap((line, index) =>
-		line.includes(cited.contains) ? [index + 1] : [],
-	);
-	if (found.length === 1)
-		return {
-			...cited,
-			ok: true,
-			movedTo: found[0],
-			observed: `the quote moved to line ${found[0]}`,
-		};
-	const where = found.length
-		? `the quote is on ${found.length} lines (${found.join(", ")})`
-		: "the quote is nowhere in the file";
-	if (observed === undefined)
-		return {
-			...cited,
-			ok: false,
-			observed: `the file has only ${lines.length} lines; ${where}`,
-		};
-	return {
-		...cited,
-		ok: false,
-		observed: `the line reads ${JSON.stringify(observed.trim())}; ${where}`,
-	};
-}
+/** One cited line read again (source-path.mjs verifyCitation). */
+const verify = (cited) => verifyCitation(WORKSPACE, cited);
 
 /**
  * Every cited line checked; `ok` is false when any quote changed. Quotes that
@@ -160,22 +136,27 @@ function verify(cited) {
 export function checkDependencyEvidence(register) {
 	const stale = [];
 	const moved = [];
-	let checked = 0;
-	for (const entry of register.dependencies) {
-		for (const cited of entry.evidence) {
-			checked += 1;
-			const result = verify(cited);
-			const located = {
-				product: entry.product,
-				requires: entry.requires,
-				feature: entry.feature,
-				...result,
-			};
-			if (!result.ok) stale.push(located);
-			else if (result.movedTo) moved.push(located);
-		}
+	const citations = register.dependencies.flatMap((entry) =>
+		entry.evidence.map((cited) => ({ entry, cited })),
+	);
+	for (const { entry, cited } of citations) {
+		const result = verify(cited);
+		const located = {
+			product: entry.product,
+			requires: entry.requires,
+			feature: entry.feature,
+			...result,
+		};
+		if (!result.ok) stale.push(located);
+		else if (result.movedTo) moved.push(located);
 	}
-	return { ok: stale.length === 0, workspace: WORKSPACE, checked, stale, moved };
+	return {
+		ok: !stale.length,
+		workspace: WORKSPACE,
+		checked: citations.length,
+		stale,
+		moved,
+	};
 }
 
 /**
@@ -229,13 +210,10 @@ export function recordDependency(entry) {
 				existing.requires === entry.requires &&
 				existing.feature === entry.feature,
 		);
-		if (position >= 0) document.dependencies[position] = entry;
-		else document.dependencies.push(entry);
+		const at = position >= 0 ? position : document.dependencies.length;
+		document.dependencies[at] = entry;
 		const checked = validated(JSON.parse(JSON.stringify(document)));
-		const recorded =
-			checked.dependencies[
-				position >= 0 ? position : checked.dependencies.length - 1
-			];
+		const recorded = checked.dependencies[at];
 		// A citation recorded now must name the line its quote is on.
 		const refused = recorded.evidence
 			.map(verify)
@@ -253,74 +231,23 @@ export function recordDependency(entry) {
  */
 export function removeDependency({ product, requires, feature }) {
 	return changeRegister((document) => {
-		const position = document.dependencies.findIndex(
-			(existing) =>
-				existing.product === product &&
-				existing.requires === requires &&
-				existing.feature === feature,
+		const named = (existing) =>
+			existing.product === product &&
+			existing.requires === requires &&
+			existing.feature === feature;
+		if (!document.dependencies.some(named))
+			return { write: false, answer: { removed: false } };
+		document.dependencies = document.dependencies.filter(
+			(existing) => !named(existing),
 		);
-		if (position < 0) return { write: false, answer: { removed: false } };
-		document.dependencies.splice(position, 1);
 		validated(JSON.parse(JSON.stringify(document)));
 		return { write: true, answer: { removed: true } };
 	});
 }
 
-/**
- * Read, change and write the register as one step no other writer can
- * interleave with. Two `dependencies set` runs that each read the file and
- * wrote their own copy back used to keep only the last one's entry; now the
- * second finds the first's lock and is refused with the holder's pid instead
- * of overwriting it. A lock whose process has exited is taken over, since
- * nothing can release it any more. The new document replaces the old one by
- * rename, so a reader never sees half a file.
- */
+/** Read, change and write the register as one step (store.mjs changeFile). */
 function changeRegister(change) {
-	const file = path.join(HERE, "register.json");
-	const lock = `${file}.lock`;
-	const held = takeLock(lock);
-	try {
-		const document = JSON.parse(fs.readFileSync(file, "utf8"));
-		const { write, answer } = change(document);
-		if (write) {
-			const next = `${file}.${process.pid}.next`;
-			fs.writeFileSync(next, JSON.stringify(document, null, 2) + "\n");
-			fs.renameSync(next, file);
-		}
-		return answer;
-	} finally {
-		fs.closeSync(held);
-		fs.rmSync(lock, { force: true });
-	}
-}
-
-function takeLock(lock) {
-	try {
-		const held = fs.openSync(lock, "wx");
-		fs.writeSync(held, `${process.pid}\n`);
-		return held;
-	} catch (error) {
-		if (error.code !== "EEXIST") throw error;
-	}
-	const holder = Number.parseInt(fs.readFileSync(lock, "utf8"), 10);
-	if (Number.isInteger(holder) && processRuns(holder)) {
-		throw new RegisterBusy(
-			`the dependency register is being changed by process ${holder} (${lock}); run this change after it ends`,
-		);
-	}
-	fs.rmSync(lock, { force: true });
-	const held = fs.openSync(lock, "wx");
-	fs.writeSync(held, `${process.pid}\n`);
-	return held;
-}
-
-function processRuns(pid) {
-	try {
-		process.kill(pid, 0);
-		return true;
-	} catch (error) {
-		return error.code === "EPERM";
-	}
+	return changeFile(path.join(HERE, "register.json"), validated, change);
 }
 
 /** What the GUI shows: the register narrowed to the products this machine

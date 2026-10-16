@@ -26,6 +26,9 @@ const resultSummary = document.querySelector("#result-summary");
 const resultGroups = document.querySelector("#result-groups");
 const catalogPath = document.querySelector("#catalog-path");
 const catalogBody = document.querySelector("#catalog-body");
+const onboardingControlPlane = document.querySelector(
+	"#onboarding-control-plane",
+);
 const dependenciesEvidence = document.querySelector("#dependencies-evidence");
 const dependenciesWithout = document.querySelector("#dependencies-without");
 const dependenciesBody = document.querySelector("#dependencies-body");
@@ -55,6 +58,9 @@ function badge(value, truthy) {
 
 function renderCatalog(catalog) {
 	catalogPath.textContent = catalog.path;
+	onboardingControlPlane.textContent = JSON.stringify(
+		catalog.onboardingControlPlane,
+	);
 	catalogBody.replaceChildren();
 	for (const row of catalog.surfaces) {
 		const tr = document.createElement("tr");
@@ -95,6 +101,7 @@ const CATALOG_COLUMNS = 5;
 
 function renderCatalogError(message) {
 	catalogPath.textContent = message;
+	onboardingControlPlane.textContent = `Diagnostic readback refused: ${message}`;
 	catalogBody.replaceChildren();
 	const row = document.createElement("tr");
 	const cell = document.createElement("td");
@@ -119,13 +126,18 @@ function renderResult(result) {
 	resultSection.hidden = false;
 	resultStatus.textContent = result.status;
 	resultStatus.dataset.status = result.status;
-	const counts = ["imported", "unchanged", "conflicting", "rejected"]
-		.map((key) => `${result[key].length} ${key}`)
+	// Every list of entries the result carries is one outcome group, in the
+	// order the result declares them; the selected source paths are not one.
+	const groups = Object.entries(result).filter(
+		([key, value]) => Array.isArray(value) && key !== "sources",
+	);
+	const counts = groups
+		.map(([key, entries]) => `${entries.length} ${key}`)
 		.join(" · ");
 	resultSummary.textContent = `${counts}. Catalogue: ${result.catalogPath}`;
 	resultGroups.replaceChildren();
 
-	for (const key of ["imported", "unchanged", "conflicting", "rejected"]) {
+	for (const [key] of groups) {
 		const section = document.createElement("section");
 		section.className = "result-group";
 		const heading = document.createElement("h3");
@@ -212,7 +224,6 @@ form.addEventListener("submit", async (event) => {
 		const payload = await api("/api/adopt", {
 			method: "POST",
 			body: JSON.stringify({
-				mode,
 				paths,
 				uploads,
 				replace: document.querySelector("#replace").checked,
@@ -220,11 +231,12 @@ form.addEventListener("submit", async (event) => {
 		});
 		renderResult(payload.result);
 		if (payload.catalog) renderCatalog(payload.catalog);
+		else if (payload.catalogError) renderCatalogError(payload.catalogError);
 		else
-			renderCatalogError(payload.catalogError || "catalogue readback failed");
-		const accepted =
-			payload.result.status === "imported" ||
-			payload.result.status === "unchanged";
+			throw new Error(
+				"the adopt answer carries neither a catalogue readback nor the reason it failed",
+			);
+		const accepted = payload.accepted;
 		setBusy(
 			false,
 			payload.catalog

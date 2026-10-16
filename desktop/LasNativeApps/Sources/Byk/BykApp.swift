@@ -4,22 +4,22 @@ import SwiftUI
 private let bykDefinition = SurfaceDefinition(
     id: "byk",
     name: "Byk",
-    subtitle: "Read-only founder strategy posture from the Oko/Światowid surface.",
+    subtitle: "Local source and artifact posture for Oko's read-only founder strategy surface.",
     symbol: "scope",
     accent: .indigo,
-    repositoryPath: "swiatowid",
+    repositoryPath: "oko",
     privacyBoundary: "Byk reports strategy contract readiness and aggregate model counts only. Goals, roster identities, raw transcripts, messages, and confidential company context are never rendered by this desktop boundary.",
     checks: [
-        CheckSpec(id: "manifest", title: "Swift package", detail: "Oko/Światowid package contract", relativePath: "Package.swift", kind: .file),
-        CheckSpec(id: "mcp", title: "Las MCP surface", detail: "Read-only founder strategy entry point", relativePath: "Sources/oko-mcp", kind: .directory),
-        CheckSpec(id: "goals", title: "Goal contracts", detail: "Auto-goal and intent model implementation", relativePath: "Sources/OkoKit/Goals", kind: .directory),
-        CheckSpec(id: "telemetry", title: "Velocity contracts", detail: "Work telemetry and forecast implementation", relativePath: "Sources/OkoKit/Telemetry", kind: .directory),
-        CheckSpec(id: "binary", title: "Strategy MCP binary", detail: "Local Las launch artifact", relativePath: ".build/debug/oko-mcp", kind: .executable),
+        CheckSpec(id: "manifest", title: "Rust package", detail: "Oko executable package contract", relativePath: "rust/Cargo.toml", kind: .file),
+        CheckSpec(id: "mcp", title: "MCP source", detail: "Read-only founder strategy implementation; presence does not prove a handshake", relativePath: "rust/src/mcp", kind: .directory),
+        CheckSpec(id: "goals", title: "Goal contracts", detail: "Auto-goal and intent model implementation", relativePath: "rust/src/goals", kind: .directory),
+        CheckSpec(id: "telemetry", title: "Velocity contracts", detail: "Work telemetry and forecast implementation", relativePath: "rust/src/telemetry", kind: .directory),
+        CheckSpec(id: "binary", title: "Oko executable", detail: "Local artifact presence, not runtime qualification", relativePath: "rust/target/debug/oko", kind: .executable),
     ],
     aggregates: [
-        AggregateSpec(id: "goal-modules", title: "Goal model modules", detail: "Goal source count", relativePath: "Sources/OkoKit/Goals", mode: .recursiveFiles, allowedExtensions: ["swift"]),
-        AggregateSpec(id: "telemetry-modules", title: "Velocity modules", detail: "Telemetry source count", relativePath: "Sources/OkoKit/Telemetry", mode: .recursiveFiles, allowedExtensions: ["swift"]),
-        AggregateSpec(id: "mcp-modules", title: "Strategy MCP modules", detail: "Read-only surface source count", relativePath: "Sources/oko-mcp", mode: .recursiveFiles, allowedExtensions: ["swift"]),
+        AggregateSpec(id: "goal-modules", title: "Goal model modules", detail: "Goal source count", relativePath: "rust/src/goals", mode: .recursiveFiles, allowedExtensions: ["rs"]),
+        AggregateSpec(id: "telemetry-modules", title: "Velocity modules", detail: "Telemetry source count", relativePath: "rust/src/telemetry", mode: .recursiveFiles, allowedExtensions: ["rs"]),
+        AggregateSpec(id: "mcp-modules", title: "Strategy MCP modules", detail: "Read-only surface source count", relativePath: "rust/src/mcp", mode: .recursiveFiles, allowedExtensions: ["rs"]),
     ],
     environmentNames: []
 )

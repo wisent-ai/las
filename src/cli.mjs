@@ -15,6 +15,7 @@
 // the LAS_ONLY / LAS_SKIP environment filters).
 import { adoptMcpConfigurations, catalogRegistration } from "./catalog.mjs";
 import { forgetRegistrations } from "./catalog/forget.mjs";
+import { adoptionAccepted } from "./catalog/outcome.mjs";
 import { cmdDependencies } from "./dependencies/command.mjs";
 import { startLasGui } from "./gui.mjs";
 import {
@@ -112,6 +113,7 @@ function usage(stream = process.stderr) {
 			"--text prints any answer as path: value lines for a person instead of JSON",
 			"surfaces: " + SURFACES.map((s) => s.name).join(", "),
 			"env: LAS_ONLY=a,b (allow-list)  LAS_SKIP=a,b (deny-list)",
+			"gui env: LAS_GUI_MAX_REQUEST_BYTES and LAS_GUI_SESSION_TOKEN_BYTES must declare positive byte counts",
 		].join("\n") + "\n",
 	);
 }
@@ -249,7 +251,7 @@ async function cmdAdopt(args) {
 	if (unknown) throw new Error(`unknown adopt option '${unknown}'`);
 	const result = adoptMcpConfigurations(SURFACES, { sources, replace });
 	printAnswer(result, TEXT);
-	if (result.status === "imported" || result.status === "unchanged") {
+	if (adoptionAccepted(result)) {
 		await recordCatalogueAdopted({
 			client: "cli",
 			surfaceCount: result.imported.length + result.unchanged.length,
@@ -294,6 +296,9 @@ async function cmdOnboarding(args) {
 			result.body,
 			"",
 			`Status: ${result.status}`,
+			...(result.control_plane
+				? [`Control plane: ${JSON.stringify(result.control_plane)}`]
+				: []),
 			...(result.actions?.length
 				? [`Next: ${result.actions.join(" or ")}`]
 				: []),

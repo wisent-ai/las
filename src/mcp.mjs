@@ -13,136 +13,172 @@ import {
 	authorizeToolArguments,
 	authorizeToolCall,
 	authorizeToolResult,
-	authorizeTools,
-	connect,
-	handshake,
 	requiredSkarbiecAgentIdentity,
 } from "./registry.mjs";
+import { ownCause } from "./registry/client.mjs";
 import {
 	LAS_ONBOARDING_TOOL,
 	runOnboardingAction,
 } from "./onboarding/journey.mjs";
+import { closeAll, federate, federationStarted } from "./mcp/federation.mjs";
+import {
+	awaited,
+	CODE_INTERNAL_ERROR,
+	CODE_INVALID_PARAMS,
+	CODE_INVALID_REQUEST,
+	CODE_METHOD_NOT_FOUND,
+	CODE_NOT_INITIALIZED,
+	CODE_PARSE_ERROR,
+	fail,
+	LAS_VERSION,
+	ok,
+	PROTOCOL_VERSION,
+	send,
+} from "./mcp/protocol.mjs";
 
-const JSONRPC_VERSION = "2.0";
-const PROTOCOL_VERSION = "2024-11-05";
-const SEP = "__";
-// JSON-RPC error codes live as string constants and are parsed where a number
-// is needed, so no bare numeric literal appears in this file.
-const CODE_METHOD_NOT_FOUND = "-32601";
-const CODE_INTERNAL_ERROR = "-32000";
-const CODE_INVALID_REQUEST = "-32600";
-const CODE_NOT_INITIALIZED = "-32002";
-
-function code(raw) {
-	return Number(raw);
-}
-
-// Every child client ever spawned this session, so cleanup on disconnect can
-// close all of them even if federation is still in progress.
-const spawnedClients = new Set();
-
-// Federation is built once; the PROMISE is memoized so a disconnect can await
-// an in-flight build before closing children (the response still flushes).
-// federation resolves to { toolIndex, tools }.
-let federationPromise = null;
 let initialized = false;
 
 function skarbiecActive() {
 	return activeSurfaces().some((surface) => surface.name === "skarbiec");
 }
 
-function federate() {
-	if (!federationPromise) federationPromise = buildFederation();
-	return federationPromise;
-}
-
-async function buildFederation() {
-	const toolIndex = new Map();
-	const tools = [];
-	for (const surface of activeSurfaces()) {
-		let client;
+async function initialize(id, params) {
+	if (initialized) {
+		send(fail(id, CODE_INVALID_REQUEST, "session is already initialized"));
+		return;
+	}
+	if (skarbiecActive()) {
+		let expected;
 		try {
-			client = connect(surface);
-			spawnedClients.add(client);
-			const childTools = authorizeTools(surface, await handshake(client));
-			for (const tool of childTools) {
-				const namespaced = `${surface.name}${SEP}${tool.name}`;
-				toolIndex.set(namespaced, { client, remoteName: tool.name, surface });
-				const prefixedDesc =
-					`[${surface.name}] ${tool.description || ""}`.trim();
-				tools.push({
-					name: namespaced,
-					description: prefixedDesc,
-					inputSchema: tool.inputSchema || { type: "object", properties: {} },
-				});
-			}
-		} catch {
-			// Child-controlled diagnostics are never copied into either the MCP
-			// response or Las stderr. The static registry name is safe to report.
-			process.stderr.write(`las: surface '${surface.name}' unavailable\n`);
+			expected = requiredSkarbiecAgentIdentity();
+		} catch (error) {
+			send(
+				fail(
+					id,
+					CODE_INVALID_REQUEST,
+					`agent identity is not configured: ${error.message}`,
+				),
+			);
+			return;
+		}
+		if (
+			!params ||
+			typeof params !== "object" ||
+			Array.isArray(params) ||
+			params.agentId !== expected
+		) {
+			send(fail(id, CODE_INVALID_REQUEST, "agent identity rejected"));
+			return;
 		}
 	}
-	tools.push(LAS_ONBOARDING_TOOL);
-	return { toolIndex, tools };
+	initialized = true;
+	send(
+		ok(id, {
+			protocolVersion: PROTOCOL_VERSION,
+			capabilities: { tools: {} },
+			serverInfo: { name: "las", version: LAS_VERSION },
+		}),
+	);
 }
 
-function send(message) {
-	process.stdout.write(JSON.stringify(message) + "\n");
+async function onboarding(id, params, given) {
+	const args = params.arguments;
+	if (
+		given &&
+		(!args ||
+			typeof args !== "object" ||
+			Array.isArray(args) ||
+			Object.keys(args).some((key) => key !== "action") ||
+			(args.action !== undefined && typeof args.action !== "string"))
+	) {
+		send(fail(id, CODE_INVALID_PARAMS, "invalid onboarding arguments"));
+		return;
+	}
+	// An absent action is the one the tool's schema declares as its default.
+	const action =
+		given && args.action !== undefined
+			? args.action
+			: LAS_ONBOARDING_TOOL.inputSchema.properties.action.default;
+	try {
+		const result = await runOnboardingAction(action, { client: "mcp" });
+		send(ok(id, { content: [{ type: "text", text: JSON.stringify(result) }] }));
+	} catch (error) {
+		send(fail(id, CODE_INTERNAL_ERROR, error.message));
+	}
 }
 
-function ok(id, result) {
-	return { jsonrpc: JSONRPC_VERSION, id, result };
-}
-
-function fail(id, rawCode, message) {
-	return {
-		jsonrpc: JSONRPC_VERSION,
-		id,
-		error: { code: code(rawCode), message },
-	};
+async function callTool(id, params) {
+	if (
+		params === null ||
+		typeof params !== "object" ||
+		typeof params.name !== "string"
+	) {
+		send(fail(id, CODE_INVALID_PARAMS, "params.name must be a string"));
+		return;
+	}
+	const name = params.name;
+	// MCP leaves arguments optional: a call without them has none.
+	const given = Object.hasOwn(params, "arguments");
+	if (name === LAS_ONBOARDING_TOOL.name) {
+		await onboarding(id, params, given);
+		return;
+	}
+	const fed = await federate();
+	const route = fed.toolIndex.get(name);
+	if (!route) {
+		send(fail(id, CODE_METHOD_NOT_FOUND, "unknown tool"));
+		return;
+	}
+	try {
+		authorizeToolCall(route.surface, route.remoteName);
+	} catch (error) {
+		send(
+			fail(
+				id,
+				CODE_METHOD_NOT_FOUND,
+				`tool is not permitted: ${error.message}`,
+			),
+		);
+		return;
+	}
+	try {
+		const args = authorizeToolArguments(
+			route.surface,
+			route.remoteName,
+			given ? params.arguments : {},
+		);
+		const result = await route.client.request("tools/call", {
+			name: route.remoteName,
+			arguments: args,
+		});
+		send(ok(id, authorizeToolResult(route.surface, route.remoteName, result)));
+	} catch (error) {
+		const cause = ownCause(error);
+		process.stderr.write(
+			`las: surface '${route.surface.name}' request failed: ${cause}\n`,
+		);
+		send(fail(id, CODE_INTERNAL_ERROR, `surface request failed: ${cause}`));
+	}
 }
 
 async function handle(request) {
-	const method = request.method;
-	if (!method) return;
+	if (
+		request === null ||
+		typeof request !== "object" ||
+		Array.isArray(request)
+	) {
+		send(fail(null, CODE_INVALID_REQUEST, "a request must be one JSON object"));
+		return;
+	}
 	// A request without an id key is a notification: never answer it.
-	if (!Object.prototype.hasOwnProperty.call(request, "id")) return;
-	const id = request.id;
-
+	if (!awaited(request)) return;
+	const { id, method } = request;
+	if (typeof method !== "string" || !method) {
+		send(fail(id, CODE_INVALID_REQUEST, "method must be a non-empty string"));
+		return;
+	}
 	if (method === "initialize") {
-		if (initialized) {
-			send(fail(id, CODE_INVALID_REQUEST, "session is already initialized"));
-			return;
-		}
-		if (skarbiecActive()) {
-			const params = request.params;
-			let expected;
-			try {
-				expected = requiredSkarbiecAgentIdentity();
-			} catch {
-				send(
-					fail(id, CODE_INVALID_REQUEST, "agent identity is not configured"),
-				);
-				return;
-			}
-			if (
-				!params ||
-				typeof params !== "object" ||
-				Array.isArray(params) ||
-				params.agentId !== expected
-			) {
-				send(fail(id, CODE_INVALID_REQUEST, "agent identity rejected"));
-				return;
-			}
-		}
-		initialized = true;
-		send(
-			ok(id, {
-				protocolVersion: PROTOCOL_VERSION,
-				capabilities: { tools: {} },
-				serverInfo: { name: "las", version: "0.1.0" },
-			}),
-		);
+		await initialize(id, request.params);
 		return;
 	}
 	if (!initialized) {
@@ -152,7 +188,7 @@ async function handle(request) {
 	if (
 		request.params &&
 		typeof request.params === "object" &&
-		Object.prototype.hasOwnProperty.call(request.params, "agentId")
+		Object.hasOwn(request.params, "agentId")
 	) {
 		send(
 			fail(
@@ -170,79 +206,13 @@ async function handle(request) {
 	if (method === "tools/list") {
 		const fed = await federate();
 		send(ok(id, { tools: fed.tools }));
-
 		return;
 	}
 	if (method === "tools/call") {
-		const params = request.params || {};
-		const name = params.name;
-		if (typeof name !== "string") {
-			send(fail(id, CODE_INTERNAL_ERROR, "params.name must be a string"));
-			return;
-		}
-		if (name === LAS_ONBOARDING_TOOL.name) {
-			const args = params.arguments ?? {};
-			if (
-				!args ||
-				typeof args !== "object" ||
-				Array.isArray(args) ||
-				Object.keys(args).some((key) => key !== "action") ||
-				(args.action !== undefined && typeof args.action !== "string")
-			) {
-				send(fail(id, CODE_INVALID_REQUEST, "invalid onboarding arguments"));
-				return;
-			}
-			try {
-				const result = await runOnboardingAction(args.action || "show", {
-					client: "mcp",
-				});
-				send(
-					ok(id, { content: [{ type: "text", text: JSON.stringify(result) }] }),
-				);
-			} catch (error) {
-				send(fail(id, CODE_INTERNAL_ERROR, error.message));
-			}
-			return;
-		}
-		const fed = await federate();
-		const route = fed.toolIndex.get(name);
-		if (!route) {
-			send(fail(id, CODE_METHOD_NOT_FOUND, "unknown tool"));
-			return;
-		}
-		try {
-			authorizeToolCall(route.surface, route.remoteName);
-		} catch {
-			send(fail(id, CODE_METHOD_NOT_FOUND, "tool is not permitted"));
-			return;
-		}
-		try {
-			const args = authorizeToolArguments(
-				route.surface,
-				route.remoteName,
-				params.arguments ?? {},
-			);
-			const result = await route.client.request("tools/call", {
-				name: route.remoteName,
-				arguments: args,
-			});
-			send(
-				ok(id, authorizeToolResult(route.surface, route.remoteName, result)),
-			);
-		} catch {
-			process.stderr.write(
-				`las: surface '${route.surface.name}' request failed\n`,
-			);
-			send(fail(id, CODE_INTERNAL_ERROR, "surface request failed"));
-		}
+		await callTool(id, request.params);
 		return;
 	}
 	send(fail(id, CODE_METHOD_NOT_FOUND, "method not found"));
-}
-
-function closeAll() {
-	for (const client of spawnedClients) client.close();
-	spawnedClients.clear();
 }
 
 function serve() {
@@ -258,13 +228,24 @@ function serve() {
 		let request;
 		try {
 			request = JSON.parse(trimmed);
-		} catch {
-			send(fail(null, "-32700", "parse error"));
+		} catch (error) {
+			send(fail(null, CODE_PARSE_ERROR, `parse error: ${error.message}`));
 			return;
 		}
 		const p = handle(request)
-			.catch(() => {
-				process.stderr.write("las: request handler failed\n");
+			.catch((error) => {
+				// Child failures are caught where the child is called, so what
+				// reaches here is Las's own and may be named. A request with an
+				// id is still answered: its caller would otherwise wait for ever.
+				process.stderr.write(`las: request handler failed: ${error.message}\n`);
+				if (awaited(request))
+					send(
+						fail(
+							request.id,
+							CODE_INTERNAL_ERROR,
+							`las could not answer this request: ${error.message}`,
+						),
+					);
 			})
 			.finally(() => {
 				inFlight.delete(p);
@@ -275,13 +256,9 @@ function serve() {
 		// Client disconnected. Let any in-flight federation build AND any pending
 		// request handlers finish (so their responses flush), then close every
 		// spawned child. With all children closed and stdin ended, the event loop
-		// drains and the process exits on its own — no forced exit, no limit.
-		try {
-			if (federationPromise) await federationPromise;
-			await Promise.allSettled([...inFlight]);
-		} catch {
-			// per-surface errors are already reported on stderr
-		}
+		// drains and the process exits on its own — no forced exit, no limit. A
+		// federation that failed was answered to the request that asked for it.
+		await Promise.allSettled([federationStarted(), ...inFlight]);
 		closeAll();
 	});
 }
