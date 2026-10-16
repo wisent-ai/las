@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { committedSource } from '../source.mjs';
+import { committedSource, criterionReport } from '../source.mjs';
 
 const journey = fileURLToPath(import.meta.url);
 const root = resolve(dirname(journey), '../..');
@@ -85,6 +85,7 @@ try {
   assert.match(byId.get('no-params').error.message, /params\.name must be a string/);
   const parse = answers.find(answer => answer.error?.code === CODE_PARSE_ERROR);
   assert.match(parse.error.message, /^parse error: .+JSON/, 'the parse error names the parser cause');
+  criterionReport({ run, revision, journey, commands: report.commands, success, observed: { answers } });
   report.verdict = 'passed';
 } catch (error) {
   report.error = String(error.stack || error);

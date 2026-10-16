@@ -3,7 +3,8 @@
 // holds their uncommitted files; they neither reach the run nor stop it, and
 // the journey itself must match the revision it qualifies.
 import assert from 'node:assert/strict';
-import { mkdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 /**
@@ -27,4 +28,36 @@ export async function committedSource({ command, root, run, journey, declared, s
   const extracted = await command('tar', ['-xf', archive, '-C', source]);
   assert.equal(extracted.exit, success, extracted.stderr);
   return { revision, source };
+}
+
+const sha256 = path => createHash('sha256').update(readFileSync(path)).digest('hex');
+
+/**
+ * When LAS_JOURNEY_REPORT names a path, write there the report a defect
+ * register reads as a repair's evidence: the defect LAS_JOURNEY_SUBJECT names,
+ * the criterion LAS_JOURNEY_CRITERION states, the revision, the bytes run and
+ * the product invocations that answered with `success`. Refusals the journey
+ * expected belong in `observed`, with their exit statuses.
+ */
+export function criterionReport({ run, revision, journey, commands, observed, success }) {
+  const path = process.env.LAS_JOURNEY_REPORT;
+  if (path === undefined) return;
+  const named = name => {
+    const value = process.env[name];
+    assert.ok(value?.trim(), `${name} names what the report LAS_JOURNEY_REPORT asks for answers`);
+    return value;
+  };
+  assert.ok(Object.keys(observed).length, 'a report carries the final state the journey observed');
+  writeFileSync(path, JSON.stringify({
+    defectId: named('LAS_JOURNEY_SUBJECT'),
+    criterion: named('LAS_JOURNEY_CRITERION'),
+    sourceRevision: revision,
+    result: 'passed',
+    binarySha256: sha256(join(run, 'source.tar')),
+    testSha256: sha256(journey),
+    commands: commands
+      .filter(({ exit }) => exit === success)
+      .map(({ program, args, exit, stderr }) => ({ executable: program, args, exit, stderr })),
+    observedFinalState: observed,
+  }));
 }

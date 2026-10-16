@@ -45,7 +45,11 @@ committed source, taken out of git into its run directory, with no surface
 federated, and checks each of these answers. It takes
 `LAS_TEST_SOURCE_REVISION`, `LAS_TEST_SUCCESS_EXIT` and `LAS_TEST_REFUSAL_EXIT`
 and keeps its commands, output and verdict under `.build/mcp-requests/`. It does
-not qualify a federated child.
+not qualify a federated child. Every Las journey (this one,
+`tests/catalog/load.mjs`, `tests/onboarding/state.mjs`) also writes the report a
+defect register takes as a repair's evidence when `LAS_JOURNEY_REPORT` names a
+path, with `LAS_JOURNEY_SUBJECT` naming the defect and `LAS_JOURNEY_CRITERION`
+its completion criterion word for word.
 
 ## Namespacing
 

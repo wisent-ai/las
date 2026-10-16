@@ -6,7 +6,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { committedSource } from '../source.mjs';
+import { committedSource, criterionReport } from '../source.mjs';
 
 const journey = fileURLToPath(import.meta.url);
 const root = resolve(dirname(journey), '../..');
@@ -103,6 +103,9 @@ try {
   assert.equal(recovered.signal, null, recovered.stderr);
   assert.equal(recovered.exit, success, recovered.stderr);
   assert.equal(JSON.parse(readFileSync(path, 'utf8')).installation_id, retained.installation_id);
+  const refusals = report.commands.filter(({ exit }) => exit === refusal).map(({ args, exit, stderr }) => ({ args, exit, stderr }));
+  const observed = { refusals, recoveredInstallationId: JSON.parse(readFileSync(path, 'utf8')).installation_id };
+  criterionReport({ run, revision, journey, commands: report.commands, success, observed });
   report.verdict = 'passed';
 } catch (error) {
   report.error = String(error.stack || error);
