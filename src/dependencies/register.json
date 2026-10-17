@@ -694,7 +694,7 @@
 			"alternative": "oko model-service set --origin URL --model M (key on stdin) declares any OpenAI-compatible service; oko gateway send --prompt and every Oko completion then ask it instead of Brama",
 			"evidence": [
 				{
-					"at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/mod.rs:204",
+					"at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/mod.rs:216",
 					"contains": "\"{} gateway send failed ({}): {said}\","
 				},
 				{
@@ -702,8 +702,8 @@
 					"contains": "None => crate::tasks::judge::provider::declared_service()?,"
 				},
 				{
-					"at": "oko/rust/src/brama/send.rs:144",
-					"contains": "crate::tasks::judge::provider::declared_service()?"
+					"at": "oko/rust/src/brama/send.rs:208",
+					"contains": "let (client, model) = match crate::tasks::judge::provider::declared_service()? {"
 				}
 			]
 		},
@@ -721,11 +721,11 @@
 					"contains": "pub(crate) fn declared_service()"
 				},
 				{
-					"at": "oko/rust/src/brama/send.rs:144",
-					"contains": "crate::tasks::judge::provider::declared_service()?"
+					"at": "oko/rust/src/brama/send.rs:208",
+					"contains": "let (client, model) = match crate::tasks::judge::provider::declared_service()? {"
 				},
 				{
-					"at": "oko/rust/src/brama/mod.rs:197",
+					"at": "oko/rust/src/brama/mod.rs:201",
 					"contains": "cannot be read by consumer"
 				}
 			]
@@ -991,7 +991,7 @@
 			"alternative": "BRAMA_URL names any OpenAI-compatible provider and BRAMA_API_KEY_ROLE its key; with WISENT_APP_AGENT_ID unset the requests go unsigned and Brama is not asked",
 			"evidence": [
 				{
-					"at": "kronika/src/cli.ts:102",
+					"at": "kronika/src/cli.ts:101",
 					"contains": "const bramaUrl = process.env.BRAMA_URL || process.env.MODEL_ROUTER_URL"
 				},
 				{
@@ -1029,7 +1029,7 @@
 			"alternative": "KRONIKA_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; every ROLE#FIELD reference is answered from it and Stado is not asked",
 			"evidence": [
 				{
-					"at": "kronika/src/cli/skarbiec.ts:39",
+					"at": "kronika/src/cli/skarbiec.ts:34",
 					"contains": "value = execFileSync(binary, [\"credentials\", \"get\", \"--role\", role, \"--field\", field]"
 				},
 				{
@@ -1143,11 +1143,11 @@
 			"alternative": "STADO_MODEL_ROUTER_URL names any OpenAI-compatible provider that takes provider/model ids, with ECHO_STADO_MODEL_ROUTER_TOKEN its key; provider/model routes go unsigned and Brama is not asked",
 			"evidence": [
 				{
-					"at": "echo-web/src/lib/api/stado-model-router.ts:106",
+					"at": "echo-web/src/lib/api/stado-model-router.ts:110",
 					"contains": "function modelRouterEndpoint"
 				},
 				{
-					"at": "echo-web/src/lib/api/stado-model-router.ts:131",
+					"at": "echo-web/src/lib/api/stado-model-router.ts:135",
 					"contains": "if (!subscriptionRoute(model)) return headers"
 				}
 			]
