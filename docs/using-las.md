@@ -163,10 +163,21 @@ node src/mcp.mjs
   child is down.
 
 - With no names, `tools`/`check` use every active surface after filters.
-- Unknown, unsigned/unconfigured, or filtered-out explicit surfaces are rejected.
+- An unknown explicit surface exits `2` and names every surface the registry
+  knows (`unknown surface 'x'; known: …`); an unsigned/unconfigured or
+  filtered-out explicit surface exits `1` with its reason.
 - After adoption, an unregistered surface is inactive even when a signed
   release exists; the registration never bypasses release or tool policy.
- 
+- `--help` or `-h` anywhere, or `help` as the command, prints the usage on
+  standard output and exits `0`, running nothing; after a command
+  (`las adopt --help`, `las help adopt`) it prints that command's rows. An
+  unknown command exits `2` with the usage on standard error.
+
+`node tests/cli/invocation.mjs` checks these answers through the CLI of the
+revision `LAS_TEST_SOURCE_REVISION` names, taken out of git into
+`.build/cli-invocation/`; declare `LAS_TEST_SUCCESS_EXIT` and
+`LAS_TEST_USAGE_EXIT`. With `LAS_JOURNEY_REPORT` it writes the criterion
+report like every Las journey.
 
 ### What each product needs from another
 

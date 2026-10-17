@@ -5,10 +5,11 @@
 //   node tests/qualify.mjs <revision> <journey>...
 //
 // where a journey is a path below tests/ without .mjs (catalog/load,
-// mcp/requests, onboarding/state). Each journey already takes the revision's
-// committed source out of git into its own run directory; this runs every
-// named one with LAS_TEST_SOURCE_REVISION set to the revision, passing on the
-// caller's LAS_TEST_SUCCESS_EXIT and LAS_TEST_REFUSAL_EXIT. Standard output
+// cli/invocation, mcp/requests, onboarding/state). Each journey already takes
+// the revision's committed source out of git into its own run directory; this
+// runs every named one with LAS_TEST_SOURCE_REVISION set to the revision,
+// passing on the caller's LAS_TEST_SUCCESS_EXIT, LAS_TEST_REFUSAL_EXIT and
+// LAS_TEST_USAGE_EXIT. Standard output
 // lists the journeys that failed, one per line, and is empty when every one
 // passed; the journeys' own output goes to standard error. A revision git
 // cannot name ends the run as failed.
