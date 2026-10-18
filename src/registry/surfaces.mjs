@@ -134,15 +134,6 @@ export const SURFACES = [
 		],
 	},
 	{
-		name: "byk",
-		command: path.join(ROOT, "swiatowid", ".build", "debug", "oko-mcp"),
-		args: [],
-		cwd: path.join(ROOT, "swiatowid"),
-		summary:
-			"Founder strategy tool (Oko). Read-only org roster, auto-goals, velocity.",
-		envAllowlist: [],
-	},
-	{
 		name: "brama",
 		command: path.join(ROOT, "brama", "target", "debug", "brama"),
 		args: ["mcp"],

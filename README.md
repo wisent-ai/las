@@ -107,9 +107,9 @@ Las serves:
   malicious behavior.
 - Federation tolerates an unavailable child by omitting its tools and logging only
   its static surface name. A partial catalogue is therefore possible.
-- Child requests have no Las-imposed timeout. A child that never responds can
-  keep the corresponding operation in flight until the process exits or is
-  externally interrupted.
+- A child request stays in flight until the child answers or exits. A child
+  that never responds keeps the corresponding operation open until the process
+  exits or is externally interrupted.
 - The MCP server supports initialize, ping, tools/list, and tools/call—not the
   entire MCP protocol surface.
 - The first federation result is memoized for one Las process; child changes are
@@ -119,27 +119,8 @@ Las serves:
 
 ## Federated surfaces
 
-The current source registry knows these surfaces:
-
-| Las name | Owning surface | Registry posture |
-|---|---|---|
-| `weles` | Weles browser executor MCP | signed release required |
-| `skarbiec` | capability broker MCP | signed release plus strict local schema/taxonomy/result validation |
-| `tama` | local hook catalogue/inspection MCP | signed release; explicit read-oriented tool allowlist |
-| `stado` | compute status/cost/quota/schedule MCP | signed release required |
-| `lem` | research registry/provenance MCP | signed release required |
-| `echo` | growth/content dashboard MCP | signed release required |
-| `most` | communications health/diagnostics MCP | signed release required |
-| `probierz` | cross-platform quality MCP | signed release required |
-| `byk` | founder-strategy/Oko MCP | signed release required |
-| `brama` | model gateway detect/list MCP | signed release required |
-| `warsztat` | repository proposal workflow MCP | signed release and explicit proposal-tool allowlist |
-| `finance` | financial reference/proposal MCP | separate local policy and exact configuration required |
-| `trading` | trading platform agent-proxy actions MCP | signed release required; the proxy authenticates each call with the agent token |
-
-Descriptions are operator hints, not authorization contracts. The signed manifest,
-local special policy, advertised schema verification, argument policy, and child
-server enforcement determine the callable surface.
+The surfaces Las federates, and the posture each one is held to, are listed in
+[docs/mcp.md](docs/mcp.md#federated-surfaces).
 
 ## Core use cases
 
@@ -213,7 +194,7 @@ flowchart LR
   arguments cannot overwrite, and the Skarbiec boundary returns availability or
   opaque capability IDs rather than redeemed credentials.
 - **Network boundary:** ordinary CLI commands and `las-mcp` open no listening
-  socket. `las gui` binds `127.0.0.1` only for its process lifetime, prints the
+  socket. `las gui` binds the IPv4 loopback interface only for its process lifetime, prints the
   exact tokenized URL, and never opens a browser. The host rejects mismatched
   `Host` headers, requires the per-session bearer token for API reads and writes,
   requires the exact session `Origin` for adoption, and caps request bodies
@@ -227,9 +208,9 @@ flowchart LR
   registry name to Las stderr; child diagnostics are discarded and never enter
   the protocol stream. The remaining surfaces still federate, so a partial
   catalogue is a normal outcome and a missing tool must not be read as an empty
-  healthy resource. A child that exits with requests outstanding rejects them,
-  but Las imposes no timeout, so a child that never answers keeps that call in
-  flight. When stdin closes, Las lets in-flight work flush and then closes every
+  healthy resource. A child that exits with requests outstanding rejects them;
+  a child that never answers keeps that call in flight until it does. When
+  stdin closes, Las lets in-flight work flush and then closes every
   spawned child. Because federation is memoized for the process lifetime,
   recovery is a restart after the signed release or child build is repaired.
 
@@ -295,7 +276,7 @@ contract.
   binary release is promised.
 - **Compatibility:** Node.js 18+, an available loopback TCP port for `las gui`,
   macOS/Linux-style local workspace paths as encoded by the child registry, and
-  stdio MCP `2024-11-05`.
+  the stdio MCP protocol revision `src/mcp/protocol.mjs` declares.
 - **Issues:** [`wisent-ai/las`](https://github.com/wisent-ai/las/issues).
 - **Security:** use private GitHub Security Advisories; do not include signed
   release material, internal paths, policy files, agent/capability identifiers,

@@ -3,6 +3,31 @@
 `las-mcp` (`node src/mcp.mjs` from source) is one stdio MCP server that
 federates every configured, signed surface.
 
+## Federated surfaces
+
+`src/registry/surfaces.mjs` declares every surface Las federates: the command
+and arguments that start its MCP server, its project directory and the
+environment names it may see.
+
+| Las name | Owning surface | Registry posture |
+|---|---|---|
+| `weles` | Weles browser executor MCP | signed release required |
+| `skarbiec` | capability broker MCP | signed release plus strict local schema/taxonomy/result validation |
+| `tama` | local hook catalogue/inspection MCP | signed release; explicit read-oriented tool allowlist |
+| `stado` | compute status/cost/quota/schedule MCP | signed release required |
+| `lem` | research registry/provenance MCP | signed release required |
+| `echo` | growth/content dashboard MCP | signed release required |
+| `most` | communications health/diagnostics MCP | signed release required |
+| `probierz` | cross-platform quality MCP | signed release required |
+| `brama` | model gateway detect/list MCP | signed release required |
+| `warsztat` | repository proposal workflow MCP | signed release and explicit proposal-tool allowlist |
+| `finance` | financial reference/proposal MCP | separate local policy and exact configuration required |
+| `trading` | trading platform agent-proxy actions MCP | signed release required; the proxy authenticates each call with the agent token |
+
+Descriptions are operator hints, not authorization contracts. The signed manifest,
+local special policy, advertised schema verification, argument policy, and child
+server enforcement determine the callable surface.
+
 ## Transport
 
 Las reads one JSON-RPC request per stdin line and writes one response per stdout
