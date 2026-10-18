@@ -65,6 +65,15 @@ A child surface's failures are named on stderr (`surface '<name>' unavailable:
 policy, launch, exit or protocol breach. A JSON-RPC error the child answered is
 named by its code only; its text is withheld, and child stderr is discarded.
 
+A child line must decode to a JSON-RPC object with the declared version.
+Non-object values, wrong versions, and responses without a string or numeric
+request id or exactly one of `result` and `error` fail all pending calls.
+An error response must carry an integer code and a string message. Las reports
+the surface and invalid envelope or response, never the child-controlled payload.
+Valid method messages remain separate from responses; they cannot settle a
+pending call. Once a protocol failure occurs, later calls on that connection
+are refused instead of waiting for another answer.
+
 `node tests/mcp/requests.mjs` runs the server from the declared revision's
 committed source, taken out of git into its run directory, with no surface
 federated, and checks each of these answers. It takes

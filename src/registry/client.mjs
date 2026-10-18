@@ -101,8 +101,32 @@ export function connect(surface, admit) {
 			);
 			return;
 		}
-		const rid = msg && msg.id;
-		if (rid === undefined || rid === null) return;
+		if (
+			msg === null ||
+			typeof msg !== "object" ||
+			Array.isArray(msg) ||
+			msg.jsonrpc !== JSONRPC_VERSION
+		) {
+			failAll(new Error(`${surface.name} wrote an invalid JSON-RPC envelope`));
+			return;
+		}
+		if (typeof msg.method === "string" && msg.method.trim()) return;
+		const rid = msg.id;
+		const hasResult = Object.hasOwn(msg, "result");
+		const hasError = Object.hasOwn(msg, "error");
+		if (
+			(typeof rid !== "string" && typeof rid !== "number") ||
+			hasResult === hasError ||
+			(hasError &&
+				(msg.error === null ||
+					typeof msg.error !== "object" ||
+					Array.isArray(msg.error) ||
+					!Number.isInteger(msg.error.code) ||
+					typeof msg.error.message !== "string"))
+		) {
+			failAll(new Error(`${surface.name} wrote an invalid JSON-RPC response`));
+			return;
+		}
 		const entry = pending.get(rid);
 		if (!entry) return;
 		pending.delete(rid);
