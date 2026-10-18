@@ -60,6 +60,19 @@ try {
   writeFileSync(join(run, 'original.json'), original);
   const retained = JSON.parse(original);
   assert.ok(typeof retained.installation_id === 'string' && retained.installation_id.trim());
+  assert.equal(retained.control_plane.state, 'unavailable');
+  assert.equal(retained.control_plane.operation, 'bundle.read');
+  assert.equal(retained.control_plane.httpStatus, null);
+  assert.equal(retained.control_plane.endpoint, null);
+  assert.match(retained.control_plane.error, /STADO_INTEGRATION_API_URL/);
+  assert.match(retained.control_plane.error, /LAS_STADO_INTEGRATION_TOKEN/);
+  assert.ok(started.stdout.includes(JSON.stringify(retained.control_plane)), started.stdout);
+  assert.equal(retained.progress.status, 'in_progress');
+  assert.ok(retained.pending_events.some(event =>
+    event.event_name === 'onboarding_started' &&
+    event.attempt_id === retained.progress.attempt_id));
+  assert.equal(retained.pending_events.some(event =>
+    event.event_name === 'onboarding_completed'), false);
   for (const invalid of [
     { bytes: '{', cause: 'JSON' },
     { bytes: JSON.stringify({ ...retained, schema_version: null }), cause: 'schema_version' },
@@ -103,6 +116,10 @@ try {
   assert.equal(recovered.signal, null, recovered.stderr);
   assert.equal(recovered.exit, success, recovered.stderr);
   assert.equal(JSON.parse(readFileSync(path, 'utf8')).installation_id, retained.installation_id);
+  const recoveredState = JSON.parse(readFileSync(path, 'utf8'));
+  assert.equal(recoveredState.progress.attempt_id, retained.progress.attempt_id);
+  assert.deepEqual(recoveredState.pending_events, retained.pending_events);
+  assert.ok(recovered.stdout.includes(JSON.stringify(recoveredState.control_plane)), recovered.stdout);
   const refusals = report.commands.filter(({ exit }) => exit === refusal).map(({ args, exit, stderr }) => ({ args, exit, stderr }));
   const observed = { refusals, recoveredInstallationId: JSON.parse(readFileSync(path, 'utf8')).installation_id };
   criterionReport({ run, revision, journey, commands: report.commands, success, observed });

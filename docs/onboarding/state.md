@@ -38,9 +38,12 @@ local onboarding state and requires malformed
 JSON, unsupported schema, invalid installation identity, pending-event queue,
 evidence or metadata containers, and actual filesystem read errors to refuse
 without replacing retained data. Both status and advance must preserve invalid
-bytes; recovery restores the original installation identity.
-Optional control-plane configuration is absent. Commands, exit statuses,
-complete output, source revision and the original state remain under
+bytes; recovery restores the original installation and attempt identities
+and preserves every queued event. With optional control-plane configuration
+absent, the journey checks that `bundle.read` reports both missing declarations,
+with no invented endpoint or HTTP status, in persisted state and CLI output.
+The start event remains queued and progress is not marked completed.
+Commands, exit statuses, complete output, source revision and the original state remain under
 `.build/onboarding-state/`; only the run-owned home and state are removed.
 This journey does not qualify remote synchronization, catalogue adoption or
 graphical rendering.
