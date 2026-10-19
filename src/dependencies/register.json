@@ -381,7 +381,7 @@
 			"alternative": "--without skarbiec skips it; BRAMA_LOCAL_CREDENTIALS_FILE in ~/.config/brama/service.env names an owner-only provider-to-credential file and start-with-skarbiec starts the gateway in standalone mode without any Skarbiec stage",
 			"evidence": [
 				{
-					"at": "stado/catalog/products.yml:233",
+					"at": "stado/catalog/products.yml:238",
 					"contains": "alternative: BRAMA_LOCAL_CREDENTIALS_FILE"
 				},
 				{
@@ -404,7 +404,7 @@
 			"alternative": "stado product install weles --surface service --without brama skips it; Weles then uses WELES_MODEL_ENDPOINT",
 			"evidence": [
 				{
-					"at": "stado/catalog/products.yml:331",
+					"at": "stado/catalog/products.yml:346",
 					"contains": "alternative: WELES_MODEL_ENDPOINT and WELES_MODEL"
 				},
 				{
@@ -423,7 +423,7 @@
 			"alternative": "--without skarbiec skips it; Weles then uses WELES_CREDENTIALS_FILE",
 			"evidence": [
 				{
-					"at": "stado/catalog/products.yml:336",
+					"at": "stado/catalog/products.yml:351",
 					"contains": "alternative: WELES_CREDENTIALS_FILE"
 				},
 				{
@@ -442,7 +442,7 @@
 			"alternative": "--without brama skips it; the failure intake needs no model, only probierz repair asks Brama",
 			"evidence": [
 				{
-					"at": "stado/catalog/products.yml:761",
+					"at": "stado/catalog/products.yml:817",
 					"contains": "alternative: the failure intake needs no model"
 				},
 				{
@@ -461,7 +461,7 @@
 			"alternative": "--without brama skips it; oko model-service set then names an OpenAI-compatible service every model call asks, or, with no model service, what each message is is recorded by hand and tasks closed by hand (oko tasks kind / close, Read a message and Close on Oko Desktop)",
 			"evidence": [
 				{
-					"at": "stado/catalog/products.yml:1134",
+					"at": "stado/catalog/products.yml:1219",
 					"contains": "alternative: oko model-service set declares an OpenAI-compatible service"
 				},
 				{
@@ -484,7 +484,7 @@
 					"contains": "execFileSync(bin, [\"credentials\", \"get\", \"--field\", \"value\", item]"
 				},
 				{
-					"at": "echo/lib/env/credential.mjs:53",
+					"at": "echo/lib/env/credential.mjs:55",
 					"contains": "if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {"
 				}
 			]
@@ -688,21 +688,25 @@
 			"product": "tama",
 			"requires": "brama",
 			"feature": "model-judged guards",
-			"how": "asks `oko gateway send --prompt`, which Brama answers by default",
+			"how": "asks `oko gateway object --prompt --name --schema`, which Brama answers by default, for the one object the guard's schema allows",
 			"whenAbsent": "alternative",
-			"detail": "with neither Brama nor a declared service the guard gets no judgement, records \"oko gateway send failed (…): …\" as the model outage and lets the turn through",
-			"alternative": "oko model-service set --origin URL --model M (key on stdin) declares any OpenAI-compatible service; oko gateway send --prompt and every Oko completion then ask it instead of Brama",
+			"detail": "with neither Brama nor a declared service the guard gets no judgement (\"oko gateway object failed (…): …\" and the like) and refuses the call it gates with that cause; only a machine declared to have no model (tama model-provider set --none) and shell lines that run the judge's own programs pass, each said on stderr",
+			"alternative": "oko model-service set --origin URL --model M (key on stdin) declares any OpenAI-compatible service; oko gateway and every Oko completion then ask it instead of Brama",
 			"evidence": [
 				{
-					"at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/mod.rs:216",
-					"contains": "\"{} gateway send failed ({}): {said}\","
+					"at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/mod.rs:197",
+					"contains": "\"{cli} gateway {verb} failed ({}): {said}\","
 				},
 				{
-					"at": "oko/rust/src/brama/send.rs:68",
+					"at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/unanswered.rs:106",
+					"contains": "pub fn refusal(hook: &str, judgement: &Judgement, command: Option<&str>) -> Option<String> {"
+				},
+				{
+					"at": "oko/rust/src/brama/send.rs:76",
 					"contains": "None => crate::tasks::judge::provider::declared_service()?,"
 				},
 				{
-					"at": "oko/rust/src/brama/send.rs:208",
+					"at": "oko/rust/src/brama/send.rs:243",
 					"contains": "let (client, model) = match crate::tasks::judge::provider::declared_service()? {"
 				}
 			]
@@ -721,7 +725,7 @@
 					"contains": "pub(crate) fn declared_service()"
 				},
 				{
-					"at": "oko/rust/src/brama/send.rs:208",
+					"at": "oko/rust/src/brama/send.rs:243",
 					"contains": "let (client, model) = match crate::tasks::judge::provider::declared_service()? {"
 				},
 				{
@@ -786,7 +790,7 @@
 					"contains": "Brama has no route in the Stado service directory"
 				},
 				{
-					"at": "lem/Sources/LemCore/CitationHarvest/LemCitationHarvest+Complete.swift:27",
+					"at": "lem/Sources/LemCore/CitationHarvest/LemCitationHarvest+Complete.swift:99",
 					"contains": "if !agentSecret.isEmpty {"
 				}
 			]
@@ -896,11 +900,11 @@
 			"alternative": "models.openai_compatible names any OpenAI-compatible provider (url, bearer, model); the same calls go there unsigned and Brama is not asked",
 			"evidence": [
 				{
-					"at": "glina/pipeline/sculpt/llm.js:52",
+					"at": "glina/pipeline/sculpt/llm.js:70",
 					"contains": "if (models.openai_compatible)"
 				},
 				{
-					"at": "glina/pipeline/sculpt/llm.js:71",
+					"at": "glina/pipeline/sculpt/llm.js:89",
 					"contains": "return completer(cfg, fetch_, 'brama', sign)"
 				}
 			]
@@ -985,18 +989,18 @@
 			"product": "kronika",
 			"requires": "brama",
 			"feature": "writing and auditing documentation (write, check, sync)",
-			"how": "chat completions to BRAMA_URL (or MODEL_ROUTER_URL) with the bearer, signed when WISENT_APP_AGENT_ID is set",
+			"how": "chat completions to BRAMA_URL with the bearer read through Stado by the role BRAMA_API_KEY_ROLE names, signed when WISENT_APP_AGENT_ID and WISENT_APP_AGENT_AUTH_SECRET_ROLE are set",
 			"whenAbsent": "alternative",
-			"detail": "without a model URL write, check and sync stop with \"BRAMA_URL or MODEL_ROUTER_URL is required\"; init, sources and onboarding call no model",
-			"alternative": "BRAMA_URL names any OpenAI-compatible provider and BRAMA_API_KEY_ROLE its key; with WISENT_APP_AGENT_ID unset the requests go unsigned and Brama is not asked",
+			"detail": "without BRAMA_URL, write, check and sync stop with \"BRAMA_URL is required: the address of the Brama gateway\", and without BRAMA_API_KEY_ROLE with its own refusal; help, onboarding, gui, init and sources call no model",
+			"alternative": "BRAMA_URL names any OpenAI-compatible provider and BRAMA_API_KEY_ROLE the role of its key; with WISENT_APP_AGENT_ID unset the requests go unsigned and Brama is not asked",
 			"evidence": [
 				{
-					"at": "kronika/src/cli.ts:101",
-					"contains": "const bramaUrl = process.env.BRAMA_URL || process.env.MODEL_ROUTER_URL"
+					"at": "kronika/src/cli.ts:112",
+					"contains": "if (!bramaUrl) throw new Error(\"BRAMA_URL is required: the address of the Brama gateway\");"
 				},
 				{
-					"at": "kronika/src/docs/model/brama.ts:81",
-					"contains": "if (Boolean(options.agentId) !== Boolean(options.authSecret))"
+					"at": "kronika/src/docs/model/brama.ts:89",
+					"contains": "if (Boolean(options.agentId) !== Boolean(options.authSecret)) {"
 				}
 			]
 		},
@@ -1029,7 +1033,7 @@
 			"alternative": "KRONIKA_CREDENTIALS_FILE names an owner-only JSON file of role -> field -> value; every ROLE#FIELD reference is answered from it and Stado is not asked",
 			"evidence": [
 				{
-					"at": "kronika/src/cli/skarbiec.ts:34",
+					"at": "kronika/src/cli/skarbiec.ts:39",
 					"contains": "value = execFileSync(binary, [\"credentials\", \"get\", \"--role\", role, \"--field\", field]"
 				},
 				{
@@ -1143,11 +1147,11 @@
 			"alternative": "STADO_MODEL_ROUTER_URL names any OpenAI-compatible provider that takes provider/model ids, with ECHO_STADO_MODEL_ROUTER_TOKEN its key; provider/model routes go unsigned and Brama is not asked",
 			"evidence": [
 				{
-					"at": "echo-web/src/lib/api/stado-model-router.ts:110",
+					"at": "echo-web/src/lib/api/stado-model-router.ts:112",
 					"contains": "function modelRouterEndpoint"
 				},
 				{
-					"at": "echo-web/src/lib/api/stado-model-router.ts:135",
+					"at": "echo-web/src/lib/api/stado-model-router.ts:137",
 					"contains": "if (!subscriptionRoute(model)) return headers"
 				}
 			]
