@@ -1924,16 +1924,17 @@
 			"requires": "brama",
 			"feature": "typed decisions: which discovered pages matter, which image shows the product, what a control does",
 			"how": "posts one typed decision to `MODEL_ROUTER_URL`/v1/decisions",
-			"whenAbsent": "refusal",
-			"detail": "the typed-decision route is Brama's own; without a Brama at MODEL_ROUTER_URL the command that asks is refused naming MODEL_ROUTER_URL and what it holds, and commands that ask no decision run as before",
+			"whenAbsent": "alternative",
+			"detail": "without Brama and without SPIS_DECISION_CHAT_MODEL the command that asks is refused naming MODEL_ROUTER_URL or MODEL_ROUTER_MODEL and the variable that asks another service",
+			"alternative": "SPIS_DECISION_CHAT_MODEL names a model of the OpenAI-compatible service at MODEL_ROUTER_URL; each question is one chat completion bound by a JSON schema to its options, with the bearer MODEL_ROUTER_TOKEN_ROLE names (SPIS_CREDENTIALS_FILE answers it without Stado)",
 			"evidence": [
 				{
-					"at": "spis/src/commands/brama/mod.rs:28",
-					"contains": "pub(crate) const DECISIONS: &str = \"decisions\";"
+					"at": "spis/src/commands/brama/mod.rs:82",
+					"contains": "Some(chat_model) => direct::ask(purpose, &chat_model, state, questions)?,"
 				},
 				{
-					"at": "spis/src/commands/brama/mod.rs:40",
-					"contains": "variable: \"MODEL_ROUTER_URL\","
+					"at": "spis/src/commands/brama/direct.rs:13",
+					"contains": "pub(crate) const CHAT_MODEL: Setting = Setting {"
 				}
 			]
 		},
@@ -1956,12 +1957,50 @@
 			"requires": "brama",
 			"feature": "the being's cognition: every model call of its life loop, priced before it is paid",
 			"how": "signed chat completions to BRAMA_BASE_URL, each preceded by a quote from Brama's priced, versioned model catalog (GET /v1/models)",
-			"whenAbsent": "refusal",
-			"detail": "the being pays for each call from its own funds and takes the price from Brama's catalog; a gateway without that catalog is refused with \"model catalog is degraded, unversioned or unsupported; no model cost was authorized\", so without Brama the being makes no model call",
+			"whenAbsent": "alternative",
+			"detail": "without Brama and without a declared catalog each quote is refused (\"model catalog is degraded, unversioned or unsupported; no model cost was authorized\" or the request's own failure) and the being makes no model call",
+			"alternative": "BRAMA_BASE_URL names any OpenAI-compatible provider (its key in the bearer file) and SINGULARITY_MODEL_CATALOG_FILE a catalog file of the same shape with the operator's prices and limits; every admission check applies to it and Brama is not asked",
 			"evidence": [
 				{
-					"at": "singularity/src/platform/brama/catalog.rs:131",
-					"contains": "no model cost was authorized"
+					"at": "singularity/src/platform/brama/catalog.rs:103",
+					"contains": "let (bytes, source) = match declared_catalog() {"
+				},
+				{
+					"at": "singularity/src/platform/brama/catalog.rs:211",
+					"contains": "const CATALOG_FILE: &str = \"SINGULARITY_MODEL_CATALOG_FILE\";"
+				}
+			]
+		},
+		{
+			"product": "wisent-backend",
+			"requires": "skarbiec",
+			"feature": "the runtime and integration credentials the backend reads by role (COMPUTE_RUNTIME_ROLE, COMPUTE_INTEGRATION_ROLE)",
+			"how": "Skarbiec workload reads with WC_SKARBIEC_CONSUMER, WC_SKARBIEC_URL and WC_SKARBIEC_TOKEN_FILE",
+			"whenAbsent": "alternative",
+			"detail": "without Skarbiec and without a credentials file the start is refused naming the missing WC_SKARBIEC_* variable",
+			"alternative": "WC_CREDENTIALS_FILE names an owner-only file that answers both roles; no Skarbiec variable is read and Stado is not asked",
+			"evidence": [
+				{
+					"at": "compute.wisent.com/backend/src/identity/secrets.rs:29",
+					"contains": "Some(file) => Source::File(std::path::PathBuf::from(file)),"
+				}
+			]
+		},
+		{
+			"product": "wisent-integrations",
+			"requires": "skarbiec",
+			"feature": "the integration client bearers it verifies and the provider credentials it calls third parties with",
+			"how": "per-domain Skarbiec grants (integration verifier and provider consumers)",
+			"whenAbsent": "refusal",
+			"detail": "wisent-integrations is the fleet's shared authenticated egress and holds no credential of its own; without Skarbiec its verifier and provider clients are refused. Its consumers do not need it: Most posts to Twilio with MOST_TWILIO_*, Handtohuman to Stripe with HANDTOHUMAN_STRIPE_KEY_FILE, and the desktop walkthroughs run from their bundled definitions",
+			"evidence": [
+				{
+					"at": "wisent-integrations/src/skarbiec/mod.rs:123",
+					"contains": "pub fn integration_verifier() -> Result<Self, SkarbiecError> {"
+				},
+				{
+					"at": "wisent-integrations/src/skarbiec/mod.rs:145",
+					"contains": "pub fn integration_provider(domain: &str) -> Result<Self, SkarbiecError> {"
 				}
 			]
 		}
