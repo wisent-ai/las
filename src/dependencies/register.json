@@ -21,7 +21,7 @@
 					"contains": "let output = stado_wait::output(Command::new(\"stado\").args(["
 				},
 				{
-					"at": "jeden/rust/agent/credential/mod.rs:99",
+					"at": "jeden/rust/agent/credential/mod.rs:103",
 					"contains": "if direct_provider().is_some() {"
 				}
 			]
@@ -675,11 +675,11 @@
 			"alternative": "JEDEN_MODEL_ENDPOINT (bearer JEDEN_MODEL_KEY) sends the same calls to any OpenAI-compatible provider, unsigned, without asking Stado for Brama credentials",
 			"evidence": [
 				{
-					"at": "jeden/rust/agent/runtime/routing/config/mod.rs:15",
+					"at": "jeden/rust/agent/runtime/routing/config/mod.rs:24",
 					"contains": "let direct = crate::agent::credential::direct_provider();"
 				},
 				{
-					"at": "jeden/rust/agent/credential/mod.rs:11",
+					"at": "jeden/rust/agent/credential/mod.rs:12",
 					"contains": "pub(crate) const DIRECT_URL: &str = \"JEDEN_MODEL_ENDPOINT\";"
 				}
 			]
@@ -698,15 +698,15 @@
 					"contains": "\"{cli} gateway {verb} failed ({}): {said}\","
 				},
 				{
-					"at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/unanswered.rs:106",
+					"at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/unanswered.rs:114",
 					"contains": "pub fn refusal(hook: &str, judgement: &Judgement, command: Option<&str>) -> Option<String> {"
 				},
 				{
-					"at": "oko/rust/src/brama/send.rs:76",
+					"at": "oko/rust/src/brama/send.rs:77",
 					"contains": "None => crate::tasks::judge::provider::declared_service()?,"
 				},
 				{
-					"at": "oko/rust/src/brama/send.rs:243",
+					"at": "oko/rust/src/brama/send.rs:245",
 					"contains": "let (client, model) = match crate::tasks::judge::provider::declared_service()? {"
 				}
 			]
@@ -725,7 +725,7 @@
 					"contains": "pub(crate) fn declared_service()"
 				},
 				{
-					"at": "oko/rust/src/brama/send.rs:243",
+					"at": "oko/rust/src/brama/send.rs:245",
 					"contains": "let (client, model) = match crate::tasks::judge::provider::declared_service()? {"
 				},
 				{
@@ -1582,6 +1582,179 @@
 				{
 					"at": "spis/src/commands/brama/credentials.rs:40",
 					"contains": "std::env::var_os(CREDENTIALS_FILE)"
+				}
+			]
+		},
+		{
+			"product": "stado",
+			"requires": "skarbiec",
+			"feature": "Stado's own vault reads: the object, release, machine, registry, service and integration API verifiers, `stado service secret-sync`, the dashboard's operator sign-in, the release catalogue's publishers, a local agent's workload secrets and `stado azure`",
+			"how": "Stado's own client (`secrets.skarbiec`), routed through the selected credential store",
+			"whenAbsent": "alternative",
+			"detail": "with Skarbiec selected and absent each read is refused with the step that failed, e.g. \"this machine has no Skarbiec address: …\"",
+			"alternative": "select a file store (`STADO_CREDENTIALS_STORE=file:///path`, kept by `stado credentials migrate`); every one of these reads then answers from that file and no Skarbiec is asked",
+			"evidence": [
+				{
+					"at": "stado/stado-rs/src/skarbiec/verifiers/api.rs:22",
+					"contains": "Self::new("
+				},
+				{
+					"at": "stado/stado-rs/src/skarbiec/client/reads/mod.rs:92",
+					"contains": "return match crate::credential_store::selected()? {"
+				}
+			]
+		},
+		{
+			"product": "oko",
+			"requires": "stado",
+			"feature": "finding the other products' programs (tama, stado) Oko runs",
+			"how": "the copy Stado installed under ~/.stado/bin",
+			"whenAbsent": "alternative",
+			"detail": "on a machine Stado manages, a program missing from ~/.stado/bin is refused naming that path",
+			"alternative": "on a machine without Stado (no ~/.stado/bin/stado) Oko runs the program found on PATH, and refuses naming PATH when no directory holds it",
+			"evidence": [
+				{
+					"at": "oko/rust/src/store/presence.rs:35",
+					"contains": "let stado = managed.join(\"stado\");"
+				},
+				{
+					"at": "oko/rust/src/store/presence.rs:43",
+					"contains": "on_path(name)"
+				}
+			]
+		},
+		{
+			"product": "oko",
+			"requires": "tama",
+			"feature": "the hooks Tama recorded as still running for a session the harness stopped waiting for (session rows and the supervisor)",
+			"how": "runs `tama hooks abandoned --json`",
+			"whenAbsent": "degraded",
+			"detail": "without Tama every row is listed without an abandonment and the listing carries tamaFailure: \"tama is not installed …\" beside the rows; no row claims Tama recorded nothing",
+			"evidence": [
+				{
+					"at": "oko/rust/src/pty/client/agents/tama/mod.rs:22",
+					"contains": "installed(\"tama\")?).args([\"hooks\", \"abandoned\", \"--json\"])"
+				},
+				{
+					"at": "oko/rust/src/pty/client/agents/tama/mod.rs:50",
+					"contains": "Err(refusal) => (HashMap::new(), Some(refusal.to_string())),"
+				}
+			]
+		},
+		{
+			"product": "oko",
+			"requires": "tama",
+			"feature": "the rules routine: delivering Tama's rule proposals",
+			"how": "runs `tama rules digest --json`",
+			"whenAbsent": "refusal",
+			"detail": "the proposals are Tama's own; without Tama the rules routine fails with \"tama is not installed: …\" and every other routine and command is unaffected",
+			"evidence": [
+				{
+					"at": "oko/rust/src/suggestions/proactive/rules.rs:33",
+					"contains": "installed(\"tama\")?).args([\"rules\", \"digest\", \"--json\"])"
+				}
+			]
+		},
+		{
+			"product": "oko",
+			"requires": "stado",
+			"feature": "routines: Oko operations on a schedule (context, autonomy, control, telemetry, index, reflection, supervision, suggestions, rules, sweep, released)",
+			"how": "Stado schedules carry the routine definition and run `oko routines execute` as a Stado job",
+			"whenAbsent": "alternative",
+			"detail": "without Stado `oko routines` create/list/run fail on the Stado call and `oko routines execute` refuses with \"execution requires a Stado job identity\"",
+			"alternative": "each routine's operation is its own Oko command, which the user's own scheduler (launchd, cron) runs without Stado: oko context snapshot, oko autonomy tick, oko tasks control, oko telemetry publish, oko index sync, oko reflection run, oko suggestions tick, oko tasks sweep, oko defects released --close",
+			"evidence": [
+				{
+					"at": "oko/rust/src/routines/mod.rs:20",
+					"contains": "routines execute --definition"
+				},
+				{
+					"at": "oko/rust/src/routines/execute.rs:93",
+					"contains": "execution requires a Stado job identity"
+				}
+			]
+		},
+		{
+			"product": "tama",
+			"requires": "stado",
+			"feature": "which programs a judged gate lets through while its judge cannot answer (the judge's own repair)",
+			"how": "runs `stado product catalog --json` and takes Oko's dependencies at any depth",
+			"whenAbsent": "alternative",
+			"detail": "with Stado installed but not answering, the gate refuses with \"which programs the judge stands on cannot be read: …\"",
+			"alternative": "on a machine without Stado the judge stands on this Tama program and the Oko program it asks, so `oko model-service set` and `tama model-provider set` pass while the judge is down",
+			"evidence": [
+				{
+					"at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/unanswered.rs:90",
+					"contains": "let mut programs = if program_installed(\"stado\") {"
+				}
+			]
+		},
+		{
+			"product": "tama",
+			"requires": "stado",
+			"feature": "the product of a fleet build a build grant names (block-one-off-repairs consent)",
+			"how": "runs `stado build status <id> --json`",
+			"whenAbsent": "degraded",
+			"detail": "without Stado the build's product is unknown, said on stderr, and only a build grant with no product list admits the build; a local build in a checkout is judged from its .wisent-release.json without Stado",
+			"evidence": [
+				{
+					"at": "tama/rust/crates/tama-hook-tools/src/ports/block_one_off_repairs/consent/subjects.rs:187",
+					"contains": "Command::new(\"stado\").args([\"build\", \"status\", id, \"--json\"]),"
+				}
+			]
+		},
+		{
+			"product": "singularity",
+			"requires": "jeden",
+			"feature": "executing an ecosystem initiative (`singularity ecosystem run`)",
+			"how": "runs `jeden pursue` with the being's Brama identity in its environment",
+			"whenAbsent": "refusal",
+			"detail": "an initiative is a Jeden pursuit by the ecosystem profile's contract; without Jeden the attempt fails with \"jeden pursue …: could not start: …\" and is kept with that error; the being's own life loop, mind and finances do not use Jeden",
+			"evidence": [
+				{
+					"at": "singularity/src/ecosystem/observe.rs:54",
+					"contains": "let mut child = Command::new(\"jeden\");"
+				},
+				{
+					"at": "singularity/src/ecosystem/observe/process.rs:21",
+					"contains": "could not start: {error}"
+				}
+			]
+		},
+		{
+			"product": "singularity",
+			"requires": "stado",
+			"feature": "the ecosystem profile's product catalog, provisioning and delivery",
+			"how": "runs `stado product --catalog <workspace>/stado/catalog/products.yml …`",
+			"whenAbsent": "refusal",
+			"detail": "an ecosystem initiative ships a Wisent product through Stado by the profile's contract; without Stado the step fails with \"stado product …: could not start: …\" and the initiative keeps that error; the being's life loop does not use it",
+			"evidence": [
+				{
+					"at": "singularity/src/ecosystem/observe.rs:32",
+					"contains": "let mut child = Command::new(\"stado\");"
+				}
+			]
+		},
+		{
+			"product": "skarbiec",
+			"requires": "stado",
+			"feature": "credential operations against the canonical Skarbiec (`skarbiec credential …` without --local)",
+			"how": "reads the canonical address from the forward file `stado service directory publish` writes (~/.stado/forwards/skarbiec.local, or STADO_FORWARDS_DIR)",
+			"whenAbsent": "alternative",
+			"detail": "without that file the command refuses with \"no canonical forward at …; declare it with `skarbiec credential declare-endpoint <url>`\"",
+			"alternative": "`skarbiec credential … --local` runs the operation on this machine's own vault, and `skarbiec credential declare-endpoint <url>` writes the forward file itself; neither asks Stado",
+			"evidence": [
+				{
+					"at": "skarbiec/src/credential/client/endpoint.rs:26",
+					"contains": "Ok(home.join(\".stado\").join(\"forwards\"))"
+				},
+				{
+					"at": "skarbiec/src/credential/client/endpoint.rs:35",
+					"contains": "skarbiec credential declare-endpoint <url>"
+				},
+				{
+					"at": "skarbiec/src/credential/mod.rs:183",
+					"contains": "let local = flags.get(\"local\")"
 				}
 			]
 		}
