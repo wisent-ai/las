@@ -1786,12 +1786,17 @@
 			"requires": "skarbiec",
 			"feature": "the GitHub identity of self-hosted runner registration (host runner precheck)",
 			"how": "asks Skarbiec's operator route resolve for the item the declared route `github:org-runner-admin` reaches, then reads that field",
-			"whenAbsent": "refusal",
-			"detail": "the identity is declared as a Skarbiec route, a Skarbiec feature; without Skarbiec the precheck stops with \"Stado cannot reach Skarbiec to resolve the GitHub route …\"; runner registration is the only feature that reads it",
+			"whenAbsent": "alternative",
+			"detail": "with Skarbiec selected and unreachable the precheck stops with \"Stado cannot reach Skarbiec to resolve the GitHub route …\"",
+			"alternative": "with a file credential store (STADO_CREDENTIALS_STORE=file:///…) the route's resource is the item id and its only string field is the credential, written by `stado credentials put github:org-runner-admin < token`; any other item shape is refused naming its fields",
 			"evidence": [
 				{
-					"at": "stado/stado-rs/src/github_identity/mod.rs:111",
-					"contains": "let credentials = crate::credential_store::admin_credentials().map_err(|error| {"
+					"at": "stado/stado-rs/src/github_identity/mod.rs:112",
+					"contains": "if let Some(resolved) = local::resolve(route).await? {"
+				},
+				{
+					"at": "stado/stado-rs/src/github_identity/local.rs:44",
+					"contains": "pub(super) async fn resolve(route: &str) -> Result<Option<ResolvedCredential>, DeployError> {"
 				}
 			]
 		},
