@@ -1757,6 +1757,213 @@
 					"contains": "let local = flags.get(\"local\")"
 				}
 			]
+		},
+		{
+			"product": "stado",
+			"requires": "skarbiec",
+			"feature": "fleet SSH keys: the host channel's key and `stado fleet key add|generate|rotate`",
+			"how": "Stado's own client reads and writes the key item `stado-ssh-<host>` through the selected credential store",
+			"whenAbsent": "alternative",
+			"detail": "with Skarbiec selected and absent, a host with no key held from an earlier read is refused naming the store it read and STADO_HOST_SSH_KEY_FILE",
+			"alternative": "a file store (`STADO_CREDENTIALS_STORE=file:///path`) keeps and serves the keys, or STADO_HOST_SSH_KEY_FILE names an owner-only key file read before any store",
+			"evidence": [
+				{
+					"at": "stado/stado-rs/src/deploy/host_access/ssh_key.rs:197",
+					"contains": "let client = Client::stado().map_err(|error| {"
+				},
+				{
+					"at": "stado/stado-rs/src/cli/fleet/key/store.rs:65",
+					"contains": "Ok(Client::stado()?)"
+				},
+				{
+					"at": "stado/stado-rs/src/deploy/host_access/ssh_key.rs:16",
+					"contains": "const OWNER_KEY_FILE_ENV: &str = \"STADO_HOST_SSH_KEY_FILE\";"
+				}
+			]
+		},
+		{
+			"product": "stado",
+			"requires": "skarbiec",
+			"feature": "the GitHub identity of self-hosted runner registration (host runner precheck)",
+			"how": "asks Skarbiec's operator route resolve for the item the declared route `github:org-runner-admin` reaches, then reads that field",
+			"whenAbsent": "refusal",
+			"detail": "the identity is declared as a Skarbiec route, a Skarbiec feature; without Skarbiec the precheck stops with \"Stado cannot reach Skarbiec to resolve the GitHub route …\"; runner registration is the only feature that reads it",
+			"evidence": [
+				{
+					"at": "stado/stado-rs/src/github_identity/mod.rs:111",
+					"contains": "let credentials = crate::credential_store::admin_credentials().map_err(|error| {"
+				}
+			]
+		},
+		{
+			"product": "brama",
+			"requires": "stado",
+			"feature": "whether this gateway is the one the registry places (readiness placement)",
+			"how": "runs `stado service directory connect brama --no-verify --json`",
+			"whenAbsent": "degraded",
+			"detail": "without Stado the readiness answer carries placed_on and this_host as null with the reason (\"the Stado CLI … could not be run to read brama's placement: …\"); unknown placement blocks nothing",
+			"evidence": [
+				{
+					"at": "brama/src/core/server/readiness/placement.rs:82",
+					"contains": "\"connect\","
+				},
+				{
+					"at": "brama/src/core/server/readiness/placement.rs:34",
+					"contains": "Unknown placement is not evidence"
+				}
+			]
+		},
+		{
+			"product": "brama",
+			"requires": "stado",
+			"feature": "finding Weles for a subscription sign-in",
+			"how": "runs `stado service directory connect weles-admission --consumer <consumer>`",
+			"whenAbsent": "alternative",
+			"detail": "without Stado and without BRAMA_WELES_URL a sign-in stops with \"cannot resolve weles-admission through …\"",
+			"alternative": "BRAMA_WELES_URL names Weles's worker API and Stado is not asked",
+			"evidence": [
+				{
+					"at": "brama/src/subscription_dispatch/sign_in/worker/api.rs:60",
+					"contains": "setting(\"BRAMA_WELES_URL\")?"
+				},
+				{
+					"at": "brama/src/subscription_dispatch/sign_in/worker/api.rs:91",
+					"contains": "\"weles-admission\","
+				}
+			]
+		},
+		{
+			"product": "brama",
+			"requires": "weles",
+			"feature": "signing a provider subscription in again in a browser (`brama subscription sign-in` and the renewal sweep)",
+			"how": "asks Weles's reauthentication route to run the provider's sign-in",
+			"whenAbsent": "refusal",
+			"detail": "the browser sign-in is Weles's; without Weles the sign-in stops naming Weles's address it could not reach, and serving goes on with the credentials Brama already holds (Skarbiec, or `brama serve --local-credentials-stdin`)",
+			"evidence": [
+				{
+					"at": "brama/src/subscription_dispatch/sign_in/worker/api.rs:60",
+					"contains": "setting(\"BRAMA_WELES_URL\")?"
+				}
+			]
+		},
+		{
+			"product": "singularity",
+			"requires": "oko",
+			"feature": "the ecosystem profile's observation of operator decisions",
+			"how": "runs `oko transcripts tasks --open --read-only --json` on its observation interval",
+			"whenAbsent": "degraded",
+			"detail": "without Oko each pass records an observation_failed issue naming the error and the other observations go on",
+			"evidence": [
+				{
+					"at": "singularity/src/ecosystem/observe.rs:87",
+					"contains": "Source::OperatorDecisions => ("
+				},
+				{
+					"at": "singularity/src/ecosystem/observe.rs:117",
+					"contains": "Err(error) => state.store.issue(&Issue {"
+				}
+			]
+		},
+		{
+			"product": "singularity",
+			"requires": "echo",
+			"feature": "the ecosystem profile's observation of product analytics and market research",
+			"how": "runs `echo-cli analytics 7` and `echo-cli market`",
+			"whenAbsent": "degraded",
+			"detail": "without Echo each pass records an observation_failed issue naming the error and the other observations go on",
+			"evidence": [
+				{
+					"at": "singularity/src/ecosystem/observe.rs:85",
+					"contains": "Source::ProductAnalytics => (\"echo-cli\""
+				},
+				{
+					"at": "singularity/src/ecosystem/observe.rs:117",
+					"contains": "Err(error) => state.store.issue(&Issue {"
+				}
+			]
+		},
+		{
+			"product": "singularity",
+			"requires": "stado",
+			"feature": "the ecosystem profile's observation of fleet services and the product catalog",
+			"how": "runs `stado service list --json` and `stado product catalog`",
+			"whenAbsent": "degraded",
+			"detail": "without Stado each pass records an observation_failed issue naming the error and the other observations go on",
+			"evidence": [
+				{
+					"at": "singularity/src/ecosystem/observe.rs:91",
+					"contains": "Source::FleetServices => (\"stado\""
+				},
+				{
+					"at": "singularity/src/ecosystem/observe.rs:117",
+					"contains": "Err(error) => state.store.issue(&Issue {"
+				}
+			]
+		},
+		{
+			"product": "las",
+			"requires": "stado",
+			"feature": "the first-use walkthrough definition and its analytics events",
+			"how": "reads the journey from Stado's integration API with STADO_INTEGRATION_API_URL and LAS_STADO_INTEGRATION_TOKEN",
+			"whenAbsent": "alternative",
+			"detail": "without Stado every journey read and event send fails and the transport records its diagnostic as unavailable",
+			"alternative": "the walkthrough runs from the last saved definition or the canonical one bundled with Las, local progress stays authoritative, and an experiment assignment is skipped",
+			"evidence": [
+				{
+					"at": "las/src/onboarding/journey/transport.mjs:31",
+					"contains": "const baseValue = process.env.STADO_INTEGRATION_API_URL;"
+				},
+				{
+					"at": "las/src/onboarding/journey.mjs:167",
+					"contains": "bundle = validateBundle(canonicalFallback());"
+				}
+			]
+		},
+		{
+			"product": "spis",
+			"requires": "brama",
+			"feature": "typed decisions: which discovered pages matter, which image shows the product, what a control does",
+			"how": "posts one typed decision to `MODEL_ROUTER_URL`/v1/decisions",
+			"whenAbsent": "refusal",
+			"detail": "the typed-decision route is Brama's own; without a Brama at MODEL_ROUTER_URL the command that asks is refused naming MODEL_ROUTER_URL and what it holds, and commands that ask no decision run as before",
+			"evidence": [
+				{
+					"at": "spis/src/commands/brama/mod.rs:28",
+					"contains": "pub(crate) const DECISIONS: &str = \"decisions\";"
+				},
+				{
+					"at": "spis/src/commands/brama/mod.rs:40",
+					"contains": "variable: \"MODEL_ROUTER_URL\","
+				}
+			]
+		},
+		{
+			"product": "spis",
+			"requires": "weles",
+			"feature": "browser scrapes of documentation and apps",
+			"how": "runs the scrape through Weles on the host the registry's weles-admission service is placed on, with Weles's signed receipts",
+			"whenAbsent": "refusal",
+			"detail": "a browser scrape is a Weles execution with its receipt by Spis's contract, placed by the registry's weles-admission service; with no such service the placement step has nothing to place the scrape on",
+			"evidence": [
+				{
+					"at": "spis/src/commands/crawl/registry_placements_group/registry_placements.rs:29",
+					"contains": "registry.pointer(\"/service_directory/services/weles-admission\")"
+				}
+			]
+		},
+		{
+			"product": "singularity",
+			"requires": "brama",
+			"feature": "the being's cognition: every model call of its life loop, priced before it is paid",
+			"how": "signed chat completions to BRAMA_BASE_URL, each preceded by a quote from Brama's priced, versioned model catalog (GET /v1/models)",
+			"whenAbsent": "refusal",
+			"detail": "the being pays for each call from its own funds and takes the price from Brama's catalog; a gateway without that catalog is refused with \"model catalog is degraded, unversioned or unsupported; no model cost was authorized\", so without Brama the being makes no model call",
+			"evidence": [
+				{
+					"at": "singularity/src/platform/brama/catalog.rs:131",
+					"contains": "no model cost was authorized"
+				}
+			]
 		}
 	]
 }
