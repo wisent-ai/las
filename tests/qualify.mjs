@@ -22,10 +22,12 @@ const root = resolve(import.meta.dirname, '..');
 // argv holds node and this script before the caller's words.
 const [, , revision, ...journeys] = process.argv;
 assert.ok(revision && journeys.length, 'usage: node tests/qualify.mjs <revision> <journey>...');
-const succeeded = spawnSync('true').status;
+// A run succeeded when it started, no signal ended it and it exited zero
+// (https://nodejs.org/api/child_process.html#child_processspawnsynccommand-args-options).
+const succeeded = (run) => !run.error && run.signal === null && !run.status;
 
 const resolved = spawnSync('git', ['-C', root, 'rev-parse', '--verify', `${revision}^{commit}`], { encoding: 'utf8' });
-assert.equal(resolved.status, succeeded, `git cannot name ${revision} as a commit: ${resolved.stderr}`);
+assert.ok(succeeded(resolved), `git cannot name ${revision} as a commit: ${resolved.stderr}`);
 const commit = resolved.stdout.trim();
 
 for (const name of journeys) {
@@ -39,5 +41,5 @@ for (const name of journeys) {
     env: { ...process.env, LAS_TEST_SOURCE_REVISION: commit },
     stdio: ['ignore', process.stderr, process.stderr],
   });
-  if (ran.status !== succeeded) console.log(`${name}: failed (${ran.status ?? ran.signal})`);
+  if (!succeeded(ran)) console.log(`${name}: failed (${ran.status ?? ran.signal})`);
 }
