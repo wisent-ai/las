@@ -47,6 +47,11 @@ async function initialize(id, params) {
 		send(fail(id, CODE_INVALID_REQUEST, "session is already initialized"));
 		return;
 	}
+	// With Skarbiec active, the agent identity is the one the operator gave
+	// Las in SKARBIEC_MCP_AGENT_ID, which Las alone forwards to the broker. A
+	// client that sends no agentId (omp, Claude Code, Codex) runs as that
+	// identity; a client that names another one is refused, so the model never
+	// chooses whom it acts as.
 	if (skarbiecActive()) {
 		let expected;
 		try {
@@ -56,7 +61,7 @@ async function initialize(id, params) {
 				fail(
 					id,
 					CODE_INVALID_REQUEST,
-					`agent identity is not configured: ${error.message}`,
+					`agent identity is not configured: the Skarbiec surface is active, so set SKARBIEC_MCP_AGENT_ID in Las's environment to the agent this client runs as (${error.message})`,
 				),
 			);
 			return;
@@ -65,9 +70,15 @@ async function initialize(id, params) {
 			!params ||
 			typeof params !== "object" ||
 			Array.isArray(params) ||
-			params.agentId !== expected
+			(Object.hasOwn(params, "agentId") && params.agentId !== expected)
 		) {
-			send(fail(id, CODE_INVALID_REQUEST, "agent identity rejected"));
+			send(
+				fail(
+					id,
+					CODE_INVALID_REQUEST,
+					"agent identity rejected: initialize agentId differs from the operator's SKARBIEC_MCP_AGENT_ID",
+				),
+			);
 			return;
 		}
 	}
@@ -151,7 +162,12 @@ async function callTool(id, params) {
 			name: route.remoteName,
 			arguments: args,
 		});
-		send(ok(id, authorizeToolResult(route.surface, route.remoteName, result)));
+		send(
+			ok(
+				id,
+				authorizeToolResult(route.surface, route.remoteName, args, result),
+			),
+		);
 	} catch (error) {
 		const cause = ownCause(error);
 		process.stderr.write(
