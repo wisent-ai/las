@@ -17,6 +17,12 @@ import {
 	validateReleaseBinding,
 } from "./registry/launch.mjs";
 import { releaseFor } from "./registry/release.mjs";
+import {
+	SKARBIEC_TOOL_DESCRIPTIONS,
+	validateSkarbiecArguments,
+	verifySkarbiecReleasePolicy,
+} from "./registry/skarbiec/policy.mjs";
+import { authorizeSkarbiecResult } from "./registry/skarbiec/results.mjs";
 
 export { SURFACES } from "./registry/surfaces.mjs";
 export {
@@ -41,126 +47,6 @@ const FINANCE_ALLOWED_TOOLS = new Set([
 ]);
 const FINANCE_FORBIDDEN_TOOL =
 	/(?:^|[^a-z])(?:execute|approve|sign|broadcast|beneficiary|policy)(?:[^a-z]|$)/i;
-const SKARBIEC_TOOL_SCHEMA_DIGESTS = new Map([
-	[
-		"health",
-		jsonSha256({
-			type: "object",
-			properties: {},
-			required: [],
-			additionalProperties: false,
-		}),
-	],
-	[
-		"capability_available",
-		jsonSha256({
-			type: "object",
-			properties: {
-				purpose: { type: "string", minLength: 1 },
-				resource: { type: "string", minLength: 1 },
-				target: { type: "string", minLength: 1 },
-				ttl_seconds: { type: "integer", minimum: 1 },
-				max_uses: { type: "integer", minimum: 1 },
-			},
-			required: ["purpose", "resource", "target", "ttl_seconds", "max_uses"],
-			additionalProperties: false,
-		}),
-	],
-	[
-		"capability_request",
-		jsonSha256({
-			type: "object",
-			properties: {
-				purpose: { type: "string", minLength: 1 },
-				resource: { type: "string", minLength: 1 },
-				target: { type: "string", minLength: 1 },
-				ttl_seconds: { type: "integer", minimum: 1 },
-				max_uses: { type: "integer", minimum: 1 },
-				delegation_depth: { type: "integer", minimum: 0 },
-			},
-			required: ["purpose", "resource", "target", "ttl_seconds", "max_uses"],
-			additionalProperties: false,
-		}),
-	],
-]);
-const SKARBIEC_TOOL_DESCRIPTIONS = new Map([
-	["health", "Return a non-sensitive broker health summary."],
-	[
-		"capability_available",
-		"Check whether the authenticated agent may request an exactly bounded capability. Returns only availability.",
-	],
-	[
-		"capability_request",
-		"Request an opaque, bounded capability for the authenticated agent. Returns only status and an opaque capability ID.",
-	],
-]);
-const CAPABILITY_ID = /^[0-9a-f]{64}$/;
-const SKARBIEC_HEALTH_FIELDS = new Set([
-	"ok",
-	"service",
-	"wire",
-	"policy_sequence",
-	"registry_sequence",
-	"active_capabilities",
-	"anomaly_count",
-]);
-const SKARBIEC_CAPABILITY_TAXONOMY = new Map([
-	["weles.browser.fill", { target: "weles", prefixes: ["origin:"] }],
-	["weles.captcha.solve", { target: "weles", prefixes: ["provider:"] }],
-	["weles.sms.verify", { target: "weles", prefixes: ["provider:"] }],
-	["weles.proxy.authenticate", { target: "weles", prefixes: ["proxy:"] }],
-	["weles.brama.sign", { target: "weles", prefixes: ["brama:", "agent:"] }],
-	[
-		"most.service.authenticate",
-		{ target: "most-service", resources: ["credential:most/service"] },
-	],
-	[
-		"most.database.connect",
-		{ target: "most-service", resources: ["credential:most/database"] },
-	],
-	[
-		"most.twilio.authenticate",
-		{ target: "most-service", resources: ["credential:most/twilio"] },
-	],
-	[
-		"most.attachment.sign",
-		{
-			target: "most-service",
-			resources: ["credential:most/attachment-signing"],
-		},
-	],
-	[
-		"most.remote-worker.authenticate",
-		{ target: "most-service", resources: ["credential:most/remote-worker"] },
-	],
-	["brama.provider.authenticate", { target: "brama", prefixes: ["provider:"] }],
-	["brama.supabase.connect", { target: "brama", prefixes: ["supabase:"] }],
-	["brama.request.sign", { target: "brama", prefixes: ["agent:"] }],
-	[
-		"singularity.brama.bootstrap",
-		{ target: "singularity-bootstrap", prefixes: ["brama:"] },
-	],
-	[
-		"singularity.most.bootstrap",
-		{ target: "singularity-bootstrap", prefixes: ["most:"] },
-	],
-]);
-
-function verifySkarbiecReleasePolicy(release) {
-	if (release.name !== "skarbiec") return;
-	if (release.tools.length !== SKARBIEC_TOOL_SCHEMA_DIGESTS.size)
-		throw new Error(
-			"skarbiec: signed tool policy does not match the capability broker v1 surface",
-		);
-	for (const tool of release.tools) {
-		if (
-			SKARBIEC_TOOL_SCHEMA_DIGESTS.get(tool.name) !== tool.input_schema_sha256
-		)
-			throw new Error(
-				"skarbiec: signed tool schema does not match the capability broker v1 surface",
-			);
-	}
-}
 
 function verifyFinancePolicyFingerprint() {
 	const fingerprint = createHash("sha256")
@@ -251,78 +137,6 @@ export function authorizeToolCall(surface, remoteName) {
 		throw new Error(`${surface.name}: tool is not permitted by signed policy`);
 }
 
-function validateCapabilityTaxonomy(args) {
-	const rule = SKARBIEC_CAPABILITY_TAXONOMY.get(args.purpose);
-	if (!rule || args.target !== rule.target || args.resource.includes("*")) {
-		throw new Error(
-			"skarbiec: capability target is outside the contract taxonomy",
-		);
-	}
-	const allowed = rule.resources
-		? rule.resources.includes(args.resource)
-		: rule.prefixes.some(
-				(prefix) =>
-					args.resource.startsWith(prefix) &&
-					args.resource.length > prefix.length,
-			);
-	if (!allowed)
-		throw new Error(
-			"skarbiec: capability resource is outside the contract taxonomy",
-		);
-}
-
-function validateSkarbiecArguments(remoteName, args) {
-	const allowed =
-		remoteName === "health"
-			? new Set()
-			: new Set(["purpose", "resource", "target", "ttl_seconds", "max_uses"]);
-	if (remoteName === "capability_request") allowed.add("delegation_depth");
-	if (
-		!SKARBIEC_TOOL_SCHEMA_DIGESTS.has(remoteName) ||
-		Object.keys(args).some((name) => !allowed.has(name))
-	) {
-		throw new Error(
-			"skarbiec: capability arguments do not match the broker v1 contract",
-		);
-	}
-	if (remoteName === "health") return;
-	for (const name of ["purpose", "resource", "target"]) {
-		const value = args[name];
-		if (
-			typeof value !== "string" ||
-			value.trim() !== value ||
-			!value.length ||
-			value === "*" ||
-			value.includes("\0")
-		) {
-			throw new Error(
-				"skarbiec: capability arguments do not match the broker v1 contract",
-			);
-		}
-	}
-	validateCapabilityTaxonomy(args);
-	// How long, how often and how deep a capability may be used is Skarbiec's policy: it holds the
-	// ceilings and refuses a request beyond them with its reason. Las only checks the shape.
-	if (
-		!Number.isSafeInteger(args.ttl_seconds) ||
-		args.ttl_seconds < 1 ||
-		!Number.isSafeInteger(args.max_uses) ||
-		args.max_uses < 1
-	) {
-		throw new Error(
-			"skarbiec: ttl_seconds and max_uses must be positive whole numbers",
-		);
-	}
-	if (
-		Object.prototype.hasOwnProperty.call(args, "delegation_depth") &&
-		!nonNegativeInteger(args.delegation_depth)
-	) {
-		throw new Error(
-			"skarbiec: delegation_depth must be a whole number of at least zero",
-		);
-	}
-}
-
 export function authorizeToolArguments(surface, remoteName, modelArguments) {
 	if (
 		!modelArguments ||
@@ -349,69 +163,13 @@ export function authorizeToolArguments(surface, remoteName, modelArguments) {
 	return authorized;
 }
 
-function exactObject(value, fields, label) {
-	if (!value || typeof value !== "object" || Array.isArray(value))
-		throw new Error(`skarbiec: invalid ${label} result`);
-	const keys = Object.keys(value);
-	if (keys.length !== fields.size || keys.some((key) => !fields.has(key)))
-		throw new Error(`skarbiec: invalid ${label} result`);
-}
-
-function nonNegativeInteger(value) {
-	return Number.isSafeInteger(value) && value >= 0;
-}
-
-export function authorizeToolResult(surface, remoteName, result) {
+/**
+ * Admit a child's `tools/call` result. `args` are the arguments Las sent,
+ * which a Skarbiec answer must refer back to.
+ */
+export function authorizeToolResult(surface, remoteName, args, result) {
 	if (surface.name !== "skarbiec") return result;
-	exactObject(result, new Set(["content"]), "MCP envelope");
-	if (!Array.isArray(result.content) || result.content.length !== 1)
-		throw new Error("skarbiec: invalid MCP content result");
-	const content = result.content[0];
-	exactObject(content, new Set(["type", "text"]), "MCP content");
-	if (content.type !== "text" || typeof content.text !== "string")
-		throw new Error("skarbiec: invalid MCP content result");
-	let payload;
-	try {
-		payload = JSON.parse(content.text);
-	} catch {
-		throw new Error("skarbiec: invalid capability result");
-	}
-	if (remoteName === "health") {
-		exactObject(payload, SKARBIEC_HEALTH_FIELDS, "health");
-		if (
-			payload.ok !== true ||
-			payload.service !== "skarbiec-capability-broker" ||
-			payload.wire !== "skarbiec.redeem.v1" ||
-			!Number.isSafeInteger(payload.policy_sequence) ||
-			payload.policy_sequence < 1 ||
-			!Number.isSafeInteger(payload.registry_sequence) ||
-			payload.registry_sequence < 1 ||
-			!nonNegativeInteger(payload.active_capabilities) ||
-			!nonNegativeInteger(payload.anomaly_count)
-		) {
-			throw new Error("skarbiec: invalid health result");
-		}
-	} else if (remoteName === "capability_available") {
-		exactObject(payload, new Set(["available"]), "capability availability");
-		if (typeof payload.available !== "boolean")
-			throw new Error("skarbiec: invalid capability availability result");
-	} else if (remoteName === "capability_request") {
-		exactObject(
-			payload,
-			new Set(["status", "capability_id"]),
-			"capability request",
-		);
-		if (
-			payload.status !== "issued" ||
-			typeof payload.capability_id !== "string" ||
-			!CAPABILITY_ID.test(payload.capability_id)
-		) {
-			throw new Error("skarbiec: invalid capability request result");
-		}
-	} else {
-		throw new Error("skarbiec: tool is not permitted by signed policy");
-	}
-	return result;
+	return authorizeSkarbiecResult(remoteName, args, result);
 }
 
 // Spawn a child surface after this module's own gates admit it. The

@@ -13,12 +13,12 @@ import {
 import path from "node:path";
 import { assertExactKeys, parseStrictJson } from "./strict-json.mjs";
 
-const DOMAIN = Buffer.from("LAS\0release-manifest\0v1\0", "utf8");
-const TYPE = "las.release-manifest";
+export const DOMAIN = Buffer.from("LAS\0release-manifest\0v1\0", "utf8");
+export const TYPE = "las.release-manifest";
 const HEX256 = /^[0-9a-f]{64}$/;
-const KEY_ID = /^[A-Za-z0-9._-]{1,128}$/;
+export const KEY_ID = /^[A-Za-z0-9._-]{1,128}$/;
 // The mode bits that grant the group or other users any access; an Ed25519 signature is 64 bytes.
-const GROUP_OR_OTHER_ACCESS_BITS = 0o077;
+export const GROUP_OR_OTHER_ACCESS_BITS = 0o077;
 const ED25519_SIGNATURE_BYTES = 64;
 const CONFIG_ENV = Object.freeze({
 	manifest: "LAS_RELEASE_MANIFEST_FILE",
@@ -44,7 +44,7 @@ function regularFile(file, label) {
 		throw new Error(`${label}: missing regular file`);
 }
 
-function ownerOnlyFile(file, label) {
+export function ownerOnlyFile(file, label) {
 	regularFile(file, label);
 	const stat = statSync(file);
 	if (typeof process.getuid === "function" && stat.uid !== process.getuid())
@@ -163,7 +163,7 @@ function validateSurface(surface, index) {
 		throw new Error(`${label}: duplicate tool name`);
 }
 
-function validateManifest(manifest) {
+export function validateManifest(manifest) {
 	assertExactKeys(
 		manifest,
 		["type", "version", "sequence", "expires_at", "surfaces"],
@@ -196,7 +196,7 @@ function validateManifest(manifest) {
 		throw new Error("las manifest: duplicate surface name");
 }
 
-function readTrustStore(file, keyId) {
+export function readTrustStore(file, keyId) {
 	ownerOnlyFile(file, "las trust store");
 	const store = parseStrictJson(readFileSync(file), "las trust store");
 	assertExactKeys(store, ["version", "keys"], [], "las trust store");

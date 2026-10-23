@@ -26,30 +26,33 @@ export const SURFACES = [
 	},
 	{
 		name: "skarbiec",
-		command: path.join(
-			ROOT,
-			"entitlements-rotator",
-			"target",
-			"release",
-			"skarbiec-entitlements-router",
-		),
-		args: ["mcp"],
-		cwd: path.join(ROOT, "entitlements-rotator"),
+		command: path.join(ROOT, "skarbiec", "target", "release", "skarbiec"),
+		// `skarbiec mcp broker` serves only the broker v1 tools Las signs;
+		// plain `skarbiec mcp` is Skarbiec's own operator tool set.
+		args: ["mcp", "broker"],
+		cwd: path.join(ROOT, "skarbiec"),
 		summary:
-			"Credential capability broker. Opaque grants only; redemption is workload-bound over AF_UNIX.",
-		allowTools: ["health", "capability_available", "capability_request"],
+			"Credential capability broker. Opaque grants only; a request no grant covers is filed for a person to decide; redemption is workload-bound over AF_UNIX.",
+		allowTools: [
+			"health",
+			"capability_available",
+			"capability_request",
+			"access_request_status",
+		],
+		// What `skarbiec mcp broker` reads: the agent it serves (and, recorded
+		// as the requester, its harness and person), the vault, audit,
+		// capability and route files, and GnuPG's home. Every file defaults
+		// under HOME, so HOME is passed too. None of them is a secret.
 		envAllowlist: [
-			"SKARBIEC_CAP_POLICY",
-			"SKARBIEC_CAP_POLICY_SIG",
-			"SKARBIEC_CAP_TRUST_ROOT",
-			"SKARBIEC_WORKLOAD_REGISTRY",
-			"SKARBIEC_WORKLOAD_REGISTRY_SIG",
-			"SKARBIEC_CAP_STATE",
-			"SKARBIEC_CAP_SOCKET",
-			"SKARBIEC_WORM_RECEIPT_DIR",
-			"SKARBIEC_WORM_CHECKPOINT",
-			"SKARBIEC_WORM_RECEIPT_COMMAND",
 			"SKARBIEC_MCP_AGENT_ID",
+			"SKARBIEC_MCP_HARNESS",
+			"SKARBIEC_MCP_PERSON",
+			"SKARBIEC_VAULT_FILE",
+			"SKARBIEC_AUDIT_FILE",
+			"SKARBIEC_CAPABILITY_FILE",
+			"SKARBIEC_CAPABILITY_ROUTES_FILE",
+			"GNUPGHOME",
+			"HOME",
 		],
 	},
 	{
