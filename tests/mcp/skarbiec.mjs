@@ -62,7 +62,7 @@ try {
   const load = file => import(pathToFileURL(join(source, file)).href);
   const { CODE_INVALID_REQUEST, JSONRPC_VERSION, PROTOCOL_VERSION } = await load('src/mcp/protocol.mjs');
   const { SURFACES } = await load('src/registry/surfaces.mjs');
-  const { SKARBIEC_TOOL_SCHEMAS } = await load('src/registry/skarbiec.mjs');
+  const { SKARBIEC_TOOL_SCHEMAS } = await load('src/registry/skarbiec/policy.mjs');
   const skarbiec = SURFACES.find(surface => surface.name === 'skarbiec');
   const agent = `agent-${randomUUID()}`;
   const requestId = randomUUID();

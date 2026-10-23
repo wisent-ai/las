@@ -42,8 +42,55 @@ Supported methods:
 - `tools/call`.
 
 Notifications receive no response. Requests before initialization fail. A later
-request may not replace `agentId`; when Skarbiec is active, initialization must
-provide the exact `SKARBIEC_MCP_AGENT_ID`.
+request may not replace `agentId`.
+
+## Agent identity
+
+When the Skarbiec surface is active, the agent identity is the one the operator
+sets in Las's environment as `SKARBIEC_MCP_AGENT_ID`; Las forwards that variable,
+and only that one, to the broker. At `initialize`:
+
+- a client that sends no `agentId` (omp, Claude Code, Codex and other standard
+  MCP clients) runs as `SKARBIEC_MCP_AGENT_ID`;
+- a client that sends the same `agentId` is admitted;
+- a client that sends a different `agentId` is refused (-32600, `agent identity
+  rejected: …`);
+- with `SKARBIEC_MCP_AGENT_ID` unset, every client is refused (-32600, `agent
+  identity is not configured: … set SKARBIEC_MCP_AGENT_ID …`).
+
+Give each agent harness its own Las server entry with its own identity, for
+example in `.mcp.json`:
+
+```json
+{ "mcpServers": { "las": { "command": "las-mcp",
+  "env": { "SKARBIEC_MCP_AGENT_ID": "zuzanna-omp", "SKARBIEC_MCP_HARNESS": "omp", "SKARBIEC_MCP_PERSON": "zuzanna" } } } }
+```
+
+## Skarbiec: requesting access
+
+Skarbiec is launched as `skarbiec/target/release/skarbiec mcp broker` from the
+workspace and serves exactly these tools, in this order:
+
+| Tool | Arguments | Answer (JSON text) |
+|---|---|---|
+| `skarbiec__health` | none | `{ok, service, wire, policy_sequence, registry_sequence, active_capabilities, anomaly_count}` |
+| `skarbiec__capability_available` | `purpose, resource, target, ttl_seconds, max_uses` | `{available}` |
+| `skarbiec__capability_request` | as above, plus optional `delegation_depth` | `{status:"issued", capability_id}` or `{status:"pending", request_id}` |
+| `skarbiec__access_request_status` | `request_id` | `{request_id, state:"pending"\|"denied"\|"withdrawn"}` or `{request_id, state:"approved", capability_id}` |
+
+A `capability_request` no grant covers files an access request in Skarbiec's
+register and answers `pending` with its UUID; the decider approves or denies it
+(`skarbiec request approve|deny`, or the dialog/ask Skarbiec shows them). The
+agent then polls `access_request_status` with that `request_id`; once approved
+it carries the capability ID, whose redemption proof must sign the
+`request_id` as its authorization ID. An agent sees only the requests filed
+under its own identity. Las checks the arguments' shape and taxonomy and admits
+only these exact answers; a `request_id` must be a lowercase UUID, a
+`capability_id` 64 lowercase hex digits, and a status answer must name the
+`request_id` it was asked about.
+
+A rebuilt Skarbiec, or this tool set on an older manifest, needs a newly
+signed manifest with a higher sequence: see [release-signing.md](release-signing.md).
 
 ## Every request is answered
 
@@ -79,7 +126,11 @@ committed source, taken out of git into its run directory, with no surface
 federated, and checks each of these answers. It takes
 `LAS_TEST_SOURCE_REVISION`, `LAS_TEST_SUCCESS_EXIT` and `LAS_TEST_REFUSAL_EXIT`
 and keeps its commands, output and verdict under `.build/mcp-requests/`. It does
-not qualify a federated child. Every Las journey (this one,
+not qualify a federated child. `node tests/mcp/skarbiec.mjs` (same variables,
+run directory `.build/mcp-skarbiec/`) builds a stand-in broker where the
+committed registry launches Skarbiec, describes, signs and trusts it with `las
+release`, and checks the identity rule above, a `pending` request and
+`access_request_status`. Every Las journey (these,
 `tests/catalog/load.mjs`, `tests/onboarding/state.mjs`) also writes the report a
 defect register takes as a repair's evidence when `LAS_JOURNEY_REPORT` names a
 path, with `LAS_JOURNEY_SUBJECT` naming the defect and `LAS_JOURNEY_CRITERION`

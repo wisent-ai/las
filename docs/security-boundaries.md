@@ -33,14 +33,31 @@ Any mismatch fails closed for that surface.
 
 ### Skarbiec
 
-Las permits only `health`, `capability_available`, and `capability_request`, pins
-their schemas/descriptions, validates the purpose/resource/target taxonomy,
-and validates exact result envelopes. Callers declare positive whole-number
-`ttl_seconds` and `max_uses`; optional `delegation_depth` is nonnegative.
-Las checks their shape, while Skarbiec owns the capability policy and refuses
-requests outside its authority. Las does not impose a separate lifetime,
-use-count or delegation ceiling. It returns only availability or opaque
-capability IDs—not redeemed credentials.
+Las launches `skarbiec mcp broker` from `skarbiec/target/release/` in the
+workspace and permits only `health`, `capability_available`,
+`capability_request` and `access_request_status`, in that order. It pins
+their schemas/descriptions, validates the purpose/resource/target taxonomy and
+the `request_id` shape, and validates exact result envelopes. Callers declare
+positive whole-number `ttl_seconds` and `max_uses`; optional
+`delegation_depth` is nonnegative. Las checks their shape, while Skarbiec owns
+the capability policy and refuses requests outside its authority. Las does not
+impose a separate lifetime, use-count or delegation ceiling. It returns only
+availability, opaque capability IDs, or a pending access request's ID and
+state—not redeemed credentials. Whether a request is approved, and for how
+long and how many uses, is decided by a person in Skarbiec, never by Las or
+the model.
+
+#### Agent identity
+
+The identity Skarbiec grants to is the operator's, not the model's. Las passes
+the broker exactly its own `SKARBIEC_MCP_AGENT_ID` (with
+`SKARBIEC_MCP_HARNESS` and `SKARBIEC_MCP_PERSON`, recorded as the requester).
+At `initialize`, a client that sends no `agentId` runs as that identity; a
+client that sends a different one is refused; and with
+`SKARBIEC_MCP_AGENT_ID` unset Las refuses every client while Skarbiec is
+active. A later request may not carry `agentId` at all. So whoever starts
+`las-mcp` for a harness chooses which agent it is, and a prompt cannot switch
+identity. Run one Las server per agent identity.
 
 ### Finance
 
@@ -58,7 +75,9 @@ financial authorization boundary.
 - Protect trust-store private provenance, watermark state, signed manifest,
   policy files, and Skarbiec/Finance configuration from unauthorized changes.
 - Las uses public verification keys, not signing keys. Never place a manifest
-  private signing key in this workspace or child environment.
+  private signing key in this workspace or child environment; `las release
+  keygen` writes it owner-only to the path you name, and
+  [release-signing.md](release-signing.md) lists every file and variable.
 - Ordinary child environments reject raw-secret variable names. Use Skarbiec or
   child-owned secure transport rather than broad environment inheritance.
 

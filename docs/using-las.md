@@ -94,6 +94,9 @@ export LAS_RELEASE_TRUST_STORE_FILE=/absolute/path/trust-store.json
 export LAS_RELEASE_WATERMARK_FILE=/absolute/path/watermark.json
 ```
 
+[release-signing.md](release-signing.md) makes these files with `las release
+keygen`, `las release entry` and `las release sign`.
+
 Then adopt the existing MCP registrations and inspect the registry without
 spawning children:
 

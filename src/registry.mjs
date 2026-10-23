@@ -18,11 +18,11 @@ import {
 } from "./registry/launch.mjs";
 import { releaseFor } from "./registry/release.mjs";
 import {
-	authorizeSkarbiecResult,
 	SKARBIEC_TOOL_DESCRIPTIONS,
 	validateSkarbiecArguments,
 	verifySkarbiecReleasePolicy,
-} from "./registry/skarbiec.mjs";
+} from "./registry/skarbiec/policy.mjs";
+import { authorizeSkarbiecResult } from "./registry/skarbiec/results.mjs";
 
 export { SURFACES } from "./registry/surfaces.mjs";
 export {
