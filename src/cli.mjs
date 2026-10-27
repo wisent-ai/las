@@ -11,6 +11,7 @@
 //   las tools [surface...]    — advertised tools, spawning each child to ask
 //   las check [surface...]    — connectivity: spawn + initialize handshake
 //   las dependencies [...]    — what each product needs from another one
+//   las release keygen|entry|sign — make, describe and sign the owner-signed release
 // With no surface arguments, tools/check cover every active surface (honoring
 // the LAS_ONLY / LAS_SKIP environment filters).
 import { adoptMcpConfigurations, catalogRegistration } from "./catalog.mjs";
@@ -31,6 +32,7 @@ import {
 	runOnboardingAction,
 } from "./onboarding/journey.mjs";
 import { printAnswer, takeTextSwitch } from "./output/answer.mjs";
+import { cmdRelease, RELEASE_USAGE } from "./release/command.mjs";
 
 const SEP = "__";
 // Whether this invocation asked for `path: value` lines instead of JSON.
@@ -92,6 +94,7 @@ const COMMANDS = [
 		usage: "dependencies remove <product> <requires> --feature …",
 		help: "drop one entry",
 	},
+	...RELEASE_USAGE,
 ];
 
 const WIDTH = 22;
@@ -338,6 +341,8 @@ async function main() {
 		await cmdOnboarding(rest);
 	} else if (command === "dependencies") {
 		await cmdDependencies(rest);
+	} else if (command === "release") {
+		printAnswer(await cmdRelease(rest), TEXT);
 	} else {
 		// No or an unknown command is a wrong invocation: exit 2 (cli.md rule 10).
 		if (command) process.stderr.write(`las: unknown command '${command}'\n`);

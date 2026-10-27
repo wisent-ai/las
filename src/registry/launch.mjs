@@ -27,17 +27,14 @@ const ENV_NAME = /^[A-Z][A-Z0-9_]*$/;
 const RAW_SECRET_ENV =
 	/(?:^|_)(?:TOKEN|SECRET|PASSWORD|UNLOCK|PRIVATE_KEY|SIGNING_KEY)(?:_|$)/;
 const SHA256_HEX = /^[0-9a-f]{64}$/;
+// Path variables the Skarbiec broker reads. Each is optional (Skarbiec
+// defaults it under HOME); one that is set must be an absolute path.
 const SKARBIEC_PATH_ENV = new Set([
-	"SKARBIEC_CAP_POLICY",
-	"SKARBIEC_CAP_POLICY_SIG",
-	"SKARBIEC_CAP_TRUST_ROOT",
-	"SKARBIEC_WORKLOAD_REGISTRY",
-	"SKARBIEC_WORKLOAD_REGISTRY_SIG",
-	"SKARBIEC_CAP_STATE",
-	"SKARBIEC_CAP_SOCKET",
-	"SKARBIEC_WORM_RECEIPT_DIR",
-	"SKARBIEC_WORM_CHECKPOINT",
-	"SKARBIEC_WORM_RECEIPT_COMMAND",
+	"SKARBIEC_VAULT_FILE",
+	"SKARBIEC_AUDIT_FILE",
+	"SKARBIEC_CAPABILITY_FILE",
+	"SKARBIEC_CAPABILITY_ROUTES_FILE",
+	"GNUPGHOME",
 ]);
 
 function declaredEnv(names = [], imported = {}) {
@@ -209,6 +206,7 @@ export function buildChildEnvironment(surface) {
 		for (const name of SKARBIEC_PATH_ENV) {
 			if (!surface.envAllowlist.includes(name)) continue;
 			const value = process.env[name];
+			if (value === undefined) continue;
 			if (
 				typeof value !== "string" ||
 				!path.isAbsolute(value) ||

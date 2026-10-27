@@ -148,8 +148,9 @@ The surfaces Las federates, and the posture each one is held to, are listed in
 ### Expose one MCP endpoint
 
 - **Actor:** a local coding agent with an approved identity/configuration.
-- **Initial state:** an MCP client initializes Las, including the required agent ID
-  when Skarbiec is active.
+- **Initial state:** an MCP client initializes Las; when Skarbiec is active the
+  agent runs as the operator's `SKARBIEC_MCP_AGENT_ID`, and a client-sent
+  `agentId` must equal it.
 - **Outcome:** signed child tools appear as `surface__tool`; calls route to the
   owning child after policy-controlled argument injection/validation.
 - **Boundary:** failures return generic Las errors; child-controlled diagnostics
@@ -191,8 +192,9 @@ flowchart LR
   `PRIVATE_KEY`, or `SIGNING_KEY` are rejected for ordinary surfaces. The trust
   store holds public verification keys only; no signing key belongs in this
   workspace. Signed credential templates are fixed arguments that model-supplied
-  arguments cannot overwrite, and the Skarbiec boundary returns availability or
-  opaque capability IDs rather than redeemed credentials.
+  arguments cannot overwrite, and the Skarbiec boundary returns availability,
+  opaque capability IDs or a pending access request's ID and state rather than
+  redeemed credentials.
 - **Network boundary:** ordinary CLI commands and `las-mcp` open no listening
   socket. `las gui` binds the IPv4 loopback interface only for its process lifetime, prints the
   exact tokenized URL, and never opens a browser. The host rejects mismatched
@@ -253,7 +255,8 @@ namespacing and the operator filters are in
 What a signed release binds and what Las re-checks at child launch, what
 Skarbiec and Finance add on top of it, what Las protects and never logs,
 and how it fails and recovers are in
-[docs/security-boundaries.md](docs/security-boundaries.md).
+[docs/security-boundaries.md](docs/security-boundaries.md); how to make, sign
+and trust a release is in [docs/release-signing.md](docs/release-signing.md).
 
 ## Open and managed boundary
 
