@@ -26,7 +26,9 @@ events persist the same observation under `control_plane` in the state file,
 including when remote synchronization fails. The GUI's Canonical catalogue
 section shows this saved observation under **Onboarding control plane**.
 Opening that panel does not send a new request; `not_observed` is not healthy,
-and unreadable state is reported with its file and cause.
+and unreadable state is reported with its file and cause. `not_observed` means
+the state file or its `control_plane` record is absent; a `control_plane` saved
+in any shape other than an object is `unreadable`, naming the value found.
 
 `node tests/onboarding/state.mjs` qualifies retained-state admission through
 the real CLI of the declared revision. Declare `LAS_TEST_SOURCE_REVISION`,

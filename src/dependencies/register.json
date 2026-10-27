@@ -245,14 +245,14 @@
 			"how": "one typed decision on Brama's decision route per message",
 			"whenAbsent": "alternative",
 			"detail": "without Brama and without a declared service a message stays unread; Tama's stop gate holds the turn on unread messages",
-			"alternative": "oko model-service set declares an OpenAI-compatible service; each message is then read by its model in one chat completion. Without any model service, `oko tasks kind <session> <number> <KIND> --by …` records what the message is: a task of its own, a detail of the open task, a question or another declared kind",
+			"alternative": "oko model set declares an OpenAI-compatible service; each message is then read by its model in one chat completion. Without any model service, `oko tasks kind <session> <number> <KIND> --by …` records what the message is: a task of its own, a detail of the open task, a question or another declared kind",
 			"evidence": [
 				{
-					"at": "oko/rust/src/tasks/reading/mod.rs:138",
+					"at": "oko/rust/src/tasks/reading/mod.rs:141",
 					"contains": "return chat::ask(&client, &model, said);"
 				},
 				{
-					"at": "oko/rust/src/tasks/reading/chat.rs:45",
+					"at": "oko/rust/src/tasks/reading/chat.rs:50",
 					"contains": "pub(super) fn ask(client: &Client, model: &str, said: &str) -> Outcome<Answer> {"
 				}
 			]
@@ -458,14 +458,14 @@
 			"how": "Stado's product catalogue declares the dependency and installs it first",
 			"whenAbsent": "alternative",
 			"detail": "without --without brama the install installs Brama's service first",
-			"alternative": "--without brama skips it; oko model-service set then names an OpenAI-compatible service every model call asks, or, with no model service, what each message is is recorded by hand and tasks closed by hand (oko tasks kind / close, Read a message and Close on Oko Desktop)",
+			"alternative": "--without brama skips it; oko model set then names an OpenAI-compatible service every model call asks, or, with no model service, what each message is is recorded by hand and tasks closed by hand (oko tasks kind / close, Read a message and Close on Oko Desktop)",
 			"evidence": [
 				{
-					"at": "stado/catalog/products.yml:1219",
-					"contains": "alternative: oko model-service set declares an OpenAI-compatible service"
+					"at": "stado/catalog/products.yml:1265",
+					"contains": "alternative: oko model set declares an OpenAI-compatible service"
 				},
 				{
-					"at": "stado/stado-rs/product/src/install/operation/perform.rs:144",
+					"at": "stado/stado-rs/product/src/install/operation/perform/dependencies.rs:57",
 					"contains": "if without.iter().any(|name| name == dependency_id) {"
 				}
 			]
@@ -690,23 +690,23 @@
 			"feature": "model-judged guards",
 			"how": "asks `oko gateway object --prompt --name --schema`, which Brama answers by default, for the one object the guard's schema allows",
 			"whenAbsent": "alternative",
-			"detail": "with neither Brama nor a declared service the guard gets no judgement (\"oko gateway object failed (…): …\" and the like) and refuses the call it gates with that cause; only a machine declared to have no model (tama model-provider set --none) and shell lines that run the judge's own programs pass, each said on stderr",
-			"alternative": "oko model-service set --origin URL --model M (key on stdin) declares any OpenAI-compatible service; oko gateway and every Oko completion then ask it instead of Brama",
+			"detail": "with neither Brama nor a declared service the guard gets no judgement (\"oko gateway object failed (…): …\" and the like) and refuses the call it gates with that cause; only a machine declared to have no model (tama model set --none) and shell lines that run the judge's own programs pass, each said on stderr",
+			"alternative": "oko model set --origin URL --model M (key on stdin) declares any OpenAI-compatible service; oko gateway and every Oko completion then ask it instead of Brama",
 			"evidence": [
 				{
-					"at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/mod.rs:197",
+					"at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/mod.rs:266",
 					"contains": "\"{cli} gateway {verb} failed ({}): {said}\","
 				},
 				{
-					"at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/unanswered.rs:114",
+					"at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/unanswered.rs:141",
 					"contains": "pub fn refusal(hook: &str, judgement: &Judgement, command: Option<&str>) -> Option<String> {"
 				},
 				{
-					"at": "oko/rust/src/brama/send.rs:77",
+					"at": "oko/rust/src/brama/send.rs:79",
 					"contains": "None => crate::tasks::judge::provider::declared_service()?,"
 				},
 				{
-					"at": "oko/rust/src/brama/send.rs:245",
+					"at": "oko/rust/src/brama/send.rs:260",
 					"contains": "let (client, model) = match crate::tasks::judge::provider::declared_service()? {"
 				}
 			]
@@ -718,18 +718,18 @@
 			"how": "signed chat completions to Brama as Oko",
 			"whenAbsent": "alternative",
 			"detail": "without Brama and without a declared service each call is refused with the step that failed, e.g. \"role oko-model-router field token cannot be read by consumer oko-model-router-client: …\"",
-			"alternative": "oko model-service set --origin URL --model M (key on stdin) declares any OpenAI-compatible service; the judge, brama::complete and oko gateway send --prompt ask it with the declared model",
+			"alternative": "oko model set --origin URL --model M (key on stdin) declares any OpenAI-compatible service; the judge, brama::complete and oko gateway send --prompt ask it with the declared model",
 			"evidence": [
 				{
 					"at": "oko/rust/src/tasks/judge/provider.rs:93",
 					"contains": "pub(crate) fn declared_service()"
 				},
 				{
-					"at": "oko/rust/src/brama/send.rs:245",
+					"at": "oko/rust/src/brama/send.rs:260",
 					"contains": "let (client, model) = match crate::tasks::judge::provider::declared_service()? {"
 				},
 				{
-					"at": "oko/rust/src/brama/mod.rs:201",
+					"at": "oko/rust/src/brama/mod.rs:207",
 					"contains": "cannot be read by consumer"
 				}
 			]
@@ -1681,10 +1681,10 @@
 			"how": "runs `stado product catalog --json` and takes Oko's dependencies at any depth",
 			"whenAbsent": "alternative",
 			"detail": "with Stado installed but not answering, the gate refuses with \"which programs the judge stands on cannot be read: …\"",
-			"alternative": "on a machine without Stado the judge stands on this Tama program and the Oko program it asks, so `oko model-service set` and `tama model-provider set` pass while the judge is down",
+			"alternative": "on a machine without Stado the judge stands on this Tama program and the Oko program it asks, so `oko model set` and `tama model set` pass while the judge is down",
 			"evidence": [
 				{
-					"at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/unanswered.rs:90",
+					"at": "tama/rust/crates/tama-hook-tools/src/ports/model_judgement/unanswered.rs:94",
 					"contains": "let mut programs = if program_installed(\"stado\") {"
 				}
 			]
