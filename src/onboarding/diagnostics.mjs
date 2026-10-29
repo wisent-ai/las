@@ -21,7 +21,9 @@ export function onboardingControlPlane() {
 		// shape is unreadable, never reported as not observed.
 		if (state.control_plane === undefined) return { state: "not_observed" };
 		if (!isRecord(state.control_plane)) {
-			throw new Error(`control_plane must be an object, found ${JSON.stringify(state.control_plane)}`);
+			throw new Error(
+				`control_plane must be an object, found ${JSON.stringify(state.control_plane)}`,
+			);
 		}
 		return state.control_plane;
 	} catch (error) {
