@@ -1,4 +1,9 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import {
+	createHash,
+	randomBytes,
+	randomUUID,
+	timingSafeEqual,
+} from "node:crypto";
 import {
 	chmodSync,
 	lstatSync,
@@ -276,7 +281,16 @@ function adoptionSources(body, sessionId) {
 function authorized(request, authority, origin, token, mutation) {
 	if (request.headers.host !== authority)
 		return "Host does not match this Las GUI session";
-	if (request.headers.authorization !== `Bearer ${token}`)
+	// Compared as SHA-256 digests in constant time: the token's value and
+	// length are not told by how long the check takes.
+	const presented = request.headers.authorization;
+	if (
+		presented === undefined ||
+		!timingSafeEqual(
+			createHash("sha256").update(presented).digest(),
+			createHash("sha256").update(`Bearer ${token}`).digest(),
+		)
+	)
 		return "session token is missing or invalid";
 	if (mutation && request.headers.origin !== origin)
 		return "Origin does not match this Las GUI session";
