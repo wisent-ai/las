@@ -15,7 +15,6 @@ import { lstatSync, readFileSync, realpathSync } from "node:fs";
  */
 export function parseSource(sourcePath, surfacesByName, shape) {
 	const {
-		maxConfigBytes,
 		topLevelFields,
 		entryFields,
 		envName,
@@ -45,13 +44,6 @@ export function parseSource(sourcePath, surfacesByName, shape) {
 			source: sourcePath,
 			reason:
 				"configuration must be a regular file, not a symbolic link or directory",
-		});
-		return { source: sourcePath, registrations, rejected };
-	}
-	if (metadata.size > maxConfigBytes) {
-		rejected.push({
-			source: sourcePath,
-			reason: "configuration exceeds 4 MiB",
 		});
 		return { source: sourcePath, registrations, rejected };
 	}

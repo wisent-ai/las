@@ -15,8 +15,6 @@ import path from "node:path";
 import { parseSource as readSource } from "./catalog/source.mjs";
 
 export const SCHEMA_VERSION = 1;
-// One MCP configuration file larger than 4 MiB is not one an editor wrote.
-const MAX_CONFIG_BYTES = 4 * 1024 * 1024;
 // The catalogue directory and file are owner-only.
 const OWNER_ONLY_DIRECTORY = 0o700;
 const OWNER_ONLY_FILE = 0o600;
@@ -189,13 +187,9 @@ export function loadCatalog() {
 		cachedCatalog = null;
 		return cachedCatalog;
 	}
-	if (
-		metadata.isSymbolicLink() ||
-		!metadata.isFile() ||
-		metadata.size > MAX_CONFIG_BYTES
-	) {
+	if (metadata.isSymbolicLink() || !metadata.isFile()) {
 		throw new Error(
-			`Las catalogue must be a regular file of at most 4 MiB: ${target}`,
+			`Las catalogue must be a regular file, not a symbolic link or directory: ${target}`,
 		);
 	}
 	let text;
@@ -279,7 +273,6 @@ export function writeCatalog(catalog) {
 /** One configuration file, read with this module's own vocabulary. */
 function parseSource(sourcePath, surfacesByName) {
 	return readSource(sourcePath, surfacesByName, {
-		maxConfigBytes: MAX_CONFIG_BYTES,
 		topLevelFields: TOP_LEVEL_FIELDS,
 		entryFields: ENTRY_FIELDS,
 		envName: ENV_NAME,
