@@ -4,7 +4,7 @@
 <key>CFBundleDevelopmentRegion</key><string>en</string>
 <key>CFBundleDisplayName</key><string>Warsztat</string>
 <key>CFBundleExecutable</key><string>Warsztat</string>
-<key>CFBundleIdentifier</key><string>ai.wisent.warsztat.desktop</string>
+<key>CFBundleIdentifier</key><string>com.wisent.warsztat.desktop</string>
 <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 <key>CFBundleName</key><string>Warsztat</string>
 <key>CFBundlePackageType</key><string>APPL</string>

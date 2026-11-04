@@ -4,7 +4,7 @@
 <key>CFBundleDevelopmentRegion</key><string>en</string>
 <key>CFBundleDisplayName</key><string>Brama</string>
 <key>CFBundleExecutable</key><string>Brama</string>
-<key>CFBundleIdentifier</key><string>ai.wisent.brama.desktop</string>
+<key>CFBundleIdentifier</key><string>com.wisent.brama.desktop</string>
 <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 <key>CFBundleName</key><string>Brama</string>
 <key>CFBundlePackageType</key><string>APPL</string>
