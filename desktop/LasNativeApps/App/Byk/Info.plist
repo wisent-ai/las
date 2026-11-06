@@ -4,7 +4,7 @@
 <key>CFBundleDevelopmentRegion</key><string>en</string>
 <key>CFBundleDisplayName</key><string>Byk</string>
 <key>CFBundleExecutable</key><string>Byk</string>
-<key>CFBundleIdentifier</key><string>ai.wisent.byk.desktop</string>
+<key>CFBundleIdentifier</key><string>com.wisent.byk.desktop</string>
 <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 <key>CFBundleName</key><string>Byk</string>
 <key>CFBundlePackageType</key><string>APPL</string>

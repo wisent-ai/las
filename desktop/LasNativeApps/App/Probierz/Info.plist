@@ -4,7 +4,7 @@
 <key>CFBundleDevelopmentRegion</key><string>en</string>
 <key>CFBundleDisplayName</key><string>Probierz</string>
 <key>CFBundleExecutable</key><string>Probierz</string>
-<key>CFBundleIdentifier</key><string>ai.wisent.probierz.desktop</string>
+<key>CFBundleIdentifier</key><string>com.wisent.probierz.desktop</string>
 <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 <key>CFBundleName</key><string>Probierz</string>
 <key>CFBundlePackageType</key><string>APPL</string>

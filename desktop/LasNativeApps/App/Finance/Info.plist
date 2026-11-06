@@ -4,7 +4,7 @@
 <key>CFBundleDevelopmentRegion</key><string>en</string>
 <key>CFBundleDisplayName</key><string>Finance</string>
 <key>CFBundleExecutable</key><string>Finance</string>
-<key>CFBundleIdentifier</key><string>ai.wisent.finance.desktop</string>
+<key>CFBundleIdentifier</key><string>com.wisent.finance.desktop</string>
 <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 <key>CFBundleName</key><string>Finance</string>
 <key>CFBundlePackageType</key><string>APPL</string>

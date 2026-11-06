@@ -4,7 +4,7 @@
 <key>CFBundleDevelopmentRegion</key><string>en</string>
 <key>CFBundleDisplayName</key><string>Echo</string>
 <key>CFBundleExecutable</key><string>Echo</string>
-<key>CFBundleIdentifier</key><string>ai.wisent.echo.desktop</string>
+<key>CFBundleIdentifier</key><string>com.wisent.echo.desktop</string>
 <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 <key>CFBundleName</key><string>Echo</string>
 <key>CFBundlePackageType</key><string>APPL</string>
