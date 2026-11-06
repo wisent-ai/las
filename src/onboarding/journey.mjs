@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { readFileSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { OnboardingSession } from "./session.mjs";
+import { OnboardingSession, STATUS, isStatus } from "./session.mjs";
 
 import {
 	FIRST_SUCCESS_FACT,
@@ -128,7 +128,7 @@ function validProgress(progress, bundle, subjectHash) {
 		progress.product_id === PRODUCT_ID &&
 		progress.journey_version_id === bundle.journey_version_id &&
 		progress.subject_hash === subjectHash &&
-		typeof progress.attempt_id === "string" &&
+		typeof progress.attempt_id === "string" && isStatus(progress.status) &&
 		bundle.definition.screens.some(
 			(screen) => screen.screen_id === progress.current_screen_id,
 		) &&
@@ -146,7 +146,7 @@ function newProgress(bundle, subjectHash, revision) {
 		scope_kind: "device",
 		current_screen_id: bundle.definition.entry_screen_id,
 		completed_screen_ids: [],
-		status: "in_progress",
+		status: STATUS.IN_PROGRESS,
 		evidence_revision: revision,
 		answers: [],
 	};
@@ -268,7 +268,7 @@ export async function recordCatalogueAdopted({
 } = {}) {
 	try {
 		const state = await loadState();
-		if (!isRecord(state.progress) || state.progress.status !== "in_progress")
+		if (!isRecord(state.progress) || state.progress.status !== STATUS.IN_PROGRESS)
 			return false;
 		const session = await openSession(client, { start: false });
 		if (!session) return false;
@@ -279,7 +279,7 @@ export async function recordCatalogueAdopted({
 			surface_count: surfaceCount,
 			catalog_path: catalogPath,
 		});
-		return session.progress.status === "completed";
+		return session.progress.status === STATUS.COMPLETED;
 	} catch {
 		// Onboarding persistence or transport must never turn a successful catalogue import into a failure.
 		return false;

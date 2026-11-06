@@ -7,6 +7,28 @@
 
 import { randomUUID } from "node:crypto";
 
+/**
+ * Where an attempt stands, each with the statuses it may move to: in
+ * progress until the first-success fact completes it or the user skips it;
+ * a skipped or completed attempt moves nowhere. Reset starts a new attempt
+ * rather than moving this one.
+ */
+export const STATUS = Object.freeze({
+	IN_PROGRESS: "in_progress",
+	SKIPPED: "skipped",
+	COMPLETED: "completed",
+});
+const NEXT_STATUSES = Object.freeze({
+	[STATUS.IN_PROGRESS]: Object.freeze([STATUS.SKIPPED, STATUS.COMPLETED]),
+	[STATUS.SKIPPED]: Object.freeze([]),
+	[STATUS.COMPLETED]: Object.freeze([]),
+});
+
+/** Whether `status` is one an attempt can be in. */
+export function isStatus(status) {
+	return Object.hasOwn(NEXT_STATUSES, status);
+}
+
 export class OnboardingSession {
 	/**
 	 * `deps` is what the journey owns and this class only uses: writing the
@@ -91,15 +113,15 @@ export class OnboardingSession {
 
 	async expose(revision) {
 		if (
-			this.progress.status !== "completed" &&
-			this.progress.status !== "skipped"
+			this.progress.status !== STATUS.COMPLETED &&
+			this.progress.status !== STATUS.SKIPPED
 		) {
 			await this.emit([this.event("onboarding_step_viewed", revision)]);
 		}
 	}
 
 	async advance(revision) {
-		if (this.progress.status !== "in_progress") return null;
+		if (this.progress.status !== STATUS.IN_PROGRESS) return null;
 		const current = this.screen;
 		const decision = this.deps.selectNext(
 			this.bundle,
@@ -123,9 +145,23 @@ export class OnboardingSession {
 		return decision;
 	}
 
+	/**
+	 * Move the attempt to `next`, or refuse naming both statuses and the
+	 * moves its status allows: the one place a status changes.
+	 */
+	moveTo(next) {
+		const allowed = NEXT_STATUSES[this.progress.status];
+		if (!allowed.includes(next)) {
+			throw new Error(
+				`onboarding attempt ${this.progress.attempt_id} cannot move from ${this.progress.status} to ${next}; from ${this.progress.status} it moves to ${allowed.length ? allowed.join(" or ") : "nothing"}`,
+			);
+		}
+		this.progress.status = next;
+	}
+
 	async skip(revision) {
-		if (this.progress.status === "completed") return;
-		this.progress.status = "skipped";
+		if (this.progress.status !== STATUS.IN_PROGRESS) return;
+		this.moveTo(STATUS.SKIPPED);
 		this.progress.evidence_revision = revision;
 		await this.emit([this.event("onboarding_step_skipped", revision)]);
 	}
@@ -145,7 +181,7 @@ export class OnboardingSession {
 	}
 
 	async observeCatalogueAdoption(revision, properties) {
-		if (this.progress.status !== "in_progress") return;
+		if (this.progress.status !== STATUS.IN_PROGRESS) return;
 		this.state.evidence = {
 			...(this.state.evidence || {}),
 			[this.deps.firstSuccessFact]: true,
@@ -194,7 +230,7 @@ export class OnboardingSession {
 		) {
 			if (!this.progress.completed_screen_ids.includes(terminal.screen_id))
 				this.progress.completed_screen_ids.push(terminal.screen_id);
-			this.progress.status = "completed";
+			this.moveTo(STATUS.COMPLETED);
 			events.push(
 				this.event(
 					"onboarding_step_completed",
